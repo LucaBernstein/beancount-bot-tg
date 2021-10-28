@@ -1,1 +1,35 @@
 # Sample Docker-Compose file
+
+services:
+  db:
+    image: postgres
+    container_name: beancount_db
+    restart: unless-stopped
+    networks:
+      - beancount
+    volumes:
+      - beancount_db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+  app:
+    image:
+    container_name:
+    restart: unless-stopped
+    networks:
+      - beancount
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_HOST=$POSTGRES_HOST
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - BOT_API_KEY=$BOT_API_KEY
+
+networks:
+  beancount:
+    name: beancount
+
+volumes:
+  beancount_db:
+    driver: local
