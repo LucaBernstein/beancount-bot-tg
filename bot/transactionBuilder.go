@@ -131,7 +131,6 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
 	if spacesNeeded < 0 {
 		spacesNeeded = 0
 	}
-	log.Printf("%d spaces needed", spacesNeeded)
 	addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
 	// Template
 	tpl := `; Created by beancount-bot-tg on %s

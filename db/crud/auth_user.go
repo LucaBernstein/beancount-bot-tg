@@ -13,7 +13,10 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	tgUsername := m.Sender.Username
 
 	userCachePrune()
-	ce := getUser(m.Chat.ID)
+	ce, err := r.getUser(m.Chat.ID)
+	if err != nil {
+		return err
+	}
 	if ce == nil {
 		log.Printf("Creating user for the first time in the 'auth::user' db table: {chatId: %d, userId: %d, username: %s}", tgChatId, tgUserId, tgUsername)
 		_, err := r.db.Exec(`INSERT INTO "auth::user" ("tgChatId", "tgUserId", "tgUsername")
@@ -54,6 +57,31 @@ func userCachePrune() {
 	}
 }
 
-func getUser(id int64) *User {
-	return USER_CACHE[id].Value
+func (r *Repo) getUser(id int64) (*User, error) {
+	value, ok := USER_CACHE[id]
+	if ok {
+		return value.Value, nil
+	}
+	rows, err := r.db.Query(`
+		SELECT "tgUserId", "tgUsername"
+		FROM "auth::user"
+		WHERE "tgChatId" = $1
+	`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tgUserId int
+	var tgUsername string
+	if rows.Next() {
+		err = rows.Scan(&tgUserId, &tgUsername)
+		if err != nil {
+			return nil, err
+		}
+		user := &User{TgUserId: tgUserId, TgChatId: id, TgUsername: tgUsername}
+		USER_CACHE[id] = &UserCacheEntry{Value: user, Expiry: time.Now().Add(CACHE_VALIDITY)}
+		return user, nil
+	}
+	return nil, nil
 }
