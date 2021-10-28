@@ -126,7 +126,8 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 			transaction)
 		b.Send(m.Sender, "Saved your transaction. "+
 			"You can get a list of all your transactions using /list. "+
-			"With /archiveTransactions you can delete all of them (e.g. once you copied them into your bookkeeping).",
+			"With /archiveTransactions you can delete all of them (e.g. once you copied them into your bookkeeping)."+
+			"\n\nYou can start a new transaction with /simple or type /help to see all commands available.",
 		)
 		return
 	}
