@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/db"
+	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -15,16 +17,27 @@ const (
 )
 
 var (
-	STATE = bot.NewStateHandler()
+	CRUD_REPO *crud.Repo
+	STATE     *bot.StateHandler
 )
 
 func main() {
+	db := db.PostgresConnection()
+	defer db.Close()
+	CRUD_REPO = crud.NewRepo(db)
+	STATE = bot.NewStateHandler()
+
 	botToken := envTgBotToken()
 	poller := &tb.LongPoller{Timeout: 20 * time.Second}
+	userGuardPoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
+		// TODO: Start goroutine to update data?
+		CRUD_REPO.EnrichUserData(*upd.Message.Sender)
+		return true
+	})
 
 	b, err := tb.NewBot(tb.Settings{
 		Token:  botToken,
-		Poller: poller,
+		Poller: userGuardPoller,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -45,6 +58,14 @@ func main() {
 
 	b.Handle("/simple", func(m *tb.Message) {
 		commandCreateSimpleTx(b, m)
+	})
+
+	b.Handle("/archiveTransactions", func(m *tb.Message) {
+		commandArchiveTransactions(b, m)
+	})
+
+	b.Handle("/list", func(m *tb.Message) {
+		commandList(b, m)
 	})
 
 	b.Handle(tb.OnText, func(m *tb.Message) {
@@ -99,9 +120,14 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 	}
 	log.Printf("New data state for %s (ChatID: %d) is %v. (Input now was %s)", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
-		// TODO: Do something with the ready-to-template transaction.
-		// E.g. store it in a db, send it as a reply, ...
-		// TODO: Add test for tx building and templating
+		transaction := "TODO: TEMPLATE OUT"
+		// save to db
+		b.Send(m.Sender, "; Transaction added to /list\n"+
+			transaction)
+		b.Send(m.Sender, "Saved your transaction. "+
+			"You can get a list of all your transactions using /list. "+
+			"With /archiveTransactions you can delete all of them (e.g. once you copied them into your bookkeeping).",
+		)
 		return
 	}
 	b.Send(m.Sender, (string)(tx.NextHint()))
@@ -119,6 +145,14 @@ func commandHelp(b *tb.Bot, m *tb.Message) {
 func commandClear(b *tb.Bot, m *tb.Message) {
 	log.Printf("Clearing state for %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
 	STATE.Clear(m)
+}
+
+func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
+	b.Send(m.Sender, "TODO: NOT IMPLEMENTED YET")
+}
+
+func commandList(b *tb.Bot, m *tb.Message) {
+	b.Send(m.Sender, "TODO: NOT IMPLEMENTED YET")
 }
 
 func envTgBotToken() string {
