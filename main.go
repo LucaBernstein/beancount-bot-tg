@@ -157,13 +157,23 @@ func commandClear(b *tb.Bot, m *tb.Message) {
 }
 
 func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
-	b.Send(m.Sender, "TODO: NOT IMPLEMENTED YET")
+	err := CRUD_REPO.ArchiveTransactions(m.Chat.ID)
+	if err != nil {
+		b.Send(m.Sender, "Something went wrong archiving your transactions: "+err.Error())
+		return
+	}
+	b.Send(m.Sender, "Archived all transactions. Your /list is empty again.")
 }
 
 func commandList(b *tb.Bot, m *tb.Message) {
 	tx, err := CRUD_REPO.GetTransactions(m.Chat.ID)
 	if err != nil {
-		b.Send(m.Sender, "Something went wrong retrieving the transactions list: "+err.Error())
+		b.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error())
+		return
+	}
+	if tx == "" {
+		b.Send(m.Sender, "Your transaction list is already empty. Create some first. Check /simple or /help for commands.")
+		return
 	}
 	b.Send(m.Sender, tx)
 }

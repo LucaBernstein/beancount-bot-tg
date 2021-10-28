@@ -1,12 +1,16 @@
 package crud
 
+import "log"
+
 func (r *Repo) RecordTransaction(chatId int64, tx string) error {
-	_, err := r.db.Exec(`INSERT INTO "bot::transaction" ("tgChatId", "value")
+	_, err := r.db.Exec(`
+		INSERT INTO "bot::transaction" ("tgChatId", "value")
 		VALUES ($1, $2);`, chatId, tx)
 	return err
 }
 
 func (r *Repo) GetTransactions(chatId int64) (string, error) {
+	log.Printf("Getting transactions for %d", chatId)
 	rows, err := r.db.Query(`
 		SELECT "value" FROM "bot::transaction"
 		WHERE "archived" = FALSE AND "tgChatId" = $1
@@ -28,4 +32,13 @@ func (r *Repo) GetTransactions(chatId int64) (string, error) {
 		allTransactionsMessage += transactionString + SEP
 	}
 	return allTransactionsMessage, nil
+}
+
+func (r *Repo) ArchiveTransactions(chatId int64) error {
+	log.Printf("Archiving transactions for %d", chatId)
+	_, err := r.db.Exec(`
+		UPDATE "bot::transaction"
+		SET "archived" = TRUE
+		WHERE "tgChatId" = $1`, chatId)
+	return err
 }
