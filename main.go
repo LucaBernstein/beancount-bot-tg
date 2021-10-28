@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -89,7 +89,6 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 		b.Send(m.Sender, "Please check /help on how to use this bot. E.g. you might need to start a transaction first before sending data.")
 		return
 	}
-	// TODO: Do inline editing of template vars querying like a questionnaire. Edit message again and again and fill in blanks.
 	err := tx.Input(m)
 	if err != nil {
 		b.Send(m.Sender, "Your last input seems to have not worked.\n"+
@@ -122,7 +121,7 @@ func commandClear(b *tb.Bot, m *tb.Message) {
 }
 
 func envTgBotToken() string {
-	TG_BOT_APIKEY := os.Getenv(ENV_TG_BOT_API_KEY)
+	TG_BOT_APIKEY := helpers.Env(ENV_TG_BOT_API_KEY)
 	if TG_BOT_APIKEY == "" {
 		log.Fatalf("Please provide Telegram bot API key as ENV var '%s'", ENV_TG_BOT_API_KEY)
 	}
