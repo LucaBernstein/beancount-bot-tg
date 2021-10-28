@@ -11,7 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: $( echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]' )
 
 jobs:
   build:
@@ -37,13 +37,13 @@ jobs:
 
       - name: Build image
         run: |
-          docker build . -t ghcr.io/${{ github.repository }}:${GITHUB_REF##*/} --build-arg VERSION=${GITHUB_REF##*/} --build-arg GIT_SHA=${GITHUB_SHA}
+          docker build . -t ${{ env.IMAGE_NAME }}:${GITHUB_REF##*/} --build-arg VERSION=${GITHUB_REF##*/} --build-arg GIT_SHA=${GITHUB_SHA}
           # Only tag 'release' if REF startsWith 'v'
-          [[ ${GITHUB_REF##*/} = v* ]] && docker tag app ghcr.io/${{ github.repository }}:release || echo "Not a release tag"
+          [[ ${GITHUB_REF##*/} = v* ]] && docker tag app ${{ env.IMAGE_NAME }}:release || echo "Not a release tag"
 
       - name: Push image
         if: github.event_name != 'pull_request'
         run: |
-          docker push ghcr.io/${{ github.repository }}:${GITHUB_REF##*/}
+          docker push ${{ env.IMAGE_NAME }}:${GITHUB_REF##*/}
           # Only push 'release' if REF startsWith 'v'
-          [[ ${GITHUB_REF##*/} = v* ]] && docker push ghcr.io/${{ github.repository }}:release || echo "Not a release tag"
+          [[ ${GITHUB_REF##*/} = v* ]] && docker push ${{ env.IMAGE_NAME }}:release || echo "Not a release tag"
