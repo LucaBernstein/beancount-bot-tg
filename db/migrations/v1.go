@@ -47,7 +47,7 @@ func v1CreateTransactionsTable(db *sql.Tx) {
 	sqlStatement := `
 	CREATE TABLE "bot::transaction" (
 		"id" SERIAL PRIMARY KEY,
-		"tgChatId" NUMERIC REFERENCES "auth::user" ("tgChatId") NOT NULL
+		"tgChatId" NUMERIC REFERENCES "auth::user" ("tgChatId") NOT NULL,
 		"created" TIMESTAMP NOT NULL DEFAULT NOW(),
 		"value" TEXT,
 		"archived" BOOLEAN DEFAULT FALSE NOT NULL
@@ -63,7 +63,7 @@ func v1CreateValueCache(db *sql.Tx) {
 	sqlStatement := `
 	CREATE TABLE "bot::cache" (
 		"id" SERIAL PRIMARY KEY,
-		"tgChatId" NUMERIC REFERENCES "auth::user" ("tgChatId") NOT NULL
+		"tgChatId" NUMERIC REFERENCES "auth::user" ("tgChatId") NOT NULL,
 		"lastUsed" TIMESTAMP NOT NULL DEFAULT NOW(),
 		"type" TEXT,
 		"value" TEXT
