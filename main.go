@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -14,7 +15,7 @@ const (
 )
 
 var (
-	STATE = NewStateHandler()
+	STATE = bot.NewStateHandler()
 )
 
 func main() {
