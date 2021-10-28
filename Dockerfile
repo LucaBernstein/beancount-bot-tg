@@ -24,7 +24,4 @@ WORKDIR /
 
 COPY --from=builder /src/app /bin/app
 
-ENV APP_PORT 8080
-EXPOSE ${APP_PORT}
-
 ENTRYPOINT [ "/bin/app" ]
