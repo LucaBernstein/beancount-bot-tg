@@ -27,8 +27,10 @@ docker network create localdev
 docker run --rm -d -p 5432:5432 --network localdev --name postgres_localdev -e POSTGRES_PASSWORD=password postgres
 docker run --rm -d -p 8090:8080 --network localdev --name adminer adminer
 
+# Fill your local .env file (template from .env.sample) with the respective values
+
 # Backend
-POSTGRES_HOST=localhost POSTGRES_PASSWORD=password go run .
+env $(cat .env | xargs) go run .
 ```
 
 Install [`Air`](https://github.com/cosmtrek/air) to hot-reload while developing
