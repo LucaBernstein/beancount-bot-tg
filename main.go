@@ -31,7 +31,7 @@ func main() {
 	poller := &tb.LongPoller{Timeout: 20 * time.Second}
 	userGuardPoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
 		// TODO: Start goroutine to update data?
-		CRUD_REPO.EnrichUserData(*upd.Message)
+		CRUD_REPO.EnrichUserData(upd.Message)
 		return true
 	})
 
