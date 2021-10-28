@@ -5,6 +5,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"strings"
 
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -19,12 +20,14 @@ type Input struct {
 }
 
 func HandleFloat(m *tb.Message) (string, error) {
-	v, err := strconv.ParseFloat(m.Text, 32)
+	input := strings.TrimSpace(m.Text)
+	input = strings.ReplaceAll(input, ",", ".")
+	v, err := strconv.ParseFloat(input, 64)
 	if err != nil {
 		return "", err
 	}
 	log.Printf("Handled float: '%s' -> %f", m.Text, v)
-	return m.Text, nil
+	return input, nil
 }
 
 func HandleRaw(m *tb.Message) (string, error) {
