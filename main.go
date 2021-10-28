@@ -125,10 +125,14 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 			b.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error())
 			return
 		}
-		// save to db
-		b.Send(m.Sender, "; Transaction added to /list\n"+
-			transaction)
-		b.Send(m.Sender, "Saved your transaction. "+
+
+		err = CRUD_REPO.RecordTransaction(m.Chat.ID, transaction)
+		if err != nil {
+			b.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error())
+			return
+		}
+
+		b.Send(m.Sender, "Successfully recorded your transaction.\n"+
 			"You can get a list of all your transactions using /list. "+
 			"With /archiveTransactions you can delete all of them (e.g. once you copied them into your bookkeeping)."+
 			"\n\nYou can start a new transaction with /simple or type /help to see all commands available.",
