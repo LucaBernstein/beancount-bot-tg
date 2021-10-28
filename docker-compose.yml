@@ -1,9 +1,10 @@
 # Sample Docker-Compose file
+version: '3'
 
 services:
   db:
     image: postgres
-    container_name: beancount_db
+    container_name: bc_db
     restart: unless-stopped
     networks:
       - beancount
@@ -13,8 +14,8 @@ services:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
   app:
-    image:
-    container_name:
+    image: ghcr.io/lucabernstein/beancount-bot-tg:main
+    container_name: bc_tg_bot
     restart: unless-stopped
     networks:
       - beancount
