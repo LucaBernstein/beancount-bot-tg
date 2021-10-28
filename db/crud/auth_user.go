@@ -7,7 +7,7 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-func (r *Repo) EnrichUserData(m tb.Message) error {
+func (r *Repo) EnrichUserData(m *tb.Message) error {
 	tgChatId := m.Chat.ID
 	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
