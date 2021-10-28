@@ -6,9 +6,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	tb "gopkg.in/tucnak/telebot.v2"
 )
+
+const CUR = "EUR"
+const DOT_INDENT = 47
 
 type command string
 type hint string
@@ -52,6 +57,7 @@ type Tx interface {
 	IsDone() bool
 	Debug() string
 	addStep(command command, hint hint, handler func(m *tb.Message) (string, error)) Tx
+	FillTemplate() (string, error)
 }
 
 type SimpleTx struct {
@@ -101,6 +107,50 @@ func (tx *SimpleTx) IsDone() bool {
 	return tx.step >= len(tx.steps)
 }
 
+func (tx *SimpleTx) FillTemplate() (string, error) {
+	if !tx.IsDone() {
+		return "", fmt.Errorf("not all data for this tx has been gathered")
+	}
+	// Variables
+	var (
+		today      = time.Now().Format("2006-01-02")
+		txDate     = tx.data[4]
+		txDesc     = tx.data[3]
+		accFrom    = tx.data[1]
+		amountFrom = tx.data[0]
+		accTo      = tx.data[2]
+	)
+	f, err := strconv.ParseFloat(string(amountFrom), 64)
+	if err != nil {
+		return "", err
+	}
+	// Add spaces
+	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(accFrom))) // accFrom
+	spacesNeeded -= CountLeadingDigits(f)                                  // float length before point
+	spacesNeeded -= 2                                                      // additional space in template + negative sign
+	if spacesNeeded < 0 {
+		spacesNeeded = 0
+	}
+	log.Printf("%d spaces needed", spacesNeeded)
+	addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
+	// Template
+	tpl := `; Created by beancount-bot-tg on %s
+%s * "%s"
+  %s%s -%s %s
+  %s
+`
+	return fmt.Sprintf(tpl, today, txDate, txDesc, accFrom, addSpacesFrom, amountFrom, CUR, accTo), nil
+}
+
 func (tx *SimpleTx) Debug() string {
 	return fmt.Sprintf("SimpleTx{step=%d, totalSteps=%d, data=%v}", tx.step, len(tx.steps), tx.data)
+}
+
+func CountLeadingDigits(f float64) int {
+	count := 1
+	for f >= 10 {
+		f /= 10
+		count++
+	}
+	return count
 }

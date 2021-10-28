@@ -120,7 +120,11 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 	}
 	log.Printf("New data state for %s (ChatID: %d) is %v. (Input now was %s)", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
-		transaction := "TODO: TEMPLATE OUT"
+		transaction, err := tx.FillTemplate()
+		if err != nil {
+			b.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error())
+			return
+		}
 		// save to db
 		b.Send(m.Sender, "; Transaction added to /list\n"+
 			transaction)
