@@ -161,7 +161,11 @@ func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
 }
 
 func commandList(b *tb.Bot, m *tb.Message) {
-	b.Send(m.Sender, "TODO: NOT IMPLEMENTED YET")
+	tx, err := CRUD_REPO.GetTransactions(m.Chat.ID)
+	if err != nil {
+		b.Send(m.Sender, "Something went wrong retrieving the transactions list: "+err.Error())
+	}
+	b.Send(m.Sender, tx)
 }
 
 func envTgBotToken() string {
