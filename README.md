@@ -9,7 +9,7 @@ Supports you in keeping track of your beancount transactions also if you need to
 
 ## Getting started
 
-1. Send the Telegram bot any initial message to get it started.
+1. Start a conversation with the bot (usually `/start`).
 1. If needed, the bot will lead you through any additional setup needed
 1. You can type `/help` to see the commands available to control the bot (e.g. to add accounts, record transactions, change account settings, ...)
 
