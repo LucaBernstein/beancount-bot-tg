@@ -60,7 +60,7 @@ func main() {
 		commandCreateSimpleTx(b, m)
 	})
 
-	b.Handle("/archiveTransactions", func(m *tb.Message) {
+	b.Handle("/archiveAll", func(m *tb.Message) {
 		commandArchiveTransactions(b, m)
 	})
 
@@ -134,7 +134,7 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 
 		b.Send(m.Sender, "Successfully recorded your transaction.\n"+
 			"You can get a list of all your transactions using /list. "+
-			"With /archiveTransactions you can delete all of them (e.g. once you copied them into your bookkeeping)."+
+			"With /archiveAll you can delete all of them (e.g. once you copied them into your bookkeeping)."+
 			"\n\nYou can start a new transaction with /simple or type /help to see all commands available.",
 		)
 		return
@@ -144,10 +144,11 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 
 func commandHelp(b *tb.Bot, m *tb.Message) {
 	log.Printf("Sending help to %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
-	b.Send(m.Sender,
-		"/help - List this command help\n"+
-			"/clear - Cancel any running commands\n"+
-			"/simple - Record a simple transaction",
+	b.Send(m.Sender, "/help - List this command help"+
+		"\n/clear - Cancel any running commands"+
+		"\n/simple - Record a simple transaction"+
+		"\n/list - List your recorded transactions"+
+		"\n/archiveAll - Archive all transactions on list",
 	)
 }
 
