@@ -183,7 +183,7 @@ func commandList(b *tb.Bot, m *tb.Message) {
 }
 
 func clearKeyboard() *tb.ReplyMarkup {
-	return bot.ReplyKeyboard([]string{})
+	return &tb.ReplyMarkup{ReplyKeyboardRemove: true}
 }
 
 func envTgBotToken() string {
