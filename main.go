@@ -146,14 +146,23 @@ func commandHelp(b *tb.Bot, m *tb.Message) {
 	log.Printf("Sending help to %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
 	b.Send(m.Sender,
 		"/help - List this command help\n"+
-			"/clear - Cancel any command currently running\n"+
-			"/simple - Note down a simple transaction",
+			"/clear - Cancel any running commands\n"+
+			"/simple - Record a simple transaction",
 	)
 }
 
 func commandClear(b *tb.Bot, m *tb.Message) {
-	log.Printf("Clearing state for %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
+	tx := STATE.Get(m)
+	isInTx := tx != nil
+	log.Printf("Clearing state for %s (ChatID: %d). Was in tx? %t", m.Chat.Username, m.Chat.ID, isInTx)
+
 	STATE.Clear(m)
+
+	msg := "There were no active transactions open to cancel."
+	if isInTx {
+		msg = "Your currently running transaction has been cancelled."
+	}
+	b.Send(m.Sender, msg+"\nType /help to see available commands or type /simple to start a new simple transaction.")
 }
 
 func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
