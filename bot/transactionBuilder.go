@@ -9,11 +9,15 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 const CUR = "EUR"
 const DOT_INDENT = 47
+const (
+	BEANCOUNT_DATE_FORMAT = "2006-01-02"
+)
 
 type command string
 type hint string
@@ -40,6 +44,11 @@ func HandleRaw(m *tb.Message) (string, error) {
 }
 
 func HandleDate(m *tb.Message) (string, error) {
+	// Handle "now" string
+	if helpers.ArrayContains([]string{"now", "today"}, strings.TrimSpace(strings.ToLower(m.Text))) {
+		return time.Now().Format(BEANCOUNT_DATE_FORMAT), nil
+	}
+	// Handle YYYY-MM-DD
 	matched, err := regexp.MatchString("\\d{4}-\\d{2}-\\d{2}", m.Text)
 	if err != nil {
 		return "", err
@@ -75,7 +84,7 @@ func CreateSimpleTx() Tx {
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
-		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list)", HandleDate)
+		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list, e.g. 'now' or 'today')", HandleDate)
 }
 
 func (tx *SimpleTx) addStep(command command, hint hint, handler func(m *tb.Message) (string, error)) Tx {
@@ -113,7 +122,7 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
 	}
 	// Variables
 	var (
-		today      = time.Now().Format("2006-01-02")
+		today      = time.Now().Format(BEANCOUNT_DATE_FORMAT)
 		txDate     = tx.data[4]
 		txDesc     = tx.data[3]
 		accFrom    = tx.data[1]

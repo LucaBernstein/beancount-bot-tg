@@ -61,3 +61,17 @@ func TestCountLeadingDigits(t *testing.T) {
 	helpers.TestExpect(t, bot.CountLeadingDigits(0.34), 1, "")
 	helpers.TestExpect(t, bot.CountLeadingDigits(1244.0), 4, "")
 }
+
+func TestDateSpecialNow(t *testing.T) {
+	h, err := bot.HandleDate(&tb.Message{Text: "Now"})
+	if err != nil {
+		t.Errorf("There should be no error handling date 'now': %s", err.Error())
+	}
+	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
+
+	h, err = bot.HandleDate(&tb.Message{Text: " ToDaY "})
+	if err != nil {
+		t.Errorf("There should be no error handling date 'now': %s", err.Error())
+	}
+	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
+}
