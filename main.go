@@ -45,43 +45,41 @@ func main() {
 	}
 
 	b.Handle("/start", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandStart(b, m)
 	})
 
 	b.Handle("/help", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandHelp(b, m)
 	})
 
 	b.Handle("/clear", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandClear(b, m)
 	})
 
 	b.Handle("/simple", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandCreateSimpleTx(b, m)
 	})
 
 	b.Handle("/archiveAll", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandArchiveTransactions(b, m)
 	})
 
 	b.Handle("/list", func(m *tb.Message) {
+		clearKeyboard(b, m)
 		commandList(b, m)
 	})
 
 	b.Handle(tb.OnText, func(m *tb.Message) {
+		clearKeyboard(b, m)
 		handleTextState(b, m)
 	})
 
-	b.Handle(tb.OnQuery, func(q *tb.Query) {
-		// incoming inline queries
-	})
-
-	b.Handle(tb.OnPhoto, func(m *tb.Message) {
-		// photos only
-	})
-
 	log.Printf("Starting bot %s", b.Me.Username)
-
 	b.Start()
 }
 
@@ -186,6 +184,10 @@ func commandList(b *tb.Bot, m *tb.Message) {
 		return
 	}
 	b.Send(m.Sender, tx)
+}
+
+func clearKeyboard(b *tb.Bot, m *tb.Message) {
+	b.Send(m.Sender, "", bot.ReplyKeyboard([]string{}))
 }
 
 func envTgBotToken() string {
