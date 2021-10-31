@@ -21,7 +21,7 @@ func (r *Repo) GetTransactions(chatId int64) (string, error) {
 	}
 	defer rows.Close()
 
-	SEP := "\n\n"
+	SEP := "\n"
 	allTransactionsMessage := ""
 	var transactionString string
 	for rows.Next() {
