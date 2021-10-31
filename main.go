@@ -45,37 +45,30 @@ func main() {
 	}
 
 	b.Handle("/start", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandStart(b, m)
 	})
 
 	b.Handle("/help", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandHelp(b, m)
 	})
 
 	b.Handle("/clear", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandClear(b, m)
 	})
 
 	b.Handle("/simple", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandCreateSimpleTx(b, m)
 	})
 
 	b.Handle("/archiveAll", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandArchiveTransactions(b, m)
 	})
 
 	b.Handle("/list", func(m *tb.Message) {
-		clearKeyboard(b, m)
 		commandList(b, m)
 	})
 
 	b.Handle(tb.OnText, func(m *tb.Message) {
-		clearKeyboard(b, m)
 		handleTextState(b, m)
 	})
 
@@ -89,7 +82,7 @@ func commandStart(b *tb.Bot, m *tb.Message) {
 		"You can find more information in the repository under "+
 		"https://github.com/LucaBernstein/beancount-bot-tg\n\n"+
 		"Please check the commands I will send to you next that are available to you. "+
-		"You can always reach the command help by typing /help")
+		"You can always reach the command help by typing /help", clearKeyboard())
 	commandHelp(b, m)
 }
 
@@ -98,6 +91,7 @@ func commandCreateSimpleTx(b *tb.Bot, m *tb.Message) {
 	b.Send(m.Sender, "In the following steps we will create a simple transaction. "+
 		"I will guide you through.\n\n"+
 		"Please enter the amount of money.",
+		clearKeyboard(),
 	)
 	STATE.SimpleTx(m)
 }
@@ -106,7 +100,7 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 	tx := STATE.Get(m)
 	if tx == nil {
 		log.Printf("Received text without having any prior state from %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
-		b.Send(m.Sender, "Please check /help on how to use this bot. E.g. you might need to start a transaction first before sending data.")
+		b.Send(m.Sender, "Please check /help on how to use this bot. E.g. you might need to start a transaction first before sending data.", clearKeyboard())
 		return
 	}
 	err := tx.Input(m)
@@ -120,13 +114,13 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 	if tx.IsDone() {
 		transaction, err := tx.FillTemplate()
 		if err != nil {
-			b.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error())
+			b.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
 			return
 		}
 
 		err = CRUD_REPO.RecordTransaction(m.Chat.ID, transaction)
 		if err != nil {
-			b.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error())
+			b.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
 			return
 		}
 
@@ -134,10 +128,11 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 			"You can get a list of all your transactions using /list. "+
 			"With /archiveAll you can delete all of them (e.g. once you copied them into your bookkeeping)."+
 			"\n\nYou can start a new transaction with /simple or type /help to see all commands available.",
+			clearKeyboard(),
 		)
 		return
 	}
-	b.Send(m.Sender, (string)(tx.NextHint()))
+	b.Send(m.Sender, (string)(tx.NextHint())) // TODO: Add keyboard with new options
 }
 
 func commandHelp(b *tb.Bot, m *tb.Message) {
@@ -147,6 +142,7 @@ func commandHelp(b *tb.Bot, m *tb.Message) {
 		"\n/simple - Record a simple transaction"+
 		"\n/list - List your recorded transactions"+
 		"\n/archiveAll - Archive all transactions on list",
+		clearKeyboard(),
 	)
 }
 
@@ -161,7 +157,7 @@ func commandClear(b *tb.Bot, m *tb.Message) {
 	if isInTx {
 		msg = "Your currently running transaction has been cancelled."
 	}
-	b.Send(m.Sender, msg+"\nType /help to see available commands or type /simple to start a new simple transaction.")
+	b.Send(m.Sender, msg+"\nType /help to see available commands or type /simple to start a new simple transaction.", clearKeyboard())
 }
 
 func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
@@ -170,24 +166,24 @@ func commandArchiveTransactions(b *tb.Bot, m *tb.Message) {
 		b.Send(m.Sender, "Something went wrong archiving your transactions: "+err.Error())
 		return
 	}
-	b.Send(m.Sender, "Archived all transactions. Your /list is empty again.")
+	b.Send(m.Sender, "Archived all transactions. Your /list is empty again.", clearKeyboard())
 }
 
 func commandList(b *tb.Bot, m *tb.Message) {
 	tx, err := CRUD_REPO.GetTransactions(m.Chat.ID)
 	if err != nil {
-		b.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error())
+		b.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
 		return
 	}
 	if tx == "" {
-		b.Send(m.Sender, "Your transaction list is already empty. Create some first. Check /simple or /help for commands.")
+		b.Send(m.Sender, "Your transaction list is already empty. Create some first. Check /simple or /help for commands.", clearKeyboard())
 		return
 	}
-	b.Send(m.Sender, tx)
+	b.Send(m.Sender, tx, clearKeyboard())
 }
 
-func clearKeyboard(b *tb.Bot, m *tb.Message) {
-	b.Send(m.Sender, "", bot.ReplyKeyboard([]string{}))
+func clearKeyboard() *tb.ReplyMarkup {
+	return bot.ReplyKeyboard([]string{})
 }
 
 func envTgBotToken() string {
