@@ -45,14 +45,23 @@ func (bc *BotController) ConfigureAndAttachBot(b *tb.Bot) *BotController {
 	return bc
 }
 
+const (
+	CMD_START       = "start"
+	CMD_HELP        = "help"
+	CMD_CANCEL      = "cancel"
+	CMD_SIMPLE      = "simple"
+	CMD_LIST        = "list"
+	CMD_ARCHIVE_ALL = "archiveAll"
+)
+
 func (bc *BotController) commandMappings() []*CMD {
 	return []*CMD{
-		{Command: "start", Handler: bc.commandStart},
-		{Command: "help", Handler: bc.commandHelp, Help: "List this command help"},
-		{Command: "cancel", Handler: bc.commandCancel, Help: "Cancel any running commands"},
-		{Command: "simple", Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
-		{Command: "list", Handler: bc.commandList, Help: "List your recorded transactions"},
-		{Command: "archiveAll", Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
+		{Command: CMD_START, Handler: bc.commandStart},
+		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
+		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands"},
+		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
+		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
+		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 	}
 }
 
@@ -62,7 +71,7 @@ func (bc *BotController) commandStart(m *tb.Message) {
 		"You can find more information in the repository under "+
 		"https://github.com/LucaBernstein/beancount-bot-tg\n\n"+
 		"Please check the commands I will send to you next that are available to you. "+
-		"You can always reach the command help by typing /help", clearKeyboard())
+		"You can always reach the command help by typing /"+CMD_HELP, clearKeyboard())
 	bc.commandHelp(m)
 }
 
@@ -92,7 +101,7 @@ func (bc *BotController) commandCancel(m *tb.Message) {
 	if isInTx {
 		msg = "Your currently running transaction has been cancelled."
 	}
-	bc.Bot.Send(m.Sender, msg+"\nType /help to see available commands or type /simple to start a new simple transaction.", clearKeyboard())
+	bc.Bot.Send(m.Sender, fmt.Sprintf("%s\nType /%s to see available commands or type /%s to start a new simple transaction.", msg, CMD_HELP, CMD_SIMPLE), clearKeyboard())
 }
 
 func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
@@ -112,7 +121,7 @@ func (bc *BotController) commandList(m *tb.Message) {
 		return
 	}
 	if tx == "" {
-		bc.Bot.Send(m.Sender, "Your transaction list is already empty. Create some first. Check /simple or /help for commands.", clearKeyboard())
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction.", CMD_HELP), clearKeyboard())
 		return
 	}
 	bc.Bot.Send(m.Sender, tx, clearKeyboard())
@@ -124,14 +133,14 @@ func (bc *BotController) commandArchiveTransactions(m *tb.Message) {
 		bc.Bot.Send(m.Sender, "Something went wrong archiving your transactions: "+err.Error())
 		return
 	}
-	bc.Bot.Send(m.Sender, "Archived all transactions. Your /list is empty again.", clearKeyboard())
+	bc.Bot.Send(m.Sender, fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 }
 
 func (bc *BotController) handleTextState(m *tb.Message) {
 	tx := bc.State.Get(m)
 	if tx == nil {
 		log.Printf("Received text without having any prior state from %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
-		bc.Bot.Send(m.Sender, "Please check /help on how to use this bot. E.g. you might need to start a transaction first before sending data.", clearKeyboard())
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		return
 	}
 	err := tx.Input(m)
@@ -164,10 +173,11 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 			// Don't return, instead continue flow (if recording was successful)
 		}
 
-		bc.Bot.Send(m.Sender, "Successfully recorded your transaction.\n"+
-			"You can get a list of all your transactions using /list. "+
-			"With /archiveAll you can delete all of them (e.g. once you copied them into your bookkeeping)."+
-			"\n\nYou can start a new transaction with /simple or type /help to see all commands available.",
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully recorded your transaction.\n"+
+			"You can get a list of all your transactions using /%s. "+
+			"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
+			"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",
+			CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
 			clearKeyboard(),
 		)
 		return
