@@ -110,7 +110,7 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 			"Please try again.",
 		)
 	}
-	log.Printf("New data state for %s (ChatID: %d) is %v. (Input now was %s)", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
+	log.Printf("New data state for %s (ChatID: %d) is %v. (Last input was '%s')", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
 		transaction, err := tx.FillTemplate()
 		if err != nil {
