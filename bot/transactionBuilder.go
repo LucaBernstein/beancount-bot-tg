@@ -50,8 +50,8 @@ func HandleRaw(m *tb.Message) (string, error) {
 }
 
 func HandleDate(m *tb.Message) (string, error) {
-	// Handle "now" string
-	if helpers.ArrayContains([]string{"now", "today"}, strings.TrimSpace(strings.ToLower(m.Text))) {
+	// Handle "today" string
+	if strings.TrimSpace(strings.ToLower(m.Text)) == "today" {
 		return time.Now().Format(BEANCOUNT_DATE_FORMAT), nil
 	}
 	// Handle YYYY-MM-DD
@@ -67,10 +67,11 @@ func HandleDate(m *tb.Message) (string, error) {
 }
 
 type Tx interface {
-	Input(m *tb.Message) error
-	NextHint(r *crud.Repo) *Hint
+	Input(*tb.Message) error
 	IsDone() bool
 	Debug() string
+	NextHint(*crud.Repo, *tb.Message) *Hint
+	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
 	FillTemplate() (string, error)
 	DataKeys() map[string]string
 	GeneralCache() *crud.GeneralCacheEntry
@@ -85,6 +86,14 @@ type SimpleTx struct {
 	step        int
 }
 
+const (
+	STX_DESC = "txDesc"
+	STX_DATE = "txDate"
+	STX_ACCF = "accFrom"
+	STX_AMTF = "amountFrom"
+	STX_ACCT = "accTo"
+)
+
 func CreateSimpleTx() Tx {
 	return (&SimpleTx{
 		stepDetails: make(map[command]Input),
@@ -93,7 +102,7 @@ func CreateSimpleTx() Tx {
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
-		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list, e.g. 'now' or 'today')", HandleDate)
+		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list, e.g. 'today')", HandleDate)
 }
 
 func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
@@ -113,12 +122,74 @@ func (tx *SimpleTx) Input(m *tb.Message) (err error) {
 	return
 }
 
-func (tx *SimpleTx) NextHint(r *crud.Repo) *Hint {
+func (tx *SimpleTx) NextHint(r *crud.Repo, m *tb.Message) *Hint {
 	if tx.step > len(tx.steps)-1 {
 		log.Printf("During extraction of next hint an error ocurred: step exceeds max index.")
 		return nil
 	}
-	return EnrichHint(r, tx.stepDetails[tx.steps[tx.step]])
+	return tx.EnrichHint(r, m, tx.stepDetails[tx.steps[tx.step]])
+}
+
+func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
+	log.Printf("Enriching hint (%s).", i.key)
+	if i.key == "description" {
+		return tx.hintDescription(r, m, i.hint)
+	}
+	if i.key == "date" {
+		return tx.hintDate(r, m, i.hint)
+	}
+	if helpers.ArrayContains([]string{"from", "to"}, i.key) {
+		return tx.hintAccount(r, m, i)
+	}
+	return i.hint
+}
+
+func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
+	log.Printf("Enriching hint: account (key=%s)", i.key)
+	var (
+		res []string = nil
+		err error    = nil
+	)
+	if i.key == "from" {
+		res, err = r.GetCacheHints(m, STX_ACCF)
+	} else if i.key == "to" {
+		res, err = r.GetCacheHints(m, STX_ACCT)
+	}
+	if err != nil {
+		log.Printf("Error occurred getting cached hint (hintAccount): %s", err.Error())
+		return i.hint
+	}
+	i.hint.KeyboardOptions = res
+	return i.hint
+}
+
+func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
+	res, err := r.GetCacheHints(m, STX_DESC)
+	if err != nil {
+		log.Printf("Error occurred getting cached hint (hintDescription): %s", err.Error())
+	}
+	h.KeyboardOptions = res
+	return h
+}
+
+func (tx *SimpleTx) hintDate(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
+	res, err := r.GetCacheHints(m, STX_DATE)
+	if err != nil {
+		log.Printf("Error occurred getting cached hint (hintDate): %s", err.Error())
+	}
+	res = append([]string{"today"}, res...)
+	h.KeyboardOptions = res
+	return h
+}
+
+func (tx *SimpleTx) DataKeys() map[string]string {
+	return map[string]string{
+		STX_DATE: string(tx.data[4]),
+		STX_DESC: string(tx.data[3]),
+		STX_ACCF: string(tx.data[1]),
+		STX_AMTF: string(tx.data[0]),
+		STX_ACCT: string(tx.data[2]),
+	}
 }
 
 func (tx *SimpleTx) IsDone() bool {
@@ -152,17 +223,7 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
   %s%s -%s %s
   %s
 `
-	return fmt.Sprintf(tpl, today, txRaw["txDate"], txRaw["txDesc"], txRaw["accFrom"], addSpacesFrom, txRaw["amountFrom"], CUR, txRaw["accTo"]), nil
-}
-
-func (tx *SimpleTx) DataKeys() map[string]string {
-	return map[string]string{
-		"txDate":     string(tx.data[4]),
-		"txDesc":     string(tx.data[3]),
-		"accFrom":    string(tx.data[1]),
-		"amountFrom": string(tx.data[0]),
-		"accTo":      string(tx.data[2]),
-	}
+	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, txRaw[STX_AMTF], CUR, txRaw[STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) GeneralCache() *crud.GeneralCacheEntry {

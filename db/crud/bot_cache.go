@@ -56,7 +56,9 @@ func (r *Repo) GetCacheHints(m *tb.Message, key string) ([]string, error) {
 			return nil, err
 		}
 	}
-	return CACHE_LOCAL[m.Chat.ID][key], nil
+	cacheData := CACHE_LOCAL[m.Chat.ID][key]
+	log.Printf("Got cached data for chat '%d', key '%s': %v", m.Chat.ID, key, cacheData)
+	return cacheData, nil
 }
 
 func (r *Repo) FillCache(m *tb.Message) error {
@@ -76,7 +78,7 @@ func (r *Repo) FillCache(m *tb.Message) error {
 
 	var key string
 	var value string
-	if rows.Next() {
+	for rows.Next() {
 		err = rows.Scan(&key, &value)
 		if err != nil {
 			return err

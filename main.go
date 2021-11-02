@@ -141,8 +141,10 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 		)
 		return
 	}
-	hint := tx.NextHint(CRUD_REPO)
-	b.Send(m.Sender, hint.Prompt, bot.ReplyKeyboard(hint.KeyboardOptions))
+	hint := tx.NextHint(CRUD_REPO, m)
+	replyKeyboard := bot.ReplyKeyboard(hint.KeyboardOptions)
+	log.Printf("Sending hints for next step: %v", hint.KeyboardOptions)
+	b.Send(m.Sender, hint.Prompt, replyKeyboard)
 }
 
 func commandHelp(b *tb.Bot, m *tb.Message) {
