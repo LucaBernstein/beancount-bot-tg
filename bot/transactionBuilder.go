@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -19,12 +20,17 @@ const (
 	BEANCOUNT_DATE_FORMAT = "2006-01-02"
 )
 
+type Hint struct {
+	Prompt          string
+	KeyboardOptions []string
+}
+
 type command string
-type hint string
 type data string
 
 type Input struct {
-	hint    hint
+	key     string
+	hint    *Hint
 	handler func(m *tb.Message) (string, error)
 }
 
@@ -62,11 +68,14 @@ func HandleDate(m *tb.Message) (string, error) {
 
 type Tx interface {
 	Input(m *tb.Message) error
-	NextHint() hint
+	NextHint(r *crud.Repo) *Hint
 	IsDone() bool
 	Debug() string
-	addStep(command command, hint hint, handler func(m *tb.Message) (string, error)) Tx
 	FillTemplate() (string, error)
+	DataKeys() map[string]string
+	GeneralCache() *crud.GeneralCacheEntry
+
+	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
 }
 
 type SimpleTx struct {
@@ -87,9 +96,9 @@ func CreateSimpleTx() Tx {
 		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list, e.g. 'now' or 'today')", HandleDate)
 }
 
-func (tx *SimpleTx) addStep(command command, hint hint, handler func(m *tb.Message) (string, error)) Tx {
+func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
 	tx.steps = append(tx.steps, command)
-	tx.stepDetails[command] = Input{hint: hint, handler: handler}
+	tx.stepDetails[command] = Input{key: string(command), hint: &Hint{Prompt: hint}, handler: handler}
 	tx.data = make([]data, len(tx.steps))
 	return tx
 }
@@ -104,12 +113,12 @@ func (tx *SimpleTx) Input(m *tb.Message) (err error) {
 	return
 }
 
-func (tx *SimpleTx) NextHint() hint {
+func (tx *SimpleTx) NextHint(r *crud.Repo) *Hint {
 	if tx.step > len(tx.steps)-1 {
 		log.Printf("During extraction of next hint an error ocurred: step exceeds max index.")
-		return ""
+		return nil
 	}
-	return (hint)(tx.stepDetails[tx.steps[tx.step]].hint)
+	return EnrichHint(r, tx.stepDetails[tx.steps[tx.step]])
 }
 
 func (tx *SimpleTx) IsDone() bool {
@@ -121,22 +130,18 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
 		return "", fmt.Errorf("not all data for this tx has been gathered")
 	}
 	// Variables
+	txRaw := tx.DataKeys()
 	var (
-		today      = time.Now().Format(BEANCOUNT_DATE_FORMAT)
-		txDate     = tx.data[4]
-		txDesc     = tx.data[3]
-		accFrom    = tx.data[1]
-		amountFrom = tx.data[0]
-		accTo      = tx.data[2]
+		today = time.Now().Format(BEANCOUNT_DATE_FORMAT)
 	)
-	f, err := strconv.ParseFloat(string(amountFrom), 64)
+	f, err := strconv.ParseFloat(string(txRaw["amountFrom"]), 64)
 	if err != nil {
 		return "", err
 	}
 	// Add spaces
-	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(accFrom))) // accFrom
-	spacesNeeded -= CountLeadingDigits(f)                                  // float length before point
-	spacesNeeded -= 2                                                      // additional space in template + negative sign
+	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(txRaw["accFrom"]))) // accFrom
+	spacesNeeded -= CountLeadingDigits(f)                                           // float length before point
+	spacesNeeded -= 2                                                               // additional space in template + negative sign
 	if spacesNeeded < 0 {
 		spacesNeeded = 0
 	}
@@ -147,7 +152,22 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
   %s%s -%s %s
   %s
 `
-	return fmt.Sprintf(tpl, today, txDate, txDesc, accFrom, addSpacesFrom, amountFrom, CUR, accTo), nil
+	return fmt.Sprintf(tpl, today, txRaw["txDate"], txRaw["txDesc"], txRaw["accFrom"], addSpacesFrom, txRaw["amountFrom"], CUR, txRaw["accTo"]), nil
+}
+
+func (tx *SimpleTx) DataKeys() map[string]string {
+	return map[string]string{
+		"txDate":     string(tx.data[4]),
+		"txDesc":     string(tx.data[3]),
+		"accFrom":    string(tx.data[1]),
+		"amountFrom": string(tx.data[0]),
+		"accTo":      string(tx.data[2]),
+	}
+}
+
+func (tx *SimpleTx) GeneralCache() *crud.GeneralCacheEntry {
+	// TODO: Not implemented yet
+	return nil
 }
 
 func (tx *SimpleTx) Debug() string {

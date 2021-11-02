@@ -114,14 +114,23 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 	if tx.IsDone() {
 		transaction, err := tx.FillTemplate()
 		if err != nil {
+			log.Printf("Something went wrong while templating the transaction: " + err.Error())
 			b.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
 			return
 		}
 
 		err = CRUD_REPO.RecordTransaction(m.Chat.ID, transaction)
 		if err != nil {
+			log.Printf("Something went wrong while recording your transaction: " + err.Error())
 			b.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
 			return
+		}
+
+		// TODO: Goroutine
+		err = CRUD_REPO.PutCacheHints(m, tx.DataKeys())
+		if err != nil {
+			log.Printf("Something went wrong while caching transaction. Error: %s", err.Error())
+			// Don't return, instead continue flow (if recording was successful)
 		}
 
 		b.Send(m.Sender, "Successfully recorded your transaction.\n"+
@@ -132,7 +141,8 @@ func handleTextState(b *tb.Bot, m *tb.Message) {
 		)
 		return
 	}
-	b.Send(m.Sender, (string)(tx.NextHint())) // TODO: Add keyboard with new options
+	hint := tx.NextHint(CRUD_REPO)
+	b.Send(m.Sender, hint.Prompt, bot.ReplyKeyboard(hint.KeyboardOptions))
 }
 
 func commandHelp(b *tb.Bot, m *tb.Message) {
