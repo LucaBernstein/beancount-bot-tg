@@ -177,8 +177,16 @@ func (tx *SimpleTx) hintDate(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
 	if err != nil {
 		log.Printf("Error occurred getting cached hint (hintDate): %s", err.Error())
 	}
-	res = append([]string{"today"}, res...)
-	h.KeyboardOptions = res
+	selection := []string{"today"}
+	today := time.Now().Format(BEANCOUNT_DATE_FORMAT)
+	// Sort out today's date
+	for _, v := range res {
+		if v != today {
+			selection = append(selection, v)
+		}
+	}
+
+	h.KeyboardOptions = selection
 	return h
 }
 
