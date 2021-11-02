@@ -52,7 +52,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: "cancel", Handler: bc.commandCancel, Help: "Cancel any running commands"},
 		{Command: "simple", Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
 		{Command: "list", Handler: bc.commandList, Help: "List your recorded transactions"},
-		{Command: "archiveAll", Handler: bc.commandArchiveTransactions, Help: "Archive all transactions in /list"},
+		{Command: "archiveAll", Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 	}
 }
 
