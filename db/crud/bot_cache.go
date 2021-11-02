@@ -67,7 +67,7 @@ func (r *Repo) FillCache(m *tb.Message) error {
 		SELECT "type", "value"
 		FROM "bot::cache"
 		WHERE "tgChatId" = $1
-		ORDER BY "lastUsed", "type" DESC`,
+		ORDER BY "lastUsed" DESC`,
 		m.Chat.ID)
 	if err != nil {
 		return err
