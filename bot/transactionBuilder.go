@@ -41,6 +41,10 @@ func HandleFloat(m *tb.Message) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if v < 0 {
+		log.Print("Got negative value. Inverting.")
+		v *= -1
+	}
 	log.Printf("Handled float: '%s' -> %f", m.Text, v)
 	return input, nil
 }
