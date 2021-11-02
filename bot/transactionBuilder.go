@@ -98,7 +98,7 @@ func CreateSimpleTx() Tx {
 	return (&SimpleTx{
 		stepDetails: make(map[command]Input),
 	}).
-		addStep("amount", "Please enter the amount of money", HandleFloat).
+		addStep("amount", "Please enter the amount of money (e.g. '12.34')", HandleFloat).
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
