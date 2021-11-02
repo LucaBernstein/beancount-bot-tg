@@ -9,6 +9,12 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+type CMD struct {
+	Command string
+	Handler func(m *tb.Message)
+	Help    string
+}
+
 func NewBotController(db *sql.DB) *BotController {
 	return &BotController{
 		Repo:  crud.NewRepo(db),
@@ -25,12 +31,11 @@ type BotController struct {
 func (bc *BotController) ConfigureAndAttachBot(b *tb.Bot) *BotController {
 	bc.Bot = b
 
-	b.Handle("/start", bc.commandStart)
-	b.Handle("/help", bc.commandHelp)
-	b.Handle("/clear", bc.commandClear)
-	b.Handle("/simple", bc.commandCreateSimpleTx)
-	b.Handle("/list", bc.commandList)
-	b.Handle("/archiveAll", bc.commandArchiveTransactions)
+	mappings := bc.commandMappings()
+
+	for _, m := range mappings {
+		b.Handle("/"+m.Command, m.Handler)
+	}
 
 	b.Handle(tb.OnText, bc.handleTextState)
 
@@ -38,6 +43,17 @@ func (bc *BotController) ConfigureAndAttachBot(b *tb.Bot) *BotController {
 	b.Start()
 
 	return bc
+}
+
+func (bc *BotController) commandMappings() []*CMD {
+	return []*CMD{
+		{Command: "start", Handler: bc.commandStart},
+		{Command: "help", Handler: bc.commandHelp, Help: "List this command help"},
+		{Command: "cancel", Handler: bc.commandCancel, Help: "Cancel any running commands"},
+		{Command: "simple", Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
+		{Command: "list", Handler: bc.commandList, Help: "List your recorded transactions"},
+		{Command: "archiveAll", Handler: bc.commandArchiveTransactions, Help: "Archive all transactions in /list"},
+	}
 }
 
 func (bc *BotController) commandStart(m *tb.Message) {
@@ -52,16 +68,20 @@ func (bc *BotController) commandStart(m *tb.Message) {
 
 func (bc *BotController) commandHelp(m *tb.Message) {
 	log.Printf("Sending help to %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
-	bc.Bot.Send(m.Sender, "/help - List this command help"+
-		"\n/clear - Cancel any running commands"+
-		"\n/simple - Record a simple transaction"+
-		"\n/list - List your recorded transactions"+
-		"\n/archiveAll - Archive all transactions on list",
-		clearKeyboard(),
-	)
+	helpMsg := ""
+	for i, cmd := range bc.commandMappings() {
+		if cmd.Help == "" {
+			continue
+		}
+		if i != 0 {
+			helpMsg += "\n"
+		}
+		helpMsg += fmt.Sprintf("/%s - %s", cmd.Command, cmd.Help)
+	}
+	bc.Bot.Send(m.Sender, helpMsg, clearKeyboard())
 }
 
-func (bc *BotController) commandClear(m *tb.Message) {
+func (bc *BotController) commandCancel(m *tb.Message) {
 	tx := bc.State.Get(m)
 	isInTx := tx != nil
 	log.Printf("Clearing state for %s (ChatID: %d). Was in tx? %t", m.Chat.Username, m.Chat.ID, isInTx)
