@@ -44,14 +44,14 @@ func TestTransactionBuilding(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate()
+	templated, err := tx.FillTemplate("USD")
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
 	expected := "; Created by beancount-bot-tg on " + time.Now().Format("2006-01-02")
 	helpers.TestExpect(t, templated, expected+`
 2021-01-24 * "Buy something in the grocery store"
-  Assets:Wallet                               -17.34 EUR
+  Assets:Wallet                               -17.34 USD
   Expenses:Groceries
 `, "Templated string should be filled with variables as expected.")
 }

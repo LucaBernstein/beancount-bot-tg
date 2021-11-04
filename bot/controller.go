@@ -55,6 +55,7 @@ const (
 	CMD_ARCHIVE_ALL = "archiveAll"
 	CMD_DELETE_ALL  = "deleteAll"
 	CMD_SUGGEST     = "suggestions"
+	CMD_CURRENCY    = "currency"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -65,6 +66,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
+		{Command: CMD_CURRENCY, Handler: bc.commandCurrency, Help: "Set the currency to use globally for subsequent transactions"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 	}
@@ -158,6 +160,21 @@ func (bc *BotController) commandSuggestions(m *tb.Message) {
 	bc.suggestionsHandler(m)
 }
 
+func (bc *BotController) commandCurrency(m *tb.Message) {
+	values := strings.Split(m.Text, " ")
+	if len(values) != 2 {
+		bc.Bot.Send(m.Sender, "Please try again. Expecting currency without spaces. E.g. try '/currency EUR'.")
+		return
+	}
+	currency := values[1]
+	err := bc.Repo.UserSetCurrency(m, currency)
+	if err != nil {
+		bc.Bot.Send(m.Sender, "An error ocurred saving your currency preference: "+err.Error())
+		return
+	}
+	bc.Bot.Send(m.Sender, fmt.Sprintf("For all future transactions the currency '%s' will be used.", currency))
+}
+
 func (bc *BotController) handleTextState(m *tb.Message) {
 	tx := bc.State.Get(m)
 	if tx == nil {
@@ -174,7 +191,8 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	}
 	log.Printf("New data state for %s (ChatID: %d) is %v. (Last input was '%s')", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
-		transaction, err := tx.FillTemplate()
+		currency := bc.Repo.UserGetCurrency(m)
+		transaction, err := tx.FillTemplate(currency)
 		if err != nil {
 			log.Printf("Something went wrong while templating the transaction: " + err.Error())
 			bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())

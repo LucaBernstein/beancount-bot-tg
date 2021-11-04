@@ -85,3 +85,36 @@ func (r *Repo) getUser(id int64) (*User, error) {
 	}
 	return nil, nil
 }
+
+const DEFAULT_CURRENCY = "EUR"
+
+func (r *Repo) UserGetCurrency(m *tb.Message) string {
+	rows, err := r.db.Query(`
+		SELECT "currency"
+		FROM "auth::user"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		log.Printf("Encountered error while getting user currency (user: %d): %s", m.Chat.ID, err.Error())
+	}
+	defer rows.Close()
+
+	var currency string
+	if rows.Next() {
+		err = rows.Scan(&currency)
+		if err != nil {
+			log.Printf("Encountered error while scanning user currency into var (user: %d): %s", m.Chat.ID, err.Error())
+		}
+		return currency
+	}
+	return DEFAULT_CURRENCY
+}
+
+func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
+	_, err := r.db.Exec(`
+		UPDATE "auth::user"
+		SET "currency" = $2
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID, currency)
+	return err
+}

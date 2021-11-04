@@ -11,6 +11,7 @@ func Migrate(db *sql.DB) {
 	fmt.Println("DB schema before migrations:", schema(db))
 
 	migrationWrapper(v1, 1)(db)
+	migrationWrapper(v2, 2)(db)
 
 	fmt.Println("Migrations ran through. Schema version:", schema(db))
 }

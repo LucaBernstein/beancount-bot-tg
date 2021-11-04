@@ -14,7 +14,6 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-const CUR = "EUR"
 const DOT_INDENT = 47
 const (
 	BEANCOUNT_DATE_FORMAT = "2006-01-02"
@@ -76,7 +75,7 @@ type Tx interface {
 	Debug() string
 	NextHint(*crud.Repo, *tb.Message) *Hint
 	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
-	FillTemplate() (string, error)
+	FillTemplate(currency string) (string, error)
 	DataKeys() map[string]string
 	GeneralCache() *crud.GeneralCacheEntry
 
@@ -208,7 +207,7 @@ func (tx *SimpleTx) IsDone() bool {
 	return tx.step >= len(tx.steps)
 }
 
-func (tx *SimpleTx) FillTemplate() (string, error) {
+func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	if !tx.IsDone() {
 		return "", fmt.Errorf("not all data for this tx has been gathered")
 	}
@@ -235,7 +234,7 @@ func (tx *SimpleTx) FillTemplate() (string, error) {
   %s%s -%s %s
   %s
 `
-	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, txRaw[STX_AMTF], CUR, txRaw[STX_ACCT]), nil
+	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, txRaw[STX_AMTF], currency, txRaw[STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) GeneralCache() *crud.GeneralCacheEntry {
