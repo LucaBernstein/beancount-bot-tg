@@ -163,12 +163,13 @@ func (bc *BotController) commandSuggestions(m *tb.Message) {
 }
 
 func (bc *BotController) commandCurrency(m *tb.Message) {
+	currency := bc.Repo.UserGetCurrency(m)
 	values := strings.Split(m.Text, " ")
 	if len(values) != 2 {
-		bc.Bot.Send(m.Sender, "Please try again. Expecting currency without spaces. E.g. try '/currency EUR'.")
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your current currency is set to '%s'. To change it add the new currency to use to the command like this: '/currency EUR'.", currency))
 		return
 	}
-	currency := values[1]
+	currency = values[1]
 	err := bc.Repo.UserSetCurrency(m, currency)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "An error ocurred saving your currency preference: "+err.Error())
