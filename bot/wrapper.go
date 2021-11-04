@@ -1,6 +1,8 @@
 package bot
 
-import tb "gopkg.in/tucnak/telebot.v2"
+import (
+	tb "gopkg.in/tucnak/telebot.v2"
+)
 
 type IBot interface {
 	// Using from base package:
@@ -24,7 +26,7 @@ func (b *Bot) Handle(endpoint interface{}, handler interface{}) {
 }
 
 func (b *Bot) Send(to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
-	return b.bot.Send(to, what, options)
+	return b.bot.Send(to, what, options...)
 }
 
 func (b *Bot) Me() *tb.User {
