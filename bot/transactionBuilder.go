@@ -36,7 +36,14 @@ type Input struct {
 func HandleFloat(m *tb.Message) (string, error) {
 	input := strings.TrimSpace(m.Text)
 	input = strings.ReplaceAll(input, ",", ".")
-	v, err := strconv.ParseFloat(input, 64)
+	split := strings.Split(input, " ")
+	var (
+		value = split[0]
+	)
+	if len(split) >= 3 {
+		return "", fmt.Errorf("Input '%s' contained too many spaces. It should only contain the value and an optional currency", input)
+	}
+	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return "", err
 	}
@@ -101,7 +108,7 @@ func CreateSimpleTx() Tx {
 	return (&SimpleTx{
 		stepDetails: make(map[command]Input),
 	}).
-		addStep("amount", "Please enter the amount of money (e.g. '12.34')", HandleFloat).
+		addStep("amount", "Please enter the amount of money (e.g. '12.34' or '12.34 USD')", HandleFloat).
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
@@ -216,14 +223,14 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	var (
 		today = time.Now().Format(BEANCOUNT_DATE_FORMAT)
 	)
-	f, err := strconv.ParseFloat(string(txRaw["amountFrom"]), 64)
+	f, err := strconv.ParseFloat(strings.Split(string(txRaw[STX_AMTF]), " ")[0], 64)
 	if err != nil {
 		return "", err
 	}
 	// Add spaces
-	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(txRaw["accFrom"]))) // accFrom
-	spacesNeeded -= CountLeadingDigits(f)                                           // float length before point
-	spacesNeeded -= 2                                                               // additional space in template + negative sign
+	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(txRaw[STX_ACCF]))) // accFrom
+	spacesNeeded -= CountLeadingDigits(f)                                          // float length before point
+	spacesNeeded -= 2                                                              // additional space in template + negative sign
 	if spacesNeeded < 0 {
 		spacesNeeded = 0
 	}
@@ -231,10 +238,15 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	// Template
 	tpl := `; Created by beancount-bot-tg on %s
 %s * "%s"
-  %s%s -%s %s
+  %s%s -%s
   %s
 `
-	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, txRaw[STX_AMTF], currency, txRaw[STX_ACCT]), nil
+	amount := txRaw[STX_AMTF]
+	if len(strings.Split(amount, " ")) == 1 {
+		// no currency in input yet
+		amount += " " + currency
+	}
+	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, amount, txRaw[STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) GeneralCache() *crud.GeneralCacheEntry {

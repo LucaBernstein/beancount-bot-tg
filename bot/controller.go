@@ -114,11 +114,13 @@ func (bc *BotController) commandCancel(m *tb.Message) {
 func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	log.Printf("Creating simple transaction for %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
 	bc.Bot.Send(m.Sender, "In the following steps we will create a simple transaction. "+
-		"I will guide you through.\n\n"+
-		"Please enter the amount of money.",
+		"I will guide you through.\n\n",
 		clearKeyboard(),
 	)
-	bc.State.SimpleTx(m)
+	hint := bc.State.
+		SimpleTx(m).         // create new tx
+		NextHint(bc.Repo, m) // get first hint
+	bc.Bot.Send(m.Sender, hint.Prompt, hint.KeyboardOptions)
 }
 
 func (bc *BotController) commandList(m *tb.Message) {
