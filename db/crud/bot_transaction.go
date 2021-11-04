@@ -42,3 +42,11 @@ func (r *Repo) ArchiveTransactions(chatId int64) error {
 		WHERE "tgChatId" = $1`, chatId)
 	return err
 }
+
+func (r *Repo) DeleteTransactions(chatId int64) error {
+	log.Printf("Permanently deleting transactions for %d", chatId)
+	_, err := r.db.Exec(`
+		DELETE FROM "bot::transaction"
+		WHERE "tgChatId" = $1`, chatId)
+	return err
+}

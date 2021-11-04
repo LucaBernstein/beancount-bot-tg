@@ -63,3 +63,22 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		t.Errorf("String did not contain substring as expected (was: '%s')", bot.LastSentWhat)
 	}
 }
+
+// GitHub-Issue #16: Panic if plain message without state arrives
+func TestTransactionDeletion(t *testing.T) {
+	// create test dependencies
+	db := &MockDBFillCache{}
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.ConfigureAndAttachBot(bot)
+
+	bc.commandDeleteTransactions(&tb.Message{Chat: &tb.Chat{ID: 12345}, Text: "/deleteAll"})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "to confirm the deletion of your transactions") {
+		t.Errorf("Deletion should require 'yes' confirmation. Got: %s", bot.LastSentWhat)
+	}
+
+	bc.commandDeleteTransactions(&tb.Message{Chat: &tb.Chat{ID: 12345}, Text: "/deleteAll YeS"})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Permanently deleted all your transactions") {
+		t.Errorf("Deletion should work with confirmation. Got: %s", bot.LastSentWhat)
+	}
+}

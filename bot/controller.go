@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
@@ -52,6 +53,7 @@ const (
 	CMD_SIMPLE      = "simple"
 	CMD_LIST        = "list"
 	CMD_ARCHIVE_ALL = "archiveAll"
+	CMD_DELETE_ALL  = "deleteAll"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -62,6 +64,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
+		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 	}
 }
 
@@ -134,6 +137,19 @@ func (bc *BotController) commandArchiveTransactions(m *tb.Message) {
 		return
 	}
 	bc.Bot.Send(m.Sender, fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+}
+
+func (bc *BotController) commandDeleteTransactions(m *tb.Message) {
+	if !(strings.TrimSpace(strings.ToLower(m.Text)) == strings.ToLower("/"+CMD_DELETE_ALL+" YES")) {
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
+		return
+	}
+	err := bc.Repo.DeleteTransactions(m.Chat.ID)
+	if err != nil {
+		bc.Bot.Send(m.Sender, "Something went wrong deleting your transactions: "+err.Error())
+		return
+	}
+	bc.Bot.Send(m.Sender, fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 }
 
 func (bc *BotController) handleTextState(m *tb.Message) {

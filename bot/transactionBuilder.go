@@ -55,7 +55,6 @@ func HandleRaw(m *tb.Message) (string, error) {
 
 func HandleDate(m *tb.Message) (string, error) {
 	// Handle "today" string
-
 	if strings.HasPrefix("today", strings.TrimSpace(strings.ToLower(m.Text))) {
 		return time.Now().Format(BEANCOUNT_DATE_FORMAT), nil
 	}
