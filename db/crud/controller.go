@@ -1,14 +1,14 @@
 package crud
 
 import (
-	"database/sql"
+	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 )
 
 type Repo struct {
-	db *sql.DB
+	db dbWrapper.DB
 }
 
-func NewRepo(db *sql.DB) *Repo {
+func NewRepo(db dbWrapper.DB) *Repo {
 	return &Repo{
 		db: db,
 	}

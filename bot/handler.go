@@ -8,7 +8,7 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-func CreateBot(bc *BotController) *tb.Bot {
+func CreateBot(bc *BotController) IBot {
 	botToken := helpers.Env(helpers.ENV_TG_BOT_API_KEY)
 	if botToken == "" {
 		log.Fatalf("Please provide Telegram bot API key as ENV var '%s'", helpers.ENV_TG_BOT_API_KEY)
@@ -29,5 +29,5 @@ func CreateBot(bc *BotController) *tb.Bot {
 		log.Fatal(err)
 	}
 
-	return b
+	return &Bot{bot: b}
 }

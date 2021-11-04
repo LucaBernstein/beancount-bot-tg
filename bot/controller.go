@@ -1,10 +1,10 @@
 package bot
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
+	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -15,7 +15,7 @@ type CMD struct {
 	Help    string
 }
 
-func NewBotController(db *sql.DB) *BotController {
+func NewBotController(db dbWrapper.DB) *BotController {
 	return &BotController{
 		Repo:  crud.NewRepo(db),
 		State: NewStateHandler(),
@@ -25,10 +25,10 @@ func NewBotController(db *sql.DB) *BotController {
 type BotController struct {
 	Repo  *crud.Repo
 	State *StateHandler
-	Bot   *tb.Bot
+	Bot   IBot
 }
 
-func (bc *BotController) ConfigureAndAttachBot(b *tb.Bot) *BotController {
+func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
 	bc.Bot = b
 
 	mappings := bc.commandMappings()
@@ -39,7 +39,7 @@ func (bc *BotController) ConfigureAndAttachBot(b *tb.Bot) *BotController {
 
 	b.Handle(tb.OnText, bc.handleTextState)
 
-	log.Printf("Starting bot '%s'", b.Me.Username)
+	log.Printf("Starting bot '%s'", b.Me().Username)
 	b.Start()
 
 	return bc
@@ -56,8 +56,8 @@ const (
 
 func (bc *BotController) commandMappings() []*CMD {
 	return []*CMD{
-		{Command: CMD_START, Handler: bc.commandStart},
 		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
+		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands"},
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
@@ -180,6 +180,8 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 			CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
 			clearKeyboard(),
 		)
+
+		bc.State.Clear(m)
 		return
 	}
 	hint := tx.NextHint(bc.Repo, m)
