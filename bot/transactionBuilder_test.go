@@ -65,7 +65,25 @@ func TestCountLeadingDigits(t *testing.T) {
 func TestDateSpecialNow(t *testing.T) {
 	h, err := bot.HandleDate(&tb.Message{Text: " ToDaY "})
 	if err != nil {
-		t.Errorf("There should be no error handling date 'now': %s", err.Error())
+		t.Errorf("There should be no error handling date 'today': %s", err.Error())
 	}
 	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
+
+	// GitHub-Issue #14: Also accept parts of "today" string for quicker recording
+	h, err = bot.HandleDate(&tb.Message{Text: " t"})
+	if err != nil {
+		t.Errorf("There should be no error handling date 't': %s", err.Error())
+	}
+	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
+
+	h, err = bot.HandleDate(&tb.Message{Text: " tod"})
+	if err != nil {
+		t.Errorf("There should be no error handling date 'tod': %s", err.Error())
+	}
+	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
+
+	_, err = bot.HandleDate(&tb.Message{Text: "tomorrow"})
+	if err == nil {
+		t.Errorf("There should be an error processing the date 'tomorrow': %s", err.Error())
+	}
 }
