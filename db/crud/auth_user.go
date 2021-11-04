@@ -105,7 +105,9 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 		if err != nil {
 			log.Printf("Encountered error while scanning user currency into var (user: %d): %s", m.Chat.ID, err.Error())
 		}
-		return currency
+		if currency != "" {
+			return currency
+		}
 	}
 	return DEFAULT_CURRENCY
 }
