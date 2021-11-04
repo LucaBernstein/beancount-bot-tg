@@ -94,3 +94,21 @@ func (r *Repo) FillCache(m *tb.Message) error {
 func (r *Repo) DeleteCache(m *tb.Message) {
 	delete(CACHE_LOCAL, m.Chat.ID)
 }
+
+func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) error {
+	// if value is empty string, delete all entries for this user of this type
+	q := `
+		DELETE FROM "bot::cache"
+		WHERE "tgChatId" = $1 AND "type" = $2
+	`
+	params := []interface{}{m.Chat.ID, t}
+	if value != "" {
+		q += ` AND "value" = $3`
+		params = append(params, value)
+	}
+	_, err := r.db.Exec(q, params...)
+	if err != nil {
+		return err
+	}
+	return r.FillCache(m)
+}

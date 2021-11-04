@@ -54,6 +54,7 @@ const (
 	CMD_LIST        = "list"
 	CMD_ARCHIVE_ALL = "archiveAll"
 	CMD_DELETE_ALL  = "deleteAll"
+	CMD_SUGGEST     = "suggestions"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -63,6 +64,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands"},
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
+		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 	}
@@ -150,6 +152,10 @@ func (bc *BotController) commandDeleteTransactions(m *tb.Message) {
 		return
 	}
 	bc.Bot.Send(m.Sender, fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+}
+
+func (bc *BotController) commandSuggestions(m *tb.Message) {
+	bc.suggestionsHandler(m)
 }
 
 func (bc *BotController) handleTextState(m *tb.Message) {

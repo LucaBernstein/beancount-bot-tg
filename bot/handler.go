@@ -9,9 +9,10 @@ import (
 )
 
 func CreateBot(bc *BotController) IBot {
-	botToken := helpers.Env(helpers.ENV_TG_BOT_API_KEY)
+	const ENV_TG_BOT_API_KEY = "BOT_API_KEY"
+	botToken := helpers.Env(ENV_TG_BOT_API_KEY)
 	if botToken == "" {
-		log.Fatalf("Please provide Telegram bot API key as ENV var '%s'", helpers.ENV_TG_BOT_API_KEY)
+		log.Fatalf("Please provide Telegram bot API key as ENV var '%s'", ENV_TG_BOT_API_KEY)
 	}
 
 	poller := &tb.LongPoller{Timeout: 20 * time.Second}
