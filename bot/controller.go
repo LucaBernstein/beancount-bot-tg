@@ -120,7 +120,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	hint := bc.State.
 		SimpleTx(m).         // create new tx
 		NextHint(bc.Repo, m) // get first hint
-	bc.Bot.Send(m.Sender, hint.Prompt, hint.KeyboardOptions)
+	bc.Bot.Send(m.Sender, hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
 }
 
 func (bc *BotController) commandList(m *tb.Message) {
