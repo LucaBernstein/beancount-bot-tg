@@ -54,7 +54,7 @@ func (bc *BotController) suggestionsHelp(m *tb.Message) {
 	bc.Bot.Send(m.Sender, fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
-/suggestions rm <type> [<value>]
+/suggestions rm <type> <value>
 
 Parameter <type> is one from: ['%s']`, suggestionTypes))
 }
