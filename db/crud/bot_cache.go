@@ -23,6 +23,10 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 	}
 
 	for key, value := range values {
+		if !helpers.ArrayContains(helpers.AllowedSuggestionTypes(), key) {
+			// Don't cache non-suggestible data
+			continue
+		}
 		if helpers.ArrayContains(CACHE_LOCAL[m.Chat.ID][key], value) {
 			// TODO: Update all as single statement
 			_, err = r.db.Exec(`

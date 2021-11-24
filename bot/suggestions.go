@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	. "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -32,7 +32,7 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 		return
 	}
 
-	if !helpers.ArrayContainsC(allowedSuggestionTypes(), suggType, false) {
+	if !ArrayContainsC(AllowedSuggestionTypes(), suggType, false) {
 		bc.suggestionsHelp(m)
 		return
 	}
@@ -50,7 +50,7 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 }
 
 func (bc *BotController) suggestionsHelp(m *tb.Message) {
-	suggestionTypes := strings.Join(allowedSuggestionTypes(), ", ")
+	suggestionTypes := strings.Join(AllowedSuggestionTypes(), ", ")
 	bc.Bot.Send(m.Sender, fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
@@ -93,13 +93,4 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, t string, value 
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully removed suggestion(s)")
-}
-
-func allowedSuggestionTypes() []string {
-	return []string{
-		STX_ACCF,
-		STX_ACCT,
-		STX_DESC,
-		STX_DATE,
-	}
 }

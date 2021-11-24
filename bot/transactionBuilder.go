@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	. "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -96,14 +96,6 @@ type SimpleTx struct {
 	step        int
 }
 
-const (
-	STX_DESC = "txDesc"
-	STX_DATE = "txDate"
-	STX_ACCF = "accFrom"
-	STX_AMTF = "amountFrom"
-	STX_ACCT = "accTo"
-)
-
 func CreateSimpleTx() Tx {
 	return (&SimpleTx{
 		stepDetails: make(map[command]Input),
@@ -112,7 +104,7 @@ func CreateSimpleTx() Tx {
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
-		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or select one from the list, e.g. 'today')", HandleDate)
+		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or type 't' / 'today')", HandleDate)
 }
 
 func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
@@ -146,9 +138,9 @@ func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
 		return tx.hintDescription(r, m, i.hint)
 	}
 	if i.key == "date" {
-		return tx.hintDate(r, m, i.hint)
+		return tx.hintDate(i.hint)
 	}
-	if helpers.ArrayContains([]string{"from", "to"}, i.key) {
+	if ArrayContains([]string{"from", "to"}, i.key) {
 		return tx.hintAccount(r, m, i)
 	}
 	return i.hint
@@ -182,21 +174,8 @@ func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint 
 	return h
 }
 
-func (tx *SimpleTx) hintDate(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
-	res, err := r.GetCacheHints(m, STX_DATE)
-	if err != nil {
-		log.Printf("Error occurred getting cached hint (hintDate): %s", err.Error())
-	}
-	selection := []string{"today"}
-	today := time.Now().Format(BEANCOUNT_DATE_FORMAT)
-	// Sort out today's date
-	for _, v := range res {
-		if v != today {
-			selection = append(selection, v)
-		}
-	}
-
-	h.KeyboardOptions = selection
+func (tx *SimpleTx) hintDate(h *Hint) *Hint {
+	h.KeyboardOptions = []string{"today"}
 	return h
 }
 
