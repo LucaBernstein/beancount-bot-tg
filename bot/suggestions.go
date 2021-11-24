@@ -50,13 +50,13 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 }
 
 func (bc *BotController) suggestionsHelp(m *tb.Message) {
-	suggestionTypes := strings.Join(allowedSuggestionTypes(), "', '")
+	suggestionTypes := strings.Join(allowedSuggestionTypes(), ", ")
 	bc.Bot.Send(m.Sender, fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
-/suggestions rm <type> [<value>]
+/suggestions rm <type> [value]
 
-Parameter <type> is one from: ['%s']`, suggestionTypes))
+Parameter <type> is one from: [%s]`, suggestionTypes))
 }
 
 func (bc *BotController) suggestionsHandleList(m *tb.Message, t string) {
