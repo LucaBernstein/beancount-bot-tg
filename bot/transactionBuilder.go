@@ -11,7 +11,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	c "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -187,7 +186,7 @@ func (tx *SimpleTx) hintDate(h *Hint) *Hint {
 func (tx *SimpleTx) DataKeys() map[string]string {
 	if tx.date == "" {
 		// set today as fallback/default date
-		tx.date = time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+		tx.date = time.Now().Format(c.BEANCOUNT_DATE_FORMAT)
 	}
 	return map[string]string{
 		c.STX_DATE: tx.date,

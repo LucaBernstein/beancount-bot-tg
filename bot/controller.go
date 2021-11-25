@@ -11,9 +11,10 @@ import (
 )
 
 type CMD struct {
-	Command string
-	Handler func(m *tb.Message)
-	Help    string
+	Command  string
+	Optional string
+	Handler  func(m *tb.Message)
+	Help     string
 }
 
 func NewBotController(db dbWrapper.DB) *BotController {
@@ -62,9 +63,9 @@ func (bc *BotController) commandMappings() []*CMD {
 	return []*CMD{
 		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
 		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
-		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands"},
-		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, optionally with date as YYYY-MM-DD, default today"},
-		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
+		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
+		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today", Optional: "YYYY-MM-DD"},
+		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: "archived"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{Command: CMD_CURRENCY, Handler: bc.commandCurrency, Help: "Set the currency to use globally for subsequent transactions"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
@@ -92,7 +93,11 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 		if i != 0 {
 			helpMsg += "\n"
 		}
-		helpMsg += fmt.Sprintf("/%s - %s", cmd.Command, cmd.Help)
+		var optional string
+		if cmd.Optional != "" {
+			optional = " [" + cmd.Optional + "]"
+		}
+		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.Command, optional, cmd.Help)
 	}
 	bc.Bot.Send(m.Sender, helpMsg, clearKeyboard())
 }
@@ -129,13 +134,20 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 }
 
 func (bc *BotController) commandList(m *tb.Message) {
-	tx, err := bc.Repo.GetTransactions(m.Chat.ID)
+	command := strings.Split(m.Text, " ")
+	if len(command) == 2 && command[1] != "archived" {
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your parameter after %s could not be recognized. Please try again with '/list' or '/list archived'.", command[0]), clearKeyboard())
+		return
+	}
+	isArchived := len(command) == 2 && command[1] == "archived"
+	tx, err := bc.Repo.GetTransactions(m.Chat.ID, isArchived)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
 		return
 	}
 	if tx == "" {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction.", CMD_HELP), clearKeyboard())
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
+			"\nYou might also be looking for archived transactions using '/list archived'.", CMD_HELP), clearKeyboard())
 		return
 	}
 	bc.Bot.Send(m.Sender, tx, clearKeyboard())
