@@ -117,6 +117,11 @@ func (bc *BotController) commandCancel(m *tb.Message) {
 }
 
 func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
+	tx := bc.State.Get(m)
+	if tx != nil {
+		bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.", clearKeyboard())
+		return
+	}
 	log.Printf("Creating simple transaction for %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
 	bc.Bot.Send(m.Sender, "In the following steps we will create a simple transaction. "+
 		"I will guide you through.\n\n",
