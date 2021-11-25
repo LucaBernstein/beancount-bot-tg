@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/LucaBernstein/beancount-bot-tg/helpers"
+	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -32,7 +32,7 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 		return
 	}
 
-	if !ArrayContainsC(AllowedSuggestionTypes(), suggType, false) {
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), suggType, false) {
 		bc.suggestionsHelp(m)
 		return
 	}
@@ -50,7 +50,7 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 }
 
 func (bc *BotController) suggestionsHelp(m *tb.Message) {
-	suggestionTypes := strings.Join(AllowedSuggestionTypes(), ", ")
+	suggestionTypes := strings.Join(h.AllowedSuggestionTypes(), ", ")
 	bc.Bot.Send(m.Sender, fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>

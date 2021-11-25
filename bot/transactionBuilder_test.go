@@ -37,12 +37,14 @@ func TestHandleFloat(t *testing.T) {
 }
 
 func TestTransactionBuilding(t *testing.T) {
-	tx := bot.CreateSimpleTx()
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"})
+	if err != nil {
+		t.Errorf("Error creating simple tx: %s", err.Error())
+	}
 	tx.Input(&tb.Message{Text: "17"})                                 // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
 	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
-	tx.Input(&tb.Message{Text: "2021-01-24"})                         // date
 
 	if !tx.IsDone() {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
@@ -52,19 +54,47 @@ func TestTransactionBuilding(t *testing.T) {
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
-	helpers.TestExpect(t, templated, `2021-01-24 * "Buy something in the grocery store"
+	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+	helpers.TestExpect(t, templated, today+` * "Buy something in the grocery store"
   Assets:Wallet                               -17.00 USD
   Expenses:Groceries
 `, "Templated string should be filled with variables as expected.")
 }
 
 func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
-	tx := bot.CreateSimpleTx()
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"})
+	if err != nil {
+		t.Errorf("Error creating simple tx: %s", err.Error())
+	}
 	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})                   // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
 	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
-	tx.Input(&tb.Message{Text: "2021-01-24"})                         // date
+
+	if !tx.IsDone() {
+		t.Errorf("With given input transaction data should be complete for SimpleTx")
+	}
+
+	templated, err := tx.FillTemplate("EUR")
+	if err != nil {
+		t.Errorf("There should be no error raised during templating: %s", err.Error())
+	}
+	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+	helpers.TestExpect(t, templated, today+` * "Buy something in the grocery store"
+  Assets:Wallet                               -17.3456 USD_TEST
+  Expenses:Groceries
+`, "Templated string should be filled with variables as expected.")
+}
+
+func TestTransactionBuildingWithDate(t *testing.T) {
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"})
+	if err != nil {
+		t.Errorf("Error creating simple tx: %s", err.Error())
+	}
+	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})                   // amount
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
+	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
 
 	if !tx.IsDone() {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
@@ -87,26 +117,26 @@ func TestCountLeadingDigits(t *testing.T) {
 }
 
 func TestDateSpecialNow(t *testing.T) {
-	h, err := bot.HandleDate(&tb.Message{Text: " ToDaY "})
+	h, err := bot.HandleDate(" ToDaY ")
 	if err != nil {
 		t.Errorf("There should be no error handling date 'today': %s", err.Error())
 	}
 	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
 
 	// GitHub-Issue #14: Also accept parts of "today" string for quicker recording
-	h, err = bot.HandleDate(&tb.Message{Text: " t"})
+	h, err = bot.HandleDate(" t")
 	if err != nil {
 		t.Errorf("There should be no error handling date 't': %s", err.Error())
 	}
 	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
 
-	h, err = bot.HandleDate(&tb.Message{Text: " tod"})
+	h, err = bot.HandleDate(" tod")
 	if err != nil {
 		t.Errorf("There should be no error handling date 'tod': %s", err.Error())
 	}
 	helpers.TestExpect(t, h, time.Now().Format("2006-01-02"), "")
 
-	_, err = bot.HandleDate(&tb.Message{Text: "tomorrow"})
+	_, err = bot.HandleDate("tomorrow")
 	if err == nil {
 		t.Errorf("There should be an error processing the date 'tomorrow': %s", err.Error())
 	}

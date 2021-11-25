@@ -50,11 +50,10 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
 	tx := bc.State.states[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                              // amount
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
-	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "today"})        // date (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
+	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
+	bc.handleTextState(&tb.Message{Chat: chat, Text: "Buy something in the grocery store"}) // description (via handleTextState)
 
 	// After the first tx is done, send some command
 	m := &tb.Message{Chat: chat}
