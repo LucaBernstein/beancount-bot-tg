@@ -93,8 +93,8 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 	rows, err := r.db.Query(`
 		SELECT "currency"
 		FROM "auth::user"
-		WHERE "tgChatId" = $1 AND "tgUserId" = $2
-	`, m.Chat.ID, m.Sender.ID)
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
 	if err != nil {
 		log.Printf("Encountered error while getting user currency (user: %d): %s", m.Chat.ID, err.Error())
 	}
