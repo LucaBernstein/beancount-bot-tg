@@ -9,13 +9,13 @@ func (r *Repo) RecordTransaction(chatId int64, tx string) error {
 	return err
 }
 
-func (r *Repo) GetTransactions(chatId int64) (string, error) {
+func (r *Repo) GetTransactions(chatId int64, isArchived bool) (string, error) {
 	log.Printf("Getting transactions for %d", chatId)
 	rows, err := r.db.Query(`
 		SELECT "value" FROM "bot::transaction"
-		WHERE "archived" = FALSE AND "tgChatId" = $1
+		WHERE "tgChatId" = $1 AND "archived" = $2
 		ORDER BY "created" ASC
-	`, chatId)
+	`, chatId, isArchived)
 	if err != nil {
 		return "", err
 	}
