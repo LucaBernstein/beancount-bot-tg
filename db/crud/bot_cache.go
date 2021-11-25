@@ -9,13 +9,6 @@ import (
 
 var CACHE_LOCAL = make(map[int64]map[string][]string)
 
-type GeneralCacheEntry struct {
-	accounts []string
-	date     string
-	desc     string
-	amount   string
-}
-
 func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 	err := r.FillCache(m)
 	if err != nil {

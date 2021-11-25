@@ -38,7 +38,7 @@ func TestHandleFloat(t *testing.T) {
 
 func TestTransactionBuilding(t *testing.T) {
 	tx := bot.CreateSimpleTx()
-	tx.Input(&tb.Message{Text: "17.34"})                              // amount
+	tx.Input(&tb.Message{Text: "17"})                                 // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
 	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
@@ -52,17 +52,15 @@ func TestTransactionBuilding(t *testing.T) {
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
-	expected := "; Created by beancount-bot-tg on " + time.Now().Format("2006-01-02")
-	helpers.TestExpect(t, templated, expected+`
-2021-01-24 * "Buy something in the grocery store"
-  Assets:Wallet                               -17.34 USD
+	helpers.TestExpect(t, templated, `2021-01-24 * "Buy something in the grocery store"
+  Assets:Wallet                               -17.00 USD
   Expenses:Groceries
 `, "Templated string should be filled with variables as expected.")
 }
 
 func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 	tx := bot.CreateSimpleTx()
-	tx.Input(&tb.Message{Text: "17.34 USD_TEST"})                     // amount
+	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})                   // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                 // to
 	tx.Input(&tb.Message{Text: "Buy something in the grocery store"}) // description
@@ -76,10 +74,8 @@ func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
-	expected := "; Created by beancount-bot-tg on " + time.Now().Format("2006-01-02")
-	helpers.TestExpect(t, templated, expected+`
-2021-01-24 * "Buy something in the grocery store"
-  Assets:Wallet                               -17.34 USD_TEST
+	helpers.TestExpect(t, templated, `2021-01-24 * "Buy something in the grocery store"
+  Assets:Wallet                               -17.3456 USD_TEST
   Expenses:Groceries
 `, "Templated string should be filled with variables as expected.")
 }

@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -84,7 +85,6 @@ type Tx interface {
 	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
 	FillTemplate(currency string) (string, error)
 	DataKeys() map[string]string
-	GeneralCache() *crud.GeneralCacheEntry
 
 	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
 }
@@ -199,12 +199,17 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	}
 	// Variables
 	txRaw := tx.DataKeys()
-	var (
-		today = time.Now().Format(BEANCOUNT_DATE_FORMAT)
-	)
 	f, err := strconv.ParseFloat(strings.Split(string(txRaw[STX_AMTF]), " ")[0], 64)
 	if err != nil {
 		return "", err
+	}
+	var amountF string
+	if math.Remainder(f*100, 1.0) != 0 {
+		// float has more than 2 remainder digits (e.g. 17.234)
+		amountF = strings.TrimRight(fmt.Sprintf("%f", f), "0")
+	} else {
+		// at max 2 digits after the dot (e.g. 17.10)
+		amountF = fmt.Sprintf("%.2f", f)
 	}
 	// Add spaces
 	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(txRaw[STX_ACCF]))) // accFrom
@@ -215,22 +220,16 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	}
 	addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
 	// Template
-	tpl := `; Created by beancount-bot-tg on %s
-%s * "%s"
-  %s%s -%s
+	tpl := `%s * "%s"
+  %s%s -%s %s
   %s
 `
-	amount := txRaw[STX_AMTF]
-	if len(strings.Split(amount, " ")) == 1 {
-		// no currency in input yet
-		amount += " " + currency
+	amount := strings.Split(txRaw[STX_AMTF], " ")
+	if len(amount) >= 2 {
+		// amount input contains currency
+		currency = amount[1]
 	}
-	return fmt.Sprintf(tpl, today, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, amount, txRaw[STX_ACCT]), nil
-}
-
-func (tx *SimpleTx) GeneralCache() *crud.GeneralCacheEntry {
-	// TODO: Not implemented yet
-	return nil
+	return fmt.Sprintf(tpl, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, amountF, currency, txRaw[STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) Debug() string {
