@@ -56,11 +56,7 @@ func HandleRaw(m *tb.Message) (string, error) {
 	return m.Text, nil
 }
 
-func HandleDate(m string) (string, error) {
-	// Handle "today" string
-	if strings.HasPrefix("today", strings.TrimSpace(strings.ToLower(m))) {
-		return time.Now().Format(c.BEANCOUNT_DATE_FORMAT), nil
-	}
+func ParseDate(m string) (string, error) {
 	// Handle YYYY-MM-DD
 	matched, err := regexp.MatchString("\\d{4}-\\d{2}-\\d{2}", m)
 	if err != nil {
@@ -69,7 +65,6 @@ func HandleDate(m string) (string, error) {
 	if !matched {
 		return "", fmt.Errorf("Input did not match pattern 'YYYY-MM-DD'")
 	}
-	// TODO: Try to parse date and check if valid
 	return m, nil
 }
 
@@ -108,7 +103,7 @@ func CreateSimpleTx(m *tb.Message) (Tx, error) {
 func (tx *SimpleTx) setDate(m *tb.Message) (Tx, error) {
 	command := strings.Split(m.Text, " ")
 	if len(command) >= 2 {
-		date, err := HandleDate(command[1])
+		date, err := ParseDate(command[1])
 		if err != nil {
 			return nil, err
 		}
