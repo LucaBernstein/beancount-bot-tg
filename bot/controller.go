@@ -57,6 +57,8 @@ const (
 	CMD_DELETE_ALL  = "deleteAll"
 	CMD_SUGGEST     = "suggestions"
 	CMD_CURRENCY    = "currency"
+
+	CMD_ADM_NOTIFY = "admin_notify"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -70,6 +72,8 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_CURRENCY, Handler: bc.commandCurrency, Help: "Set the currency to use globally for subsequent transactions"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
+
+		{Command: CMD_ADM_NOTIFY, Handler: bc.commandAdminNofify, Help: "Send notification to user(s): /" + CMD_ADM_NOTIFY + " [chatId] \"<message>\""},
 	}
 }
 
@@ -86,8 +90,13 @@ func (bc *BotController) commandStart(m *tb.Message) {
 func (bc *BotController) commandHelp(m *tb.Message) {
 	log.Printf("Sending help to %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
 	helpMsg := ""
+	adminCommands := []*CMD{}
 	for i, cmd := range bc.commandMappings() {
 		if cmd.Help == "" {
+			continue
+		}
+		if strings.HasPrefix(cmd.Command, "admin") {
+			adminCommands = append(adminCommands, cmd)
 			continue
 		}
 		if i != 0 {
@@ -98,6 +107,12 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 			optional = " [" + cmd.Optional + "]"
 		}
 		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.Command, optional, cmd.Help)
+	}
+	if len(adminCommands) > 0 && bc.Repo.UserIsAdmin(m) {
+		helpMsg += "\n\n** ADMIN COMMANDS **"
+		for _, cmd := range adminCommands {
+			helpMsg += fmt.Sprintf("\n/%s - %s", cmd.Command, cmd.Help)
+		}
 	}
 	bc.Bot.Send(m.Sender, helpMsg, clearKeyboard())
 }
@@ -198,6 +213,58 @@ func (bc *BotController) commandCurrency(m *tb.Message) {
 		return
 	}
 	bc.Bot.Send(m.Sender, fmt.Sprintf("For all future transactions the currency '%s' will be used.", currency))
+}
+
+type ReceiverImpl struct {
+	chatId string
+}
+
+func (r ReceiverImpl) Recipient() string {
+	return r.chatId
+}
+
+func (bc *BotController) commandAdminNofify(m *tb.Message) {
+	isAdmin := bc.Repo.UserIsAdmin(m)
+	if !isAdmin {
+		log.Printf("Received admin command from non-admin user (%s, %d). Ignoring (treating as normal text input).", m.Chat.Username, m.Chat.ID)
+		bc.handleTextState(m)
+		return
+	}
+	text := strings.Split(m.Text, "\"")
+	var notificationMessage string
+	if len(text) >= 2 {
+		notificationMessage = text[1]
+	}
+	if len(text) == 0 || len(notificationMessage) == 0 {
+		bc.Bot.Send(m.Sender, "Something went wrong splitting your command parameters. Did you specify a text in double quotes (\")?")
+		return
+	}
+	// text[0] = /command [chatId]
+	command := strings.Split(strings.TrimRight(text[0], " "), " ")
+
+	if len(command) == 0 || len(command) >= 3 {
+		// invalid argument count
+		bc.Bot.Send(m.Sender, "Please check the command syntax")
+		return
+	}
+
+	var target string
+	if len(command) == 2 {
+		target = command[1]
+	}
+
+	receivers := bc.Repo.IndividualsWithNotifications(m.Chat.ID, target)
+	if len(receivers) == 0 {
+		bc.Bot.Send(m.Sender, "No receivers found to send notification to (you being excluded).")
+		return
+	}
+
+	for _, recipient := range receivers {
+		bc.Bot.Send(ReceiverImpl{chatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
+		log.Printf("Sent notification to %s", recipient)
+		// TODO: Add message like 'If you don't want to receive further service notifications, you can turn them off in the /settings with '/settings notif off'.'
+		//  GitHub-issue: #28
+	}
 }
 
 func (bc *BotController) handleTextState(m *tb.Message) {
