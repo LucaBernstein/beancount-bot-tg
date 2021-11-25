@@ -63,7 +63,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
 		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands"},
-		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction"},
+		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, optionally with date as YYYY-MM-DD, default today"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{Command: CMD_CURRENCY, Handler: bc.commandCurrency, Help: "Set the currency to use globally for subsequent transactions"},
@@ -117,9 +117,14 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 		"I will guide you through.\n\n",
 		clearKeyboard(),
 	)
-	hint := bc.State.
-		SimpleTx(m).         // create new tx
-		NextHint(bc.Repo, m) // get first hint
+	tx, err := bc.State.SimpleTx(m) // create new tx
+	if err != nil {
+		bc.Bot.Send(m.Sender, "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
+			"\n\nYou can create a simple transaction using this command: /simple [YYYY-MM-DD]\ne.g. /simple 2021-01-24\n"+
+			"The date parameter is non-mandatory, if not specified, today's date will be taken.", clearKeyboard())
+		return
+	}
+	hint := tx.NextHint(bc.Repo, m) // get first hint
 	bc.Bot.Send(m.Sender, hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
 }
 

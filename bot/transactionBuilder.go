@@ -11,13 +11,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	. "github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	c "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
-)
-
-const DOT_INDENT = 47
-const (
-	BEANCOUNT_DATE_FORMAT = "2006-01-02"
 )
 
 type Hint struct {
@@ -60,21 +56,16 @@ func HandleRaw(m *tb.Message) (string, error) {
 	return m.Text, nil
 }
 
-func HandleDate(m *tb.Message) (string, error) {
-	// Handle "today" string
-	if strings.HasPrefix("today", strings.TrimSpace(strings.ToLower(m.Text))) {
-		return time.Now().Format(BEANCOUNT_DATE_FORMAT), nil
-	}
+func ParseDate(m string) (string, error) {
 	// Handle YYYY-MM-DD
-	matched, err := regexp.MatchString("\\d{4}-\\d{2}-\\d{2}", m.Text)
+	matched, err := regexp.MatchString("\\d{4}-\\d{2}-\\d{2}", m)
 	if err != nil {
 		return "", err
 	}
 	if !matched {
 		return "", fmt.Errorf("Input did not match pattern 'YYYY-MM-DD'")
 	}
-	// TODO: Try to parse date and check if valid
-	return m.Text, nil
+	return m, nil
 }
 
 type Tx interface {
@@ -87,24 +78,38 @@ type Tx interface {
 	DataKeys() map[string]string
 
 	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
+	setDate(*tb.Message) (Tx, error)
 }
 
 type SimpleTx struct {
 	steps       []command
 	stepDetails map[command]Input
 	data        []data
+	date        string
 	step        int
 }
 
-func CreateSimpleTx() Tx {
-	return (&SimpleTx{
+func CreateSimpleTx(m *tb.Message) (Tx, error) {
+	tx := (&SimpleTx{
 		stepDetails: make(map[command]Input),
 	}).
 		addStep("amount", "Please enter the amount of money (e.g. '12.34' or '12.34 USD')", HandleFloat).
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
-		addStep("description", "Please enter a description (or select one from the list)", HandleRaw).
-		addStep("date", "Please enter the transaction data in the format YYYY-MM-DD (or type 't' / 'today')", HandleDate)
+		addStep("description", "Please enter a description (or select one from the list)", HandleRaw)
+	return tx.setDate(m)
+}
+
+func (tx *SimpleTx) setDate(m *tb.Message) (Tx, error) {
+	command := strings.Split(m.Text, " ")
+	if len(command) >= 2 {
+		date, err := ParseDate(command[1])
+		if err != nil {
+			return nil, err
+		}
+		tx.date = date
+	}
+	return tx, nil
 }
 
 func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
@@ -140,7 +145,7 @@ func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
 	if i.key == "date" {
 		return tx.hintDate(i.hint)
 	}
-	if ArrayContains([]string{"from", "to"}, i.key) {
+	if c.ArrayContains([]string{"from", "to"}, i.key) {
 		return tx.hintAccount(r, m, i)
 	}
 	return i.hint
@@ -153,9 +158,9 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 		err error    = nil
 	)
 	if i.key == "from" {
-		res, err = r.GetCacheHints(m, STX_ACCF)
+		res, err = r.GetCacheHints(m, c.STX_ACCF)
 	} else if i.key == "to" {
-		res, err = r.GetCacheHints(m, STX_ACCT)
+		res, err = r.GetCacheHints(m, c.STX_ACCT)
 	}
 	if err != nil {
 		log.Printf("Error occurred getting cached hint (hintAccount): %s", err.Error())
@@ -166,7 +171,7 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 }
 
 func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
-	res, err := r.GetCacheHints(m, STX_DESC)
+	res, err := r.GetCacheHints(m, c.STX_DESC)
 	if err != nil {
 		log.Printf("Error occurred getting cached hint (hintDescription): %s", err.Error())
 	}
@@ -180,12 +185,16 @@ func (tx *SimpleTx) hintDate(h *Hint) *Hint {
 }
 
 func (tx *SimpleTx) DataKeys() map[string]string {
+	if tx.date == "" {
+		// set today as fallback/default date
+		tx.date = time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+	}
 	return map[string]string{
-		STX_DATE: string(tx.data[4]),
-		STX_DESC: string(tx.data[3]),
-		STX_ACCF: string(tx.data[1]),
-		STX_AMTF: string(tx.data[0]),
-		STX_ACCT: string(tx.data[2]),
+		c.STX_DATE: tx.date,
+		c.STX_DESC: string(tx.data[3]),
+		c.STX_ACCF: string(tx.data[1]),
+		c.STX_AMTF: string(tx.data[0]),
+		c.STX_ACCT: string(tx.data[2]),
 	}
 }
 
@@ -199,7 +208,7 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 	}
 	// Variables
 	txRaw := tx.DataKeys()
-	f, err := strconv.ParseFloat(strings.Split(string(txRaw[STX_AMTF]), " ")[0], 64)
+	f, err := strconv.ParseFloat(strings.Split(string(txRaw[c.STX_AMTF]), " ")[0], 64)
 	if err != nil {
 		return "", err
 	}
@@ -212,9 +221,9 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 		amountF = fmt.Sprintf("%.2f", f)
 	}
 	// Add spaces
-	spacesNeeded := DOT_INDENT - (utf8.RuneCountInString(string(txRaw[STX_ACCF]))) // accFrom
-	spacesNeeded -= CountLeadingDigits(f)                                          // float length before point
-	spacesNeeded -= 2                                                              // additional space in template + negative sign
+	spacesNeeded := c.DOT_INDENT - (utf8.RuneCountInString(string(txRaw[c.STX_ACCF]))) // accFrom
+	spacesNeeded -= CountLeadingDigits(f)                                              // float length before point
+	spacesNeeded -= 2                                                                  // additional space in template + negative sign
 	if spacesNeeded < 0 {
 		spacesNeeded = 0
 	}
@@ -224,12 +233,12 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
   %s%s -%s %s
   %s
 `
-	amount := strings.Split(txRaw[STX_AMTF], " ")
+	amount := strings.Split(txRaw[c.STX_AMTF], " ")
 	if len(amount) >= 2 {
 		// amount input contains currency
 		currency = amount[1]
 	}
-	return fmt.Sprintf(tpl, txRaw[STX_DATE], txRaw[STX_DESC], txRaw[STX_ACCF], addSpacesFrom, amountF, currency, txRaw[STX_ACCT]), nil
+	return fmt.Sprintf(tpl, txRaw[c.STX_DATE], txRaw[c.STX_DESC], txRaw[c.STX_ACCF], addSpacesFrom, amountF, currency, txRaw[c.STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) Debug() string {
