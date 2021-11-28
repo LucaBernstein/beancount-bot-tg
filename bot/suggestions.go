@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -9,31 +10,36 @@ import (
 )
 
 func (bc *BotController) suggestionsHandler(m *tb.Message) {
-	// splits[0] is the command
-	splits := strings.Split(m.Text, " ")
 	var (
+		command    string
 		subcommand string
 		suggType   string
 		value      string
 	)
-	if len(splits) <= 2 { // at least subcommand + type
-		bc.suggestionsHelp(m)
-		return
+	command = m.Text
+	if strings.Contains(m.Text, "\"") {
+		// Assume quoted value, e.g. '/sugg rm type "some value with spaces"'
+		splits := strings.Split(m.Text, "\"")
+
+		command = splits[0]
+		value = splits[1]
 	}
-	if len(splits) >= 3 {
-		subcommand = splits[1]
-		suggType = splits[2]
-	}
-	if len(splits) >= 4 {
-		value = splits[3]
-	}
-	if len(splits) >= 5 {
-		bc.suggestionsHelp(m)
+
+	splits := strings.Split(strings.TrimSpace(command), " ")
+	if len(splits) != 3 { // at least command + subcommand + type
+		bc.suggestionsHelp(m, nil)
 		return
 	}
 
+	subcommand = splits[1]
+	suggType = splits[2]
+
+	if len(splits) == 4 { // exactly 4 splits mean unspaced value. Remove quotes to make sure.
+		value = strings.Trim(splits[3], "\"")
+	}
+
 	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), suggType, false) {
-		bc.suggestionsHelp(m)
+		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
 
@@ -45,13 +51,18 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 	case "rm":
 		bc.suggestionsHandleRemove(m, suggType, value)
 	default:
-		bc.suggestionsHelp(m)
+		bc.suggestionsHelp(m, nil)
+		return
 	}
 }
 
-func (bc *BotController) suggestionsHelp(m *tb.Message) {
+func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 	suggestionTypes := strings.Join(h.AllowedSuggestionTypes(), ", ")
-	bc.Bot.Send(m.Sender, fmt.Sprintf(`Usage help for /suggestions:
+	errorMsg := ""
+	if err != nil {
+		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
+	}
+	bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
 /suggestions rm <type> [value]
@@ -87,9 +98,20 @@ func (bc *BotController) suggestionsHandleAdd(m *tb.Message, t string, value str
 }
 
 func (bc *BotController) suggestionsHandleRemove(m *tb.Message, t string, value string) {
-	err := bc.Repo.DeleteCacheEntries(m, t, value)
+	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, t, value)
+	res, err := bc.Repo.DeleteCacheEntries(m, t, value)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Error encountered while removing suggestion: "+err.Error())
+		return
+	}
+	rowCount, err := res.RowsAffected()
+	if err != nil {
+		bc.Bot.Send(m.Sender, "Error encountered while extracting affected entries: "+err.Error())
+		return
+	}
+	if rowCount == 0 {
+		bc.suggestionsHelp(m, fmt.Errorf("entry could not be found in the database. "+
+			"If your value contains spaces, consider putting it in double quotes (\")"))
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully removed suggestion(s)")
