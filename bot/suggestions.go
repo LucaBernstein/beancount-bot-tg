@@ -10,49 +10,14 @@ import (
 )
 
 func (bc *BotController) suggestionsHandler(m *tb.Message) {
-	var (
-		command    string
-		subcommand string
-		suggType   string
-		value      string
-	)
-	command = m.Text
-	if strings.Contains(m.Text, "\"") {
-		// Assume quoted value, e.g. '/sugg rm type "some value with spaces"'
-		splits := strings.Split(m.Text, "\"")
-
-		command = splits[0]
-		value = splits[1]
-	}
-
-	splits := strings.Split(strings.TrimSpace(command), " ")
-	if len(splits) != 3 { // at least command + subcommand + type
+	sc := h.MakeSubcommandHandler("/suggestions", true)
+	sc.
+		Add("list", bc.suggestionsHandleList).
+		Add("add", bc.suggestionsHandleAdd).
+		Add("rm", bc.suggestionsHandleRemove)
+	err := sc.Handle(m)
+	if err != nil {
 		bc.suggestionsHelp(m, nil)
-		return
-	}
-
-	subcommand = splits[1]
-	suggType = splits[2]
-
-	if len(splits) == 4 { // exactly 4 splits mean unspaced value. Remove quotes to make sure.
-		value = strings.Trim(splits[3], "\"")
-	}
-
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), suggType, false) {
-		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
-		return
-	}
-
-	switch subcommand {
-	case "list":
-		bc.suggestionsHandleList(m, suggType)
-	case "add":
-		bc.suggestionsHandleAdd(m, suggType, value)
-	case "rm":
-		bc.suggestionsHandleRemove(m, suggType, value)
-	default:
-		bc.suggestionsHelp(m, nil)
-		return
 	}
 }
 
@@ -70,36 +35,59 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 Parameter <type> is one from: [%s]`, suggestionTypes))
 }
 
-func (bc *BotController) suggestionsHandleList(m *tb.Message, t string) {
-	values, err := bc.Repo.GetCacheHints(m, t)
+func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) {
+	p, err := extractTypeValue(params...)
 	if err != nil {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", t, err.Error()))
+		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
+		return
+	}
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
+		return
+	}
+	values, err := bc.Repo.GetCacheHints(m, p.t)
+	if err != nil {
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.t, err.Error()))
 		return
 	}
 	if len(values) == 0 {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", t))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.t))
 		return
 	}
-	bc.Bot.Send(m.Sender, fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", t)+
+	bc.Bot.Send(m.Sender, fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.t)+
 		strings.Join(values, "\n"))
 }
 
-func (bc *BotController) suggestionsHandleAdd(m *tb.Message, t string, value string) {
-	if value == "" {
-		// TODO: Not implemented yet. GH-Issue #17
+func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
+	p, err := extractTypeValue(params...)
+	if err != nil {
+		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	err := bc.Repo.PutCacheHints(m, map[string]string{t: value})
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
+		return
+	}
+	err = bc.Repo.PutCacheHints(m, map[string]string{p.t: p.value})
 	if err != nil {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while adding suggestion (%s): %s", value, err.Error()))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.value, err.Error()))
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully added suggestion(s).")
 }
 
-func (bc *BotController) suggestionsHandleRemove(m *tb.Message, t string, value string) {
-	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, t, value)
-	res, err := bc.Repo.DeleteCacheEntries(m, t, value)
+func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string) {
+	p, err := extractTypeValue(params...)
+	if err != nil {
+		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
+		return
+	}
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
+		return
+	}
+	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, p.t, p.value)
+	res, err := bc.Repo.DeleteCacheEntries(m, p.t, p.value)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Error encountered while removing suggestion: "+err.Error())
 		return
@@ -115,4 +103,23 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, t string, value 
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully removed suggestion(s)")
+}
+
+type tv struct {
+	t     string
+	value string
+}
+
+func extractTypeValue(params ...string) (*tv, error) {
+	e := &tv{}
+	if len(params) < 1 || len(params) > 2 {
+		return nil, fmt.Errorf("unexpected count of parameters")
+	}
+	if len(params) >= 1 {
+		e.t = params[0]
+	}
+	if len(params) >= 2 {
+		e.value = params[1]
+	}
+	return e, nil
 }
