@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -92,7 +93,7 @@ func (r *Repo) DeleteCache(m *tb.Message) {
 	delete(CACHE_LOCAL, m.Chat.ID)
 }
 
-func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) error {
+func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) (sql.Result, error) {
 	// if value is empty string, delete all entries for this user of this type
 	q := `
 		DELETE FROM "bot::cache"
@@ -103,9 +104,9 @@ func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) error {
 		q += ` AND "value" = $3`
 		params = append(params, value)
 	}
-	_, err := r.db.Exec(q, params...)
+	res, err := r.db.Exec(q, params...)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return r.FillCache(m)
+	return res, r.FillCache(m)
 }
