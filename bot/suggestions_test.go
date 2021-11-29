@@ -58,6 +58,12 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 		t.Errorf("NotSpaced: Bot unexpectedly sent usage help instead of performing command: %s", bot.LastSentWhat)
 	}
 
+	// Add is missing required value
+	bc.commandSuggestions(&tb.Message{Text: "/suggestions add txDesc ", Chat: chat})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
+		t.Errorf("AddMissingValue: Bot did not send error: %s", bot.LastSentWhat)
+	}
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}

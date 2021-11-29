@@ -37,7 +37,7 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	mock.
 		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"TEST_CURRENCY"}))
+		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
 	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
 		WithArgs(chat.ID, sqlmock.AnyArg()).

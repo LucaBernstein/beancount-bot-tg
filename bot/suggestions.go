@@ -10,7 +10,7 @@ import (
 )
 
 func (bc *BotController) suggestionsHandler(m *tb.Message) {
-	sc := h.MakeSubcommandHandler("/suggestions", true)
+	sc := h.MakeSubcommandHandler("/"+CMD_SUGGEST, true)
 	sc.
 		Add("list", bc.suggestionsHandleList).
 		Add("add", bc.suggestionsHandleAdd).
@@ -36,58 +36,66 @@ Parameter <type> is one from: [%s]`, suggestionTypes))
 }
 
 func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) {
-	p, err := extractTypeValue(params...)
+	p, err := h.ExtractTypeValue(params...)
 	if err != nil {
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
-	values, err := bc.Repo.GetCacheHints(m, p.t)
+	if p.Value != "" {
+		bc.suggestionsHelp(m, fmt.Errorf("unexpected value provided"))
+		return
+	}
+	values, err := bc.Repo.GetCacheHints(m, p.T)
 	if err != nil {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.t, err.Error()))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.T, err.Error()))
 		return
 	}
 	if len(values) == 0 {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.t))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.T))
 		return
 	}
-	bc.Bot.Send(m.Sender, fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.t)+
+	bc.Bot.Send(m.Sender, fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.T)+
 		strings.Join(values, "\n"))
 }
 
 func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
-	p, err := extractTypeValue(params...)
+	p, err := h.ExtractTypeValue(params...)
 	if err != nil {
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
-	err = bc.Repo.PutCacheHints(m, map[string]string{p.t: p.value})
+	if p.Value == "" {
+		bc.suggestionsHelp(m, fmt.Errorf("no value to add provided"))
+		return
+	}
+	err = bc.Repo.PutCacheHints(m, map[string]string{p.T: p.Value})
 	if err != nil {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.value, err.Error()))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.Value, err.Error()))
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully added suggestion(s).")
 }
 
 func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string) {
-	p, err := extractTypeValue(params...)
+	p, err := h.ExtractTypeValue(params...)
 	if err != nil {
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.t, false) {
+	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
-	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, p.t, p.value)
-	res, err := bc.Repo.DeleteCacheEntries(m, p.t, p.value)
+	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, p.T, p.Value)
+	res, err := bc.Repo.DeleteCacheEntries(m, p.T, p.Value)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Error encountered while removing suggestion: "+err.Error())
 		return
@@ -103,23 +111,4 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 		return
 	}
 	bc.Bot.Send(m.Sender, "Successfully removed suggestion(s)")
-}
-
-type tv struct {
-	t     string
-	value string
-}
-
-func extractTypeValue(params ...string) (*tv, error) {
-	e := &tv{}
-	if len(params) < 1 || len(params) > 2 {
-		return nil, fmt.Errorf("unexpected count of parameters")
-	}
-	if len(params) >= 1 {
-		e.t = params[0]
-	}
-	if len(params) >= 2 {
-		e.value = params[1]
-	}
-	return e, nil
 }

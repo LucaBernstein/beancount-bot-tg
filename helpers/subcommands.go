@@ -82,3 +82,22 @@ func (sh *SubcommandHandler) Handle(m *tb.Message) error {
 	fn(m, parameters...)
 	return nil
 }
+
+type TV struct {
+	T     string
+	Value string
+}
+
+func ExtractTypeValue(params ...string) (*TV, error) {
+	e := &TV{}
+	if len(params) < 1 || len(params) > 2 {
+		return nil, fmt.Errorf("unexpected count of parameters")
+	}
+	if len(params) >= 1 {
+		e.T = params[0]
+	}
+	if len(params) >= 2 {
+		e.Value = params[1]
+	}
+	return e, nil
+}
