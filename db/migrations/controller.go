@@ -14,6 +14,7 @@ func Migrate(db *sql.DB) {
 	migrationWrapper(v2, 2)(db)
 	migrationWrapper(v3, 3)(db)
 	migrationWrapper(v4, 4)(db)
+	migrationWrapper(v5, 5)(db)
 
 	fmt.Println("Migrations ran through. Schema version:", schema(db))
 }

@@ -73,7 +73,7 @@ type Tx interface {
 	Debug() string
 	NextHint(*crud.Repo, *tb.Message) *Hint
 	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
-	FillTemplate(currency string) (string, error)
+	FillTemplate(currency, tag string) (string, error)
 	DataKeys() map[string]string
 
 	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
@@ -201,7 +201,7 @@ func (tx *SimpleTx) IsDone() bool {
 	return tx.step >= len(tx.steps)
 }
 
-func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
+func (tx *SimpleTx) FillTemplate(currency, tag string) (string, error) {
 	if !tx.IsDone() {
 		return "", fmt.Errorf("not all data for this tx has been gathered")
 	}
@@ -227,8 +227,13 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 		spacesNeeded = 0
 	}
 	addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
+	// Tag
+	tagS := ""
+	if tag != "" {
+		tagS += " #" + tag
+	}
 	// Template
-	tpl := `%s * "%s"
+	tpl := `%s * "%s"%s
   %s%s -%s %s
   %s
 `
@@ -237,7 +242,7 @@ func (tx *SimpleTx) FillTemplate(currency string) (string, error) {
 		// amount input contains currency
 		currency = amount[1]
 	}
-	return fmt.Sprintf(tpl, txRaw[c.STX_DATE], txRaw[c.STX_DESC], txRaw[c.STX_ACCF], addSpacesFrom, amountF, currency, txRaw[c.STX_ACCT]), nil
+	return fmt.Sprintf(tpl, txRaw[c.STX_DATE], txRaw[c.STX_DESC], tagS, txRaw[c.STX_ACCF], addSpacesFrom, amountF, currency, txRaw[c.STX_ACCT]), nil
 }
 
 func (tx *SimpleTx) Debug() string {

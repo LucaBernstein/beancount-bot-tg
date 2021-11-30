@@ -24,7 +24,7 @@ func TestCacheOnlySuggestible(t *testing.T) {
 			FROM "bot::cache"
 			WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{}))
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 	// Should only insert description suggestion into db cache
 	mock.
 		ExpectExec(`INSERT INTO "bot::cache"`).
@@ -36,7 +36,7 @@ func TestCacheOnlySuggestible(t *testing.T) {
 			FROM "bot::cache"
 			WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{}))
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 
 	bc := crud.NewRepo(db)
 	message := &tb.Message{Chat: chat}

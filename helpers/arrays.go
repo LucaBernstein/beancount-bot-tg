@@ -20,3 +20,15 @@ func ArrayContainsC(s []string, e string, caseSensitive bool) bool {
 	}
 	return false
 }
+
+func ArraysEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, e := range a {
+		if b[i] != e {
+			return false
+		}
+	}
+	return true
+}

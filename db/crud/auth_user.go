@@ -1,6 +1,8 @@
 package crud
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -9,6 +11,9 @@ import (
 )
 
 func (r *Repo) EnrichUserData(m *tb.Message) error {
+	if m == nil {
+		return fmt.Errorf("provided message was nil")
+	}
 	tgChatId := m.Chat.ID
 	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
@@ -177,4 +182,95 @@ func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID, currency)
 	return err
+}
+
+func (r *Repo) UserGetTag(m *tb.Message) string {
+	rows, err := r.db.Query(`
+		SELECT "tag"
+		FROM "auth::user"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		log.Printf("Encountered error while getting user tag (user: %d): %s", m.Chat.ID, err.Error())
+	}
+	defer rows.Close()
+
+	var tag string
+	if rows.Next() {
+		err = rows.Scan(&tag)
+		if err != nil {
+			log.Printf("Encountered error while scanning user tag into var (user: %d): %s", m.Chat.ID, err.Error())
+		}
+		if tag != "" {
+			return tag
+		}
+	}
+	return ""
+}
+
+func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
+	q := `UPDATE "auth::user"`
+	params := []interface{}{m.Chat.ID}
+	if tag == "" {
+		q += ` SET "tag" = NULL`
+	} else {
+		q += ` SET "tag" = $2`
+		params = append(params, tag)
+	}
+	q += ` WHERE "tgChatId" = $1`
+	_, err := r.db.Exec(q, params...)
+	if err != nil {
+		return fmt.Errorf("error while setting user default tag: %s", err.Error())
+	}
+	return nil
+}
+
+func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, err error) {
+	rows, err := r.db.Query(`
+		SELECT "delayHours", "notificationHour"
+		FROM "bot::notificationSchedule"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		log.Printf("Encountered error while getting user notification setting (user: %d): %s", m.Chat.ID, err.Error())
+	}
+	defer rows.Close()
+
+	var delayHours int
+	if rows.Next() {
+		err = rows.Scan(&delayHours, &hour)
+		if err != nil {
+			log.Printf("Encountered error while scanning user notification setting into var (user: %d): %s", m.Chat.ID, err.Error())
+		}
+		return delayHours / 24, hour, nil
+	}
+	return -1, -1, nil
+}
+
+/**
+UserSetNotificationSetting sets user's notification settings.
+If daysDelay is < 0, schedule will be disabled.
+*/
+func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) error {
+	_, err := r.db.Exec(`DELETE FROM "bot::notificationSchedule" WHERE "tgChatId" = $1;`, m.Chat.ID)
+	if daysDelay >= 0 && err == nil { // Condition to enable schedule
+		_, err = r.db.Exec(`INSERT INTO "bot::notificationSchedule" ("tgChatId", "delayHours", "notificationHour")
+			VALUES ($1, $2, $3);`, m.Chat.ID, daysDelay*24, hour)
+	}
+	if err != nil {
+		return fmt.Errorf("error while setting user notifications schedule: %s", err.Error())
+	}
+	return nil
+}
+
+func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
+	return r.db.Query(`
+	SELECT DISTINCT u."tgChatId", COUNT(tx.id)
+	FROM "auth::user" u, "bot::notificationSchedule" s, "bot::transaction" tx
+	WHERE u."tgChatId" = s."tgChatId" AND s."tgChatId" = tx."tgChatId"
+		AND tx.archived = FALSE
+		AND s."notificationHour" = $1
+		AND tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
+	GROUP BY u."tgChatId"
+	`, time.Now().Hour())
 }

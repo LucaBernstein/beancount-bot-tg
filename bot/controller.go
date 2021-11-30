@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/go-co-op/gocron"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -28,9 +30,11 @@ type BotController struct {
 	Repo  *crud.Repo
 	State *StateHandler
 	Bot   IBot
+
+	CronScheduler *gocron.Scheduler
 }
 
-func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
+func (bc *BotController) ConfigureAndAttachBot(b IBot) {
 	bc.Bot = b
 
 	mappings := bc.commandMappings()
@@ -42,9 +46,15 @@ func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
 	b.Handle(tb.OnText, bc.handleTextState)
 
 	log.Printf("Starting bot '%s'", b.Me().Username)
-	b.Start()
 
-	return bc
+	// Add CRON scheduler
+	s := gocron.NewScheduler(time.UTC)
+	s.Every(1).Hour().At("00:30").Do(bc.cronNotifications)
+	bc.CronScheduler = s
+	s.StartAsync()
+	log.Print(bc.cronInfo())
+
+	b.Start() // Blocking
 }
 
 const (
@@ -56,9 +66,10 @@ const (
 	CMD_ARCHIVE_ALL = "archiveAll"
 	CMD_DELETE_ALL  = "deleteAll"
 	CMD_SUGGEST     = "suggestions"
-	CMD_CURRENCY    = "currency"
+	CMD_CONFIG      = "config"
 
 	CMD_ADM_NOTIFY = "admin_notify"
+	CMD_ADM_CRON   = "admin_cron"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -69,11 +80,12 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today", Optional: "YYYY-MM-DD"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: "archived"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
-		{Command: CMD_CURRENCY, Handler: bc.commandCurrency, Help: "Set the currency to use globally for subsequent transactions"},
+		{Command: CMD_CONFIG, Handler: bc.commandConfig, Help: "Bot configurations"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
 		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 
 		{Command: CMD_ADM_NOTIFY, Handler: bc.commandAdminNofify, Help: "Send notification to user(s): /" + CMD_ADM_NOTIFY + " [chatId] \"<message>\""},
+		{Command: CMD_ADM_CRON, Handler: bc.commandAdminCronInfo, Help: "Check cron status"},
 	}
 }
 
@@ -199,20 +211,40 @@ func (bc *BotController) commandSuggestions(m *tb.Message) {
 	bc.suggestionsHandler(m)
 }
 
-func (bc *BotController) commandCurrency(m *tb.Message) {
-	currency := bc.Repo.UserGetCurrency(m)
-	values := strings.Split(m.Text, " ")
-	if len(values) != 2 {
-		bc.Bot.Send(m.Sender, fmt.Sprintf("Your current currency is set to '%s'. To change it add the new currency to use to the command like this: '/currency EUR'.", currency))
-		return
-	}
-	currency = values[1]
-	err := bc.Repo.UserSetCurrency(m, currency)
+func (bc *BotController) commandConfig(m *tb.Message) {
+	bc.configHandler(m)
+}
+
+func (bc *BotController) cronInfo() string {
+	_, jobTime := bc.CronScheduler.NextRun()
+	return fmt.Sprintf("Next job running will be at %v\nCurrent timestamp: %s (hour: %d)", jobTime, time.Now(), time.Now().Hour())
+}
+
+func (bc *BotController) cronNotifications() {
+	log.Print("Running notifications job.")
+	rows, err := bc.Repo.GetUsersToNotify()
 	if err != nil {
-		bc.Bot.Send(m.Sender, "An error ocurred saving your currency preference: "+err.Error())
-		return
+		log.Printf("Error getting users to notify: %s", err.Error())
 	}
-	bc.Bot.Send(m.Sender, fmt.Sprintf("For all future transactions the currency '%s' will be used.", currency))
+
+	var (
+		tgChatId  string
+		openCount int
+	)
+	for rows.Next() {
+		err = rows.Scan(&tgChatId, &openCount)
+		if err != nil {
+			log.Printf("Error occurred extracting tgChatId to send open tx notification to: %s", err.Error())
+			continue
+		}
+		log.Printf("Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
+		bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf(
+			// TODO: Replace hard-coded command directives:
+			" This is your reminder to inform you that you currently have %d open transactions. Check '/list' to see them. If you don't need them you can /archiveAll or /delete them."+
+				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount))
+	}
+
+	log.Print(bc.cronInfo())
 }
 
 type ReceiverImpl struct {
@@ -221,6 +253,16 @@ type ReceiverImpl struct {
 
 func (r ReceiverImpl) Recipient() string {
 	return r.chatId
+}
+
+func (bc *BotController) commandAdminCronInfo(m *tb.Message) {
+	isAdmin := bc.Repo.UserIsAdmin(m)
+	if !isAdmin {
+		log.Printf("Received admin command from non-admin user (%s, %d). Ignoring (treating as normal text input).", m.Chat.Username, m.Chat.ID)
+		bc.handleTextState(m)
+		return
+	}
+	bc.Bot.Send(m.Sender, bc.cronInfo())
 }
 
 func (bc *BotController) commandAdminNofify(m *tb.Message) {
@@ -284,7 +326,8 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	log.Printf("New data state for %s (ChatID: %d) is %v. (Last input was '%s')", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
 		currency := bc.Repo.UserGetCurrency(m)
-		transaction, err := tx.FillTemplate(currency)
+		tag := bc.Repo.UserGetTag(m)
+		transaction, err := tx.FillTemplate(currency, tag)
 		if err != nil {
 			log.Printf("Something went wrong while templating the transaction: " + err.Error())
 			bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
