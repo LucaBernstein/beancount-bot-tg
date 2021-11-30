@@ -272,7 +272,8 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	log.Printf("New data state for %s (ChatID: %d) is %v. (Last input was '%s')", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
 	if tx.IsDone() {
 		currency := bc.Repo.UserGetCurrency(m)
-		transaction, err := tx.FillTemplate(currency)
+		tag := bc.Repo.UserGetTag(m)
+		transaction, err := tx.FillTemplate(currency, tag)
 		if err != nil {
 			log.Printf("Something went wrong while templating the transaction: " + err.Error())
 			bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())

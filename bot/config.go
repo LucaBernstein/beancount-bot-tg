@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"strings"
 
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -10,7 +11,9 @@ import (
 func (bc *BotController) configHandler(m *tb.Message) {
 	sc := h.MakeSubcommandHandler("/"+CMD_CONFIG, true)
 	sc.
-		Add("currency", bc.configHandleCurrency)
+		Add("currency", bc.configHandleCurrency).
+		Add("tag", bc.configHandleTag).
+		Add("tagoff", bc.configHandleTagOff)
 	err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m)
@@ -18,7 +21,11 @@ func (bc *BotController) configHandler(m *tb.Message) {
 }
 
 func (bc *BotController) configHelp(m *tb.Message) {
-	bc.Bot.Send(m.Sender, fmt.Sprintf("Usage help for /%s:\n\n/%s currency <c> - Change default currency", CMD_CONFIG, CMD_CONFIG))
+	bc.Bot.Send(m.Sender, fmt.Sprintf("Usage help for /%s:\n\n/%s currency <c> - Change default currency"+
+		"\n\nTags will be added to each new transaction with a '#':"+
+		"\n/%s tag [name] - Get current tag or set new one, e.g. when on vacation"+
+		"\n/%s tagoff - Turn off tag",
+		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG))
 }
 
 func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
@@ -28,7 +35,8 @@ func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
 		bc.Bot.Send(m.Sender, fmt.Sprintf("Your current currency is set to '%s'. To change it add the new currency to use to the command like this: '/%s currency EUR'.", currency, CMD_CONFIG))
 		return
 	} else if len(params) > 1 { // 2 or more params: too many
-
+		bc.configHelp(m)
+		return
 	}
 	// Set new currency
 	newCurrency := params[0]
@@ -38,4 +46,25 @@ func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
 		return
 	}
 	bc.Bot.Send(m.Sender, fmt.Sprintf("Changed default currency for all future transactions from '%s' to '%s'.", currency, newCurrency))
+}
+
+func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
+	if len(params) == 0 {
+		// GET tag
+		tag := bc.Repo.UserGetTag(m)
+		bc.Bot.Send(m.Sender, fmt.Sprintf("All new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
+		return
+	} else if len(params) > 1 { // Only 0 or 1 allowed
+		bc.configHelp(m)
+		return
+	}
+	// SET tag
+	tag := strings.TrimPrefix(params[0], "#")
+	bc.Repo.UserSetTag(m, tag)
+	bc.Bot.Send(m.Sender, fmt.Sprintf("From now on all new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
+}
+
+func (bc *BotController) configHandleTagOff(m *tb.Message, params ...string) {
+	bc.Repo.UserSetTag(m, "")
+	bc.Bot.Send(m.Sender, "Disabled automatically set tags on new transactions")
 }

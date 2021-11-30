@@ -1,6 +1,7 @@
 package bot_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestTransactionBuilding(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("USD")
+	templated, err := tx.FillTemplate("USD", "")
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -75,7 +76,7 @@ func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("EUR")
+	templated, err := tx.FillTemplate("EUR", "")
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -100,7 +101,7 @@ func TestTransactionBuildingWithDate(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("EUR")
+	templated, err := tx.FillTemplate("EUR", "")
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -114,4 +115,19 @@ func TestCountLeadingDigits(t *testing.T) {
 	helpers.TestExpect(t, bot.CountLeadingDigits(12.34), 2, "")
 	helpers.TestExpect(t, bot.CountLeadingDigits(0.34), 1, "")
 	helpers.TestExpect(t, bot.CountLeadingDigits(1244.0), 4, "")
+}
+
+func TestTaggedTransaction(t *testing.T) {
+	tx, _ := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"})
+	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})   // amount
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})      // from
+	tx.Input(&tb.Message{Text: "Expenses:Groceries"}) // to
+	tx.Input(&tb.Message{Text: "Buy something"})      // description
+	template, err := tx.FillTemplate("EUR", "someTag")
+	if err != nil {
+		t.Errorf("Unexpected error: %s", err.Error())
+	}
+	if !strings.Contains(template, `2021-01-24 * "Buy something" #someTag`) {
+		t.Errorf("Tx did not contain tag: %s", template)
+	}
 }

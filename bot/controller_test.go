@@ -5,10 +5,12 @@ import (
 	"log"
 	"strings"
 	"testing"
+	"time"
 
 	tb "gopkg.in/tucnak/telebot.v2"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 )
 
 type MockBot struct {
@@ -39,8 +41,16 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		WithArgs(chat.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
 	mock.
+		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
+	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
-		WithArgs(chat.ID, sqlmock.AnyArg()).
+		WithArgs(chat.ID, today+` * "Buy something in the grocery store" #vacation2021
+  Assets:Wallet                               -17.34 TEST_CURRENCY
+  Expenses:Groceries
+`).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc := NewBotController(db)

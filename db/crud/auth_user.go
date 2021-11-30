@@ -1,6 +1,7 @@
 package crud
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -177,4 +178,45 @@ func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID, currency)
 	return err
+}
+
+func (r *Repo) UserGetTag(m *tb.Message) string {
+	rows, err := r.db.Query(`
+		SELECT "tag"
+		FROM "auth::user"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		log.Printf("Encountered error while getting user tag (user: %d): %s", m.Chat.ID, err.Error())
+	}
+	defer rows.Close()
+
+	var tag string
+	if rows.Next() {
+		err = rows.Scan(&tag)
+		if err != nil {
+			log.Printf("Encountered error while scanning user tag into var (user: %d): %s", m.Chat.ID, err.Error())
+		}
+		if tag != "" {
+			return tag
+		}
+	}
+	return ""
+}
+
+func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
+	q := `UPDATE "auth::user"`
+	params := []interface{}{m.Chat.ID}
+	if tag == "" {
+		q += ` SET "tag" = NULL`
+	} else {
+		q += ` SET "tag" = $2`
+		params = append(params, tag)
+	}
+	q += ` WHERE "tgChatId" = $1`
+	_, err := r.db.Exec(q, params...)
+	if err != nil {
+		return fmt.Errorf("error while setting user default tag: %s", err.Error())
+	}
+	return nil
 }
