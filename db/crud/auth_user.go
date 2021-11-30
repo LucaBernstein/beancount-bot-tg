@@ -1,10 +1,10 @@
 package crud
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -224,8 +224,8 @@ func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
 
 func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, err error) {
 	rows, err := r.db.Query(`
-		SELECT "reminderSchedule"
-		FROM "auth::user"
+		SELECT "delayHours", "notificationHour"
+		FROM "bot::notificationSchedule"
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID)
 	if err != nil {
@@ -233,27 +233,15 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 	}
 	defer rows.Close()
 
-	var schedule string
+	var delayHours int
 	if rows.Next() {
-		err = rows.Scan(&schedule)
+		err = rows.Scan(&delayHours, &hour)
 		if err != nil {
 			log.Printf("Encountered error while scanning user notification setting into var (user: %d): %s", m.Chat.ID, err.Error())
 		}
+		return delayHours / 24, hour, nil
 	}
-
-	if schedule == "" { // No schedule set
-		return -1, -1, nil
-	}
-	scheduleS := strings.Split(schedule, "+")
-	daysDelay, err = strconv.Atoi(scheduleS[0])
-	if err != nil {
-		return -1, -1, fmt.Errorf("error converting schedule days (%s) to days and hour: %s", schedule, err.Error())
-	}
-	hour, err = strconv.Atoi(scheduleS[1])
-	if err != nil {
-		return -1, -1, fmt.Errorf("error converting schedule hour (%s) to days and hour: %s", schedule, err.Error())
-	}
-	return
+	return -1, -1, nil
 }
 
 /**
@@ -261,19 +249,28 @@ UserSetNotificationSetting sets user's notification settings.
 If daysDelay is < 0, schedule will be disabled.
 */
 func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) error {
-	q := `UPDATE "auth::user"`
+	q := `DELETE FROM "bot::notificationSchedule" WHERE "tgChatId" = $1;`
 	params := []interface{}{m.Chat.ID}
-	if daysDelay < 0 {
-		q += ` SET "reminderSchedule" = NULL`
-	} else {
-		schedule := fmt.Sprintf("%d+%d", daysDelay, hour)
-		q += ` SET "reminderSchedule" = $2`
-		params = append(params, schedule)
+	if daysDelay >= 0 { // Condition to enable schedule
+		q += `INSERT INTO "bot::notificationSchedule" ("tgChatId", "delayHours", "notificationHour")
+		VALUES ($2, $3, $4);`
+		params = append(params, m.Chat.ID, daysDelay*24, hour)
 	}
-	q += ` WHERE "tgChatId" = $1`
 	_, err := r.db.Exec(q, params...)
 	if err != nil {
 		return fmt.Errorf("error while setting user notifications schedule: %s", err.Error())
 	}
 	return nil
+}
+
+func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
+	return r.db.Query(`
+	SELECT DISTINCT u."tgChatId", COUNT(tx.id)
+	FROM "auth::user" u, "bot::notificationSchedule" s, "bot::transaction" tx
+	WHERE u."tgChatId" = s."tgChatId" AND s."tgChatId" = tx."tgChatId"
+		AND tx.archived = FALSE
+		AND s."notificationHour" = $1
+		AND tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
+	GROUP BY u."tgChatId"
+	`, time.Now().Hour())
 }

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/go-co-op/gocron"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -18,16 +20,27 @@ type CMD struct {
 }
 
 func NewBotController(db dbWrapper.DB) *BotController {
-	return &BotController{
+	bc := &BotController{
 		Repo:  crud.NewRepo(db),
 		State: NewStateHandler(),
 	}
+
+	s := gocron.NewScheduler(time.UTC)
+	s.Every(1).Hour().Do(bc.cronNotifications)
+	s.SingletonMode()
+	s.StartAsync()
+	bc.CronScheduler = s
+	bc.cronInfo()
+
+	return bc
 }
 
 type BotController struct {
 	Repo  *crud.Repo
 	State *StateHandler
 	Bot   IBot
+
+	CronScheduler *gocron.Scheduler
 }
 
 func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
@@ -201,6 +214,37 @@ func (bc *BotController) commandSuggestions(m *tb.Message) {
 
 func (bc *BotController) commandConfig(m *tb.Message) {
 	bc.configHandler(m)
+}
+
+func (bc *BotController) cronInfo() {
+	_, time := bc.CronScheduler.NextRun()
+	log.Printf("Next job running running will be at %v", time)
+}
+
+func (bc *BotController) cronNotifications() {
+	log.Print("Running notifications job.")
+	rows, err := bc.Repo.GetUsersToNotify()
+	if err != nil {
+		log.Printf("Error getting users to notify: %s", err.Error())
+	}
+
+	var (
+		tgChatId  string
+		openCount int
+	)
+	for rows.Next() {
+		err = rows.Scan(&tgChatId, &openCount)
+		if err != nil {
+			log.Printf("Error occurred extracting tgChatId to send open tx notification to: %s", err.Error())
+			continue
+		}
+		log.Printf("Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
+		bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf("You enabled reminder notifications for open transactions in /config."+
+			// TODO: Replace hard-coded command directives:
+			" This is your reminder to inform you that you currently have %d open transactions. Check '/list' to see them. If you don't need them you can /archiveAll or /delete them.", openCount))
+	}
+
+	bc.cronInfo()
 }
 
 type ReceiverImpl struct {
