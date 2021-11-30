@@ -12,7 +12,8 @@ func v5(db *sql.Tx) {
 func v5TxTags(db *sql.Tx) {
 	sqlStatement := `
 	ALTER TABLE "auth::user"
-	ADD "tag" TEXT NULL DEFAULT NULL;
+	ADD "tag" TEXT NULL DEFAULT NULL,
+	ADD "reminderSchedule" TEXT NULL DEFAULT NULL;
 	`
 	_, err := db.Exec(sqlStatement)
 	if err != nil {

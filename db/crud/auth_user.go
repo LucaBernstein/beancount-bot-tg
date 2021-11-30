@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -217,6 +218,62 @@ func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
 	_, err := r.db.Exec(q, params...)
 	if err != nil {
 		return fmt.Errorf("error while setting user default tag: %s", err.Error())
+	}
+	return nil
+}
+
+func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, err error) {
+	rows, err := r.db.Query(`
+		SELECT "reminderSchedule"
+		FROM "auth::user"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		log.Printf("Encountered error while getting user notification setting (user: %d): %s", m.Chat.ID, err.Error())
+	}
+	defer rows.Close()
+
+	var schedule string
+	if rows.Next() {
+		err = rows.Scan(&schedule)
+		if err != nil {
+			log.Printf("Encountered error while scanning user notification setting into var (user: %d): %s", m.Chat.ID, err.Error())
+		}
+	}
+
+	if schedule == "" { // No schedule set
+		return -1, -1, nil
+	}
+	scheduleS := strings.Split(schedule, "+")
+	daysDelay, err = strconv.Atoi(scheduleS[0])
+	if err != nil {
+		return -1, -1, fmt.Errorf("error converting schedule days (%s) to days and hour: %s", schedule, err.Error())
+	}
+	hour, err = strconv.Atoi(scheduleS[1])
+	if err != nil {
+		return -1, -1, fmt.Errorf("error converting schedule hour (%s) to days and hour: %s", schedule, err.Error())
+	}
+	return
+}
+
+/**
+UserSetNotificationSetting sets user's notification settings.
+If daysDelay is < 0, schedule will be disabled.
+*/
+func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) error {
+	q := `UPDATE "auth::user"`
+	params := []interface{}{m.Chat.ID}
+	if daysDelay < 0 {
+		q += ` SET "reminderSchedule" = NULL`
+	} else {
+		schedule := fmt.Sprintf("%d+%d", daysDelay, hour)
+		q += ` SET "reminderSchedule" = $2`
+		params = append(params, schedule)
+	}
+	q += ` WHERE "tgChatId" = $1`
+	_, err := r.db.Exec(q, params...)
+	if err != nil {
+		return fmt.Errorf("error while setting user notifications schedule: %s", err.Error())
 	}
 	return nil
 }
