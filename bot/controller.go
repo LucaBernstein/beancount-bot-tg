@@ -20,19 +20,10 @@ type CMD struct {
 }
 
 func NewBotController(db dbWrapper.DB) *BotController {
-	bc := &BotController{
+	return &BotController{
 		Repo:  crud.NewRepo(db),
 		State: NewStateHandler(),
 	}
-
-	s := gocron.NewScheduler(time.UTC)
-	s.Every(1).Hour().Do(bc.cronNotifications)
-	s.SingletonMode()
-	s.StartAsync()
-	bc.CronScheduler = s
-	bc.cronInfo()
-
-	return bc
 }
 
 type BotController struct {
@@ -43,7 +34,7 @@ type BotController struct {
 	CronScheduler *gocron.Scheduler
 }
 
-func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
+func (bc *BotController) ConfigureAndAttachBot(b IBot) {
 	bc.Bot = b
 
 	mappings := bc.commandMappings()
@@ -55,9 +46,15 @@ func (bc *BotController) ConfigureAndAttachBot(b IBot) *BotController {
 	b.Handle(tb.OnText, bc.handleTextState)
 
 	log.Printf("Starting bot '%s'", b.Me().Username)
-	b.Start()
 
-	return bc
+	// Add CRON scheduler
+	s := gocron.NewScheduler(time.UTC)
+	s.Every(1).Hour().At("00:30").Do(bc.cronNotifications)
+	bc.CronScheduler = s
+	s.StartAsync()
+	log.Print(bc.cronInfo())
+
+	b.Start() // Blocking
 }
 
 const (
@@ -72,6 +69,7 @@ const (
 	CMD_CONFIG      = "config"
 
 	CMD_ADM_NOTIFY = "admin_notify"
+	CMD_ADM_CRON   = "admin_cron"
 )
 
 func (bc *BotController) commandMappings() []*CMD {
@@ -87,6 +85,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 
 		{Command: CMD_ADM_NOTIFY, Handler: bc.commandAdminNofify, Help: "Send notification to user(s): /" + CMD_ADM_NOTIFY + " [chatId] \"<message>\""},
+		{Command: CMD_ADM_CRON, Handler: bc.commandAdminCronInfo, Help: "Check cron status"},
 	}
 }
 
@@ -216,9 +215,9 @@ func (bc *BotController) commandConfig(m *tb.Message) {
 	bc.configHandler(m)
 }
 
-func (bc *BotController) cronInfo() {
-	_, time := bc.CronScheduler.NextRun()
-	log.Printf("Next job running running will be at %v", time)
+func (bc *BotController) cronInfo() string {
+	_, jobTime := bc.CronScheduler.NextRun()
+	return fmt.Sprintf("Next job running will be at %v\nCurrent timestamp: %s (hour: %d)", jobTime, time.Now(), time.Now().Hour())
 }
 
 func (bc *BotController) cronNotifications() {
@@ -239,12 +238,13 @@ func (bc *BotController) cronNotifications() {
 			continue
 		}
 		log.Printf("Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
-		bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf("You enabled reminder notifications for open transactions in /config."+
+		bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf(
 			// TODO: Replace hard-coded command directives:
-			" This is your reminder to inform you that you currently have %d open transactions. Check '/list' to see them. If you don't need them you can /archiveAll or /delete them.", openCount))
+			" This is your reminder to inform you that you currently have %d open transactions. Check '/list' to see them. If you don't need them you can /archiveAll or /delete them."+
+				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount))
 	}
 
-	bc.cronInfo()
+	log.Print(bc.cronInfo())
 }
 
 type ReceiverImpl struct {
@@ -253,6 +253,16 @@ type ReceiverImpl struct {
 
 func (r ReceiverImpl) Recipient() string {
 	return r.chatId
+}
+
+func (bc *BotController) commandAdminCronInfo(m *tb.Message) {
+	isAdmin := bc.Repo.UserIsAdmin(m)
+	if !isAdmin {
+		log.Printf("Received admin command from non-admin user (%s, %d). Ignoring (treating as normal text input).", m.Chat.Username, m.Chat.ID)
+		bc.handleTextState(m)
+		return
+	}
+	bc.Bot.Send(m.Sender, bc.cronInfo())
 }
 
 func (bc *BotController) commandAdminNofify(m *tb.Message) {

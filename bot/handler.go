@@ -18,7 +18,10 @@ func CreateBot(bc *BotController) IBot {
 	poller := &tb.LongPoller{Timeout: 20 * time.Second}
 	userGuardPoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
 		// TODO: Start goroutine to update data?
-		bc.Repo.EnrichUserData(upd.Message)
+		err := bc.Repo.EnrichUserData(upd.Message)
+		if err != nil {
+			log.Printf("Error encountered in middlewarePoller: %s", err.Error())
+		}
 		return true
 	})
 

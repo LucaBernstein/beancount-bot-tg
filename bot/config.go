@@ -72,7 +72,7 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
 		return
 	}
-	if params[1] == "off" {
+	if params[0] == "off" {
 		// DELETE tag
 		bc.Repo.UserSetTag(m, "")
 		bc.Bot.Send(m.Sender, "Disabled automatically set tags on new transactions")

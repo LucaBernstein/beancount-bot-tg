@@ -11,6 +11,9 @@ import (
 )
 
 func (r *Repo) EnrichUserData(m *tb.Message) error {
+	if m == nil {
+		return fmt.Errorf("provided message was nil")
+	}
 	tgChatId := m.Chat.ID
 	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
@@ -249,14 +252,11 @@ UserSetNotificationSetting sets user's notification settings.
 If daysDelay is < 0, schedule will be disabled.
 */
 func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) error {
-	q := `DELETE FROM "bot::notificationSchedule" WHERE "tgChatId" = $1;`
-	params := []interface{}{m.Chat.ID}
-	if daysDelay >= 0 { // Condition to enable schedule
-		q += `INSERT INTO "bot::notificationSchedule" ("tgChatId", "delayHours", "notificationHour")
-		VALUES ($2, $3, $4);`
-		params = append(params, m.Chat.ID, daysDelay*24, hour)
+	_, err := r.db.Exec(`DELETE FROM "bot::notificationSchedule" WHERE "tgChatId" = $1;`, m.Chat.ID)
+	if daysDelay >= 0 && err == nil { // Condition to enable schedule
+		_, err = r.db.Exec(`INSERT INTO "bot::notificationSchedule" ("tgChatId", "delayHours", "notificationHour")
+			VALUES ($1, $2, $3);`, m.Chat.ID, daysDelay*24, hour)
 	}
-	_, err := r.db.Exec(q, params...)
 	if err != nil {
 		return fmt.Errorf("error while setting user notifications schedule: %s", err.Error())
 	}
