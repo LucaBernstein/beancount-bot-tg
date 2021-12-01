@@ -55,7 +55,7 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 
 	bc := NewBotController(db)
 	bot := &MockBot{}
-	bc.ConfigureAndAttachBot(bot)
+	bc.AddBotAndStart(bot)
 
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
@@ -93,7 +93,7 @@ func TestTransactionDeletion(t *testing.T) {
 
 	bc := NewBotController(db)
 	bot := &MockBot{}
-	bc.ConfigureAndAttachBot(bot)
+	bc.AddBotAndStart(bot)
 
 	bc.commandDeleteTransactions(&tb.Message{Chat: chat, Text: "/deleteAll"})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "to confirm the deletion of your transactions") {
