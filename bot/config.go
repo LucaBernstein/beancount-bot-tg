@@ -80,7 +80,11 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 	}
 	// SET tag
 	tag := strings.TrimPrefix(params[0], "#")
-	bc.Repo.UserSetTag(m, tag)
+	err := bc.Repo.UserSetTag(m, tag)
+	if err != nil {
+		bc.Bot.Send(m.Sender, "An error ocurred saving the tag: "+err.Error())
+		return
+	}
 	bc.Bot.Send(m.Sender, fmt.Sprintf("From now on all new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
 }
 

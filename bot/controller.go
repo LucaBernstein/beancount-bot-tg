@@ -34,7 +34,14 @@ type BotController struct {
 	CronScheduler *gocron.Scheduler
 }
 
-func (bc *BotController) ConfigureAndAttachBot(b IBot) {
+func (bc *BotController) ConfigureCronScheduler() *BotController {
+	s := gocron.NewScheduler(time.UTC)
+	s.Every(1).Hour().Do(bc.cronNotifications)
+	bc.CronScheduler = s
+	return bc
+}
+
+func (bc *BotController) AddBotAndStart(b IBot) {
 	bc.Bot = b
 
 	mappings := bc.commandMappings()
@@ -47,13 +54,11 @@ func (bc *BotController) ConfigureAndAttachBot(b IBot) {
 
 	log.Printf("Starting bot '%s'", b.Me().Username)
 
-	// Add CRON scheduler
-	s := gocron.NewScheduler(time.UTC)
-	s.Every(1).Hour().Do(bc.cronNotifications)
-	bc.CronScheduler = s
-	s.StartAsync()
-	log.Print(bc.cronInfo())
-
+	if bc.CronScheduler != nil {
+		bc.CronScheduler.StartAsync()
+	} else {
+		log.Print("Warning: No cron scheduler has been attached!")
+	}
 	b.Start() // Blocking
 }
 

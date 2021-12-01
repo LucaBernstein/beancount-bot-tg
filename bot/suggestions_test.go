@@ -29,7 +29,7 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 	bc := NewBotController(db)
 
 	bot := &MockBot{}
-	bc.ConfigureAndAttachBot(bot)
+	bc.AddBotAndStart(bot)
 
 	// missing subcommand
 	bc.commandSuggestions(&tb.Message{Text: "/suggestions", Chat: chat})

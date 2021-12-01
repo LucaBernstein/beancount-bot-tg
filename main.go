@@ -10,7 +10,8 @@ func main() {
 	defer db.Close()
 
 	bc := bot.NewBotController(db)
+	bc.ConfigureCronScheduler()
 
 	bot := bot.CreateBot(bc)
-	bc.ConfigureAndAttachBot(bot)
+	bc.AddBotAndStart(bot)
 }
