@@ -49,7 +49,7 @@ func (bc *BotController) ConfigureAndAttachBot(b IBot) {
 
 	// Add CRON scheduler
 	s := gocron.NewScheduler(time.UTC)
-	s.Every(1).Hour().At("00:30").Do(bc.cronNotifications)
+	s.Every(1).Hour().Do(bc.cronNotifications)
 	bc.CronScheduler = s
 	s.StartAsync()
 	log.Print(bc.cronInfo())
@@ -216,8 +216,16 @@ func (bc *BotController) commandConfig(m *tb.Message) {
 }
 
 func (bc *BotController) cronInfo() string {
-	_, jobTime := bc.CronScheduler.NextRun()
-	return fmt.Sprintf("Next job running will be at %v\nCurrent timestamp: %s (hour: %d)", jobTime, time.Now(), time.Now().Hour())
+	message := "Job overview:"
+	for i, j := range bc.CronScheduler.Jobs() {
+		var err string
+		if j.Error() != nil {
+			err = j.Error().Error()
+		}
+		message += fmt.Sprintf("\n  %d - running: %t, error: '%s', lastRun: %v, nextRun: %v, runCount: %d",
+			i, j.IsRunning(), err, j.LastRun(), j.NextRun(), j.RunCount())
+	}
+	return fmt.Sprintf(message+"\n  Current timestamp: %v (hour: %d)", time.Now(), time.Now().Hour())
 }
 
 func (bc *BotController) cronNotifications() {
@@ -238,10 +246,14 @@ func (bc *BotController) cronNotifications() {
 			continue
 		}
 		log.Printf("Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
+		s := "s"
+		if openCount == 1 {
+			s = ""
+		}
 		bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf(
 			// TODO: Replace hard-coded command directives:
-			" This is your reminder to inform you that you currently have %d open transactions. Check '/list' to see them. If you don't need them you can /archiveAll or /delete them."+
-				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount))
+			" This is your reminder to inform you that you currently have %d open transaction%s. Check '/list' to see your open transactions. If you don't need them anymore you can /archiveAll or /delete them."+
+				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s))
 	}
 
 	log.Print(bc.cronInfo())
