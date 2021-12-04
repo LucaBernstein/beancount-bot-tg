@@ -36,7 +36,7 @@ type BotController struct {
 
 func (bc *BotController) ConfigureCronScheduler() *BotController {
 	s := gocron.NewScheduler(time.UTC)
-	s.Every(1).Hour().Do(bc.cronNotifications)
+	s.Cron("0 * * * *").Do(bc.cronNotifications)
 	bc.CronScheduler = s
 	return bc
 }
