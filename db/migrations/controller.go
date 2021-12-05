@@ -15,6 +15,7 @@ func Migrate(db *sql.DB) {
 	migrationWrapper(v3, 3)(db)
 	migrationWrapper(v4, 4)(db)
 	migrationWrapper(v5, 5)(db)
+	migrationWrapper(v6, 6)(db)
 
 	fmt.Println("Migrations ran through. Schema version:", schema(db))
 }
@@ -45,7 +46,7 @@ func migrationWrapper(migrationFn MigrationFn, thisVersion int) MigrationFnTx {
 
 func schema(db *sql.DB) int {
 	// Check if settings table holding schema version exists
-	sql := `
+	q := `
 	SELECT EXISTS (
 		SELECT FROM information_schema.tables
 		WHERE  table_schema = 'public'
@@ -53,7 +54,7 @@ func schema(db *sql.DB) int {
 	);
 	`
 	exists := false
-	err := db.QueryRow(sql).Scan(&exists)
+	err := db.QueryRow(q).Scan(&exists)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -62,13 +63,14 @@ func schema(db *sql.DB) int {
 	}
 
 	// Check schema version
-	sql = `
+	q = `
 	SELECT value
 	FROM "app::setting"
 	WHERE key = 'schemaVersion';
 	`
+	// Version value in settings table should not be null.
 	version := "0"
-	err = db.QueryRow(sql).Scan(&version)
+	err = db.QueryRow(q).Scan(&version)
 	if err != nil {
 		log.Fatal(err)
 	}
