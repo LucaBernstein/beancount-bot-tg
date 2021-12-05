@@ -79,13 +79,16 @@ func (r *Repo) getUser(id int64) (*User, error) {
 	defer rows.Close()
 
 	var tgUserId int
-	var tgUsername string
+	var tgUsername sql.NullString
 	if rows.Next() {
 		err = rows.Scan(&tgUserId, &tgUsername)
 		if err != nil {
 			return nil, err
 		}
-		user := &User{TgUserId: tgUserId, TgChatId: id, TgUsername: tgUsername}
+		if !tgUsername.Valid {
+			tgUsername.String = ""
+		}
+		user := &User{TgUserId: tgUserId, TgChatId: id, TgUsername: tgUsername.String}
 		USER_CACHE[id] = &UserCacheEntry{Value: user, Expiry: time.Now().Add(CACHE_VALIDITY)}
 		return user, nil
 	}
@@ -105,14 +108,14 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 	}
 	defer rows.Close()
 
-	var currency string
+	var currency sql.NullString
 	if rows.Next() {
 		err = rows.Scan(&currency)
 		if err != nil {
 			log.Printf("Encountered error while scanning user currency into var (user: %d): %s", m.Chat.ID, err.Error())
 		}
-		if currency != "" {
-			return currency
+		if currency.Valid && currency.String != "" {
+			return currency.String
 		}
 	}
 	return DEFAULT_CURRENCY
@@ -195,14 +198,14 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 	}
 	defer rows.Close()
 
-	var tag string
+	var tag sql.NullString
 	if rows.Next() {
 		err = rows.Scan(&tag)
 		if err != nil {
 			log.Printf("Encountered error while scanning user tag into var (user: %d): %s", m.Chat.ID, err.Error())
 		}
-		if tag != "" {
-			return tag
+		if tag.Valid && tag.String != "" {
+			return tag.String
 		}
 	}
 	return ""
