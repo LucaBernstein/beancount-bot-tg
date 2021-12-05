@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -26,6 +27,7 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
+	tz, _ := time.Now().Zone()
 	bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf("Usage help for /%s:\n\n/%s currency <c> - Change default currency"+
 		"\n\nTags will be added to each new transaction with a '#':\n"+
 		"\n/%s tag - Get currently set tag"+
@@ -34,8 +36,8 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 		"\n\nCreate a schedule to be notified of open transactions (i.e. not archived or deleted):\n"+
 		"\n/%s notify - Get current notification status"+
 		"\n/%s notify off - Disable reminder notifications"+
-		"\n/%s notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day",
-		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG))
+		"\n/%s notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day (%s)",
+		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, tz))
 }
 
 func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
@@ -89,6 +91,7 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 }
 
 func (bc *BotController) configHandleNotification(m *tb.Message, params ...string) {
+	var tz, _ = time.Now().Zone()
 	if len(params) == 0 {
 		// GET schedule
 		daysDelay, hour, err := bc.Repo.UserGetNotificationSetting(m)
@@ -104,7 +107,7 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 		if daysDelay == 1 {
 			plural_s = ""
 		}
-		bc.Bot.Send(m.Sender, fmt.Sprintf("The bot will notify you daily at hour %d if transactions are open for more than %d day%s", hour, daysDelay, plural_s))
+		bc.Bot.Send(m.Sender, fmt.Sprintf("The bot will notify you daily at hour %d (%s) if transactions are open for more than %d day%s", hour, tz, daysDelay, plural_s))
 		return
 	} else if len(params) == 1 {
 		// DELETE schedule
