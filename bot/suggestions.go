@@ -2,7 +2,6 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -94,7 +93,7 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
-	log.Printf("(C%d): About to remove suggestion of type '%s' and value '%s'", m.Chat.ID, p.T, p.Value)
+	bc.Logf(TRACE, m, "About to remove suggestion of type '%s' and value '%s'", p.T, p.Value)
 	res, err := bc.Repo.DeleteCacheEntries(m, p.T, p.Value)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Error encountered while removing suggestion: "+err.Error())

@@ -2,13 +2,14 @@ package migrations
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"strconv"
+
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 )
 
 func Migrate(db *sql.DB) {
-	fmt.Println("DB schema before migrations:", schema(db))
+	helpers.LogLocalf(helpers.INFO, nil, "DB schema before migrations: %d", schema(db))
 
 	migrationWrapper(v1, 1)(db)
 	migrationWrapper(v2, 2)(db)
@@ -17,7 +18,7 @@ func Migrate(db *sql.DB) {
 	migrationWrapper(v5, 5)(db)
 	migrationWrapper(v6, 6)(db)
 
-	fmt.Println("Migrations ran through. Schema version:", schema(db))
+	helpers.LogLocalf(helpers.INFO, nil, "Migrations ran through. Schema version: %d", schema(db))
 }
 
 type MigrationFn func(*sql.Tx)
@@ -28,7 +29,7 @@ func migrationWrapper(migrationFn MigrationFn, thisVersion int) MigrationFnTx {
 		if schema(db) >= thisVersion {
 			return
 		}
-		fmt.Println("Performing schema upgrade to version", thisVersion)
+		helpers.LogLocalf(helpers.INFO, nil, "Performing schema upgrade to version %d", thisVersion)
 		tx, err := db.Begin()
 		if err != nil {
 			log.Fatalf("Could not start transaction: %v", err)
@@ -39,7 +40,7 @@ func migrationWrapper(migrationFn MigrationFn, thisVersion int) MigrationFnTx {
 		setSchemaVersion(tx, thisVersion)
 		err = tx.Commit()
 		if err != nil {
-			log.Fatalf("Could not commit migration transaction to version %v: %v", thisVersion, err)
+			log.Fatalf("Could not commit migration transaction to version %d: %s", thisVersion, err.Error())
 		}
 	}
 }

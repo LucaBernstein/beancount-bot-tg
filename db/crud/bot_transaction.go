@@ -1,6 +1,9 @@
 package crud
 
-import "log"
+import (
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	tb "gopkg.in/tucnak/telebot.v2"
+)
 
 func (r *Repo) RecordTransaction(chatId int64, tx string) error {
 	_, err := r.db.Exec(`
@@ -9,13 +12,13 @@ func (r *Repo) RecordTransaction(chatId int64, tx string) error {
 	return err
 }
 
-func (r *Repo) GetTransactions(chatId int64, isArchived bool) (string, error) {
-	log.Printf("Getting transactions for %d", chatId)
+func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) (string, error) {
+	LogDbf(r, helpers.TRACE, m, "Getting transactions")
 	rows, err := r.db.Query(`
 		SELECT "value" FROM "bot::transaction"
 		WHERE "tgChatId" = $1 AND "archived" = $2
 		ORDER BY "created" ASC
-	`, chatId, isArchived)
+	`, m.Chat.ID, isArchived)
 	if err != nil {
 		return "", err
 	}
@@ -34,19 +37,19 @@ func (r *Repo) GetTransactions(chatId int64, isArchived bool) (string, error) {
 	return allTransactionsMessage, nil
 }
 
-func (r *Repo) ArchiveTransactions(chatId int64) error {
-	log.Printf("Archiving transactions for %d", chatId)
+func (r *Repo) ArchiveTransactions(m *tb.Message) error {
+	LogDbf(r, helpers.TRACE, m, "Archiving transactions")
 	_, err := r.db.Exec(`
 		UPDATE "bot::transaction"
 		SET "archived" = TRUE
-		WHERE "tgChatId" = $1`, chatId)
+		WHERE "tgChatId" = $1`, m.Chat.ID)
 	return err
 }
 
-func (r *Repo) DeleteTransactions(chatId int64) error {
-	log.Printf("Permanently deleting transactions for %d", chatId)
+func (r *Repo) DeleteTransactions(m *tb.Message) error {
+	LogDbf(r, helpers.TRACE, m, "Permanently deleting transactions")
 	_, err := r.db.Exec(`
 		DELETE FROM "bot::transaction"
-		WHERE "tgChatId" = $1`, chatId)
+		WHERE "tgChatId" = $1`, m.Chat.ID)
 	return err
 }

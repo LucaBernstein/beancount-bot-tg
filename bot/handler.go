@@ -20,14 +20,15 @@ func CreateBot(bc *BotController) IBot {
 		// TODO: Start goroutine to update data?
 		err := bc.Repo.EnrichUserData(upd.Message)
 		if err != nil {
-			log.Printf("Error encountered in middlewarePoller: %s", err.Error())
+			bc.Logf(ERROR, nil, "Error encountered in middlewarePoller: %s", err.Error())
 		}
 		return true
 	})
 
 	b, err := tb.NewBot(tb.Settings{
-		Token:  botToken,
-		Poller: userGuardPoller,
+		Token:    botToken,
+		Poller:   userGuardPoller,
+		Reporter: func(e error) { bc.Logf(WARN, nil, "%s", e.Error()) },
 	})
 	if err != nil {
 		log.Fatal(err)

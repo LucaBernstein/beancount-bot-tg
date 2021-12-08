@@ -21,18 +21,18 @@ func PostgresConnection() *sql.DB {
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
-	log.Print("Opening db (postgres) connection...")
+	helpers.LogLocalf(helpers.TRACE, nil, "Opening db (postgres) connection...")
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Print("Pinging database (postgres)...")
+	helpers.LogLocalf(helpers.TRACE, nil, "Pinging database (postgres)...")
 	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Print("Successfully connected to database (postgres)")
+	helpers.LogLocalf(helpers.TRACE, nil, "Successfully connected to database (postgres)")
 
 	migrations.Migrate(db)
 

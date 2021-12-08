@@ -2,7 +2,6 @@ package crud
 
 import (
 	"database/sql"
-	"log"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -48,14 +47,14 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 
 func (r *Repo) GetCacheHints(m *tb.Message, key string) ([]string, error) {
 	if _, exists := CACHE_LOCAL[m.Chat.ID]; !exists {
-		log.Printf("No cached data found for current chat %d. Will fill cache first.", m.Chat.ID)
+		LogDbf(r, helpers.TRACE, m, "No cached data found for chat. Will fill cache first.")
 		err := r.FillCache(m)
 		if err != nil {
 			return nil, err
 		}
 	}
 	cacheData := CACHE_LOCAL[m.Chat.ID][key]
-	log.Printf("Got cached data for chat '%d', key '%s': %v", m.Chat.ID, key, cacheData)
+	LogDbf(r, helpers.TRACE, m, "Got cached data for chat, key '%s': %v", key, cacheData)
 	return cacheData, nil
 }
 
@@ -84,7 +83,7 @@ func (r *Repo) FillCache(m *tb.Message) error {
 		cache[key] = append(cache[key], value)
 	}
 	CACHE_LOCAL[m.Chat.ID] = cache
-	log.Printf("Filled cache for chat %d: %v", m.Chat.ID, cache)
+	LogDbf(r, helpers.TRACE, m, "Filled cache for chat: %v", cache)
 	return nil
 }
 

@@ -2,7 +2,6 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -52,12 +51,12 @@ func (bc *BotController) AddBotAndStart(b IBot) {
 
 	b.Handle(tb.OnText, bc.handleTextState)
 
-	log.Printf("Starting bot '%s'", b.Me().Username)
+	bc.Logf(TRACE, nil, "Starting bot '%s'", b.Me().Username)
 
 	if bc.CronScheduler != nil {
 		bc.CronScheduler.StartAsync()
 	} else {
-		log.Print("Warning: No cron scheduler has been attached!")
+		bc.Logf(WARN, nil, "No cron scheduler has been attached!")
 	}
 	b.Start() // Blocking
 }
@@ -95,7 +94,7 @@ func (bc *BotController) commandMappings() []*CMD {
 }
 
 func (bc *BotController) commandStart(m *tb.Message) {
-	log.Printf("Received start command from %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
+	bc.Logf(TRACE, m, "Start command")
 	bc.Bot.Send(m.Sender, "Welcome to this beancount bot!\n"+
 		"You can find more information in the repository under "+
 		"https://github.com/LucaBernstein/beancount-bot-tg\n\n"+
@@ -105,7 +104,7 @@ func (bc *BotController) commandStart(m *tb.Message) {
 }
 
 func (bc *BotController) commandHelp(m *tb.Message) {
-	log.Printf("Sending help to %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
+	bc.Logf(TRACE, m, "Sending help")
 	helpMsg := ""
 	adminCommands := []*CMD{}
 	for i, cmd := range bc.commandMappings() {
@@ -137,7 +136,7 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 func (bc *BotController) commandCancel(m *tb.Message) {
 	tx := bc.State.Get(m)
 	isInTx := tx != nil
-	log.Printf("Clearing state for %s (ChatID: %d). Was in tx? %t", m.Chat.Username, m.Chat.ID, isInTx)
+	bc.Logf(TRACE, m, "Clearing state. Was in tx? %t", isInTx)
 
 	bc.State.Clear(m)
 
@@ -154,7 +153,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 		bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.", clearKeyboard())
 		return
 	}
-	log.Printf("Creating simple transaction for %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
+	bc.Logf(TRACE, m, "Creating simple transaction")
 	bc.Bot.Send(m.Sender, "In the following steps we will create a simple transaction. "+
 		"I will guide you through.\n\n",
 		clearKeyboard(),
@@ -171,13 +170,14 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 }
 
 func (bc *BotController) commandList(m *tb.Message) {
+	bc.Logf(TRACE, m, "Listing transactions")
 	command := strings.Split(m.Text, " ")
 	if len(command) == 2 && command[1] != "archived" {
 		bc.Bot.Send(m.Sender, fmt.Sprintf("Your parameter after %s could not be recognized. Please try again with '/list' or '/list archived'.", command[0]), clearKeyboard())
 		return
 	}
 	isArchived := len(command) == 2 && command[1] == "archived"
-	tx, err := bc.Repo.GetTransactions(m.Chat.ID, isArchived)
+	tx, err := bc.Repo.GetTransactions(m, isArchived)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
 		return
@@ -191,7 +191,8 @@ func (bc *BotController) commandList(m *tb.Message) {
 }
 
 func (bc *BotController) commandArchiveTransactions(m *tb.Message) {
-	err := bc.Repo.ArchiveTransactions(m.Chat.ID)
+	bc.Logf(TRACE, m, "Archiving transactions")
+	err := bc.Repo.ArchiveTransactions(m)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Something went wrong archiving your transactions: "+err.Error())
 		return
@@ -204,7 +205,8 @@ func (bc *BotController) commandDeleteTransactions(m *tb.Message) {
 		bc.Bot.Send(m.Sender, fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
 		return
 	}
-	err := bc.Repo.DeleteTransactions(m.Chat.ID)
+	bc.Logf(TRACE, m, "Deleting transactions")
+	err := bc.Repo.DeleteTransactions(m)
 	if err != nil {
 		bc.Bot.Send(m.Sender, "Something went wrong deleting your transactions: "+err.Error())
 		return
@@ -234,10 +236,10 @@ func (bc *BotController) cronInfo() string {
 }
 
 func (bc *BotController) cronNotifications() {
-	log.Print("Running notifications job.")
+	bc.Logf(INFO, nil, "Running notifications job.")
 	rows, err := bc.Repo.GetUsersToNotify()
 	if err != nil {
-		log.Printf("Error getting users to notify: %s", err.Error())
+		bc.Logf(ERROR, nil, "Error getting users to notify: %s", err.Error())
 	}
 
 	var (
@@ -247,10 +249,10 @@ func (bc *BotController) cronNotifications() {
 	for rows.Next() {
 		err = rows.Scan(&tgChatId, &openCount)
 		if err != nil {
-			log.Printf("Error occurred extracting tgChatId to send open tx notification to: %s", err.Error())
+			bc.Logf(ERROR, nil, "Error occurred extracting tgChatId to send open tx notification to: %s", err.Error())
 			continue
 		}
-		log.Printf("Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
+		bc.Logf(TRACE, nil, "Sending notification for %d open transaction(s) to %s", openCount, tgChatId)
 		s := "s"
 		if openCount == 1 {
 			s = ""
@@ -261,7 +263,7 @@ func (bc *BotController) cronNotifications() {
 				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s))
 	}
 
-	log.Print(bc.cronInfo())
+	bc.Logf(TRACE, nil, bc.cronInfo())
 }
 
 type ReceiverImpl struct {
@@ -275,7 +277,7 @@ func (r ReceiverImpl) Recipient() string {
 func (bc *BotController) commandAdminCronInfo(m *tb.Message) {
 	isAdmin := bc.Repo.UserIsAdmin(m)
 	if !isAdmin {
-		log.Printf("Received admin command from non-admin user (%s, %d). Ignoring (treating as normal text input).", m.Chat.Username, m.Chat.ID)
+		bc.Logf(WARN, m, "Received admin command from non-admin user. Ignoring (treating as normal text input).")
 		bc.handleTextState(m)
 		return
 	}
@@ -285,7 +287,7 @@ func (bc *BotController) commandAdminCronInfo(m *tb.Message) {
 func (bc *BotController) commandAdminNofify(m *tb.Message) {
 	isAdmin := bc.Repo.UserIsAdmin(m)
 	if !isAdmin {
-		log.Printf("Received admin command from non-admin user (%s, %d). Ignoring (treating as normal text input).", m.Chat.Username, m.Chat.ID)
+		bc.Logf(WARN, m, "Received admin command from non-admin user. Ignoring (treating as normal text input).")
 		bc.handleTextState(m)
 		return
 	}
@@ -320,7 +322,7 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 
 	for _, recipient := range receivers {
 		bc.Bot.Send(ReceiverImpl{chatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
-		log.Printf("Sent notification to %s", recipient)
+		bc.Logf(TRACE, m, "Sent notification to %s", recipient)
 		// TODO: Add message like 'If you don't want to receive further service notifications, you can turn them off in the /settings with '/settings notif off'.'
 		//  GitHub-issue: #28
 	}
@@ -329,31 +331,32 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 func (bc *BotController) handleTextState(m *tb.Message) {
 	tx := bc.State.Get(m)
 	if tx == nil {
-		log.Printf("Received text without having any prior state from %s (ChatID: %d)", m.Chat.Username, m.Chat.ID)
+		bc.Logf(WARN, m, "Received text without having any prior state")
 		bc.Bot.Send(m.Sender, fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		return
 	}
 	err := tx.Input(m)
 	if err != nil {
+		bc.Logf(WARN, m, "Invalid text state input: '%s'. Err: %s", m.Text, err.Error())
 		bc.Bot.Send(m.Sender, "Your last input seems to have not worked.\n"+
 			fmt.Sprintf("(Error: %s)\n", err.Error())+
 			"Please try again.",
 		)
 	}
-	log.Printf("New data state for %s (ChatID: %d) is %v. (Last input was '%s')", m.Chat.Username, m.Chat.ID, tx.Debug(), m.Text)
+	bc.Logf(TRACE, m, "New data state is %v. (Last input was '%s')", tx.Debug(), m.Text)
 	if tx.IsDone() {
 		currency := bc.Repo.UserGetCurrency(m)
 		tag := bc.Repo.UserGetTag(m)
 		transaction, err := tx.FillTemplate(currency, tag)
 		if err != nil {
-			log.Printf("Something went wrong while templating the transaction: " + err.Error())
+			bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
 			bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
 			return
 		}
 
 		err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
 		if err != nil {
-			log.Printf("Something went wrong while recording your transaction: " + err.Error())
+			bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
 			bc.Bot.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
 			return
 		}
@@ -361,7 +364,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 		// TODO: Goroutine
 		err = bc.Repo.PutCacheHints(m, tx.DataKeys())
 		if err != nil {
-			log.Printf("Something went wrong while caching transaction. Error: %s", err.Error())
+			bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
 			// Don't return, instead continue flow (if recording was successful)
 		}
 
@@ -378,7 +381,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	}
 	hint := tx.NextHint(bc.Repo, m)
 	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
-	log.Printf("Sending hints for next step: %v", hint.KeyboardOptions)
+	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
 	bc.Bot.Send(m.Sender, hint.Prompt, replyKeyboard)
 }
 
