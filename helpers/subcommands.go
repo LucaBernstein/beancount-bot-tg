@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -33,12 +32,12 @@ func (sh *SubcommandHandler) SetSeparator(sep string) *SubcommandHandler {
 
 func (sh *SubcommandHandler) Add(command string, handler handlerFunc) *SubcommandHandler {
 	if strings.Contains(command, sh.separator) {
-		log.Printf("Warning: subcommand '%s' contains a space. This most probably won't work with set separator '%s'",
+		LogLocalf(WARN, nil, "Subcommand '%s' contains a space. This most probably won't work with set separator '%s'",
 			command, sh.separator)
 	}
 	_, exists := sh.mappings[command]
 	if exists {
-		log.Printf("Warning: subcommand '%s' already exists. Will ignore remapping.", command)
+		LogLocalf(WARN, nil, "Subcommand '%s' already exists. Will ignore remapping.", command)
 	}
 	sh.mappings[command] = handler
 	return sh
@@ -78,7 +77,6 @@ func (sh *SubcommandHandler) Handle(m *tb.Message) error {
 			parameters = append(parameters, strings.Split(e, " ")...)
 		}
 	}
-	log.Print(parameters)
 	fn(m, parameters...)
 	return nil
 }

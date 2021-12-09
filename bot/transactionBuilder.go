@@ -2,7 +2,6 @@ package bot
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -44,10 +43,10 @@ func HandleFloat(m *tb.Message) (string, error) {
 		return "", err
 	}
 	if v < 0 {
-		log.Print("Got negative value. Inverting.")
+		c.LogLocalf(INFO, nil, "Got negative value. Inverting.")
 		v *= -1
 	}
-	log.Printf("Handled float: '%s' -> %f", m.Text, v)
+	c.LogLocalf(TRACE, nil, "Handled float: '%s' -> %f", m.Text, v)
 	return input, nil
 }
 
@@ -130,14 +129,14 @@ func (tx *SimpleTx) Input(m *tb.Message) (err error) {
 
 func (tx *SimpleTx) NextHint(r *crud.Repo, m *tb.Message) *Hint {
 	if tx.step > len(tx.steps)-1 {
-		log.Printf("During extraction of next hint an error ocurred: step exceeds max index.")
+		crud.LogDbf(r, TRACE, m, "During extraction of next hint an error ocurred: step exceeds max index.")
 		return nil
 	}
 	return tx.EnrichHint(r, m, tx.stepDetails[tx.steps[tx.step]])
 }
 
 func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
-	log.Printf("Enriching hint (%s).", i.key)
+	crud.LogDbf(r, TRACE, m, "Enriching hint (%s).", i.key)
 	if i.key == "description" {
 		return tx.hintDescription(r, m, i.hint)
 	}
@@ -151,7 +150,7 @@ func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
 }
 
 func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
-	log.Printf("Enriching hint: account (key=%s)", i.key)
+	crud.LogDbf(r, TRACE, m, "Enriching hint: account (key=%s)", i.key)
 	var (
 		res []string = nil
 		err error    = nil
@@ -162,7 +161,7 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 		res, err = r.GetCacheHints(m, c.STX_ACCT)
 	}
 	if err != nil {
-		log.Printf("Error occurred getting cached hint (hintAccount): %s", err.Error())
+		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (hintAccount): %s", err.Error())
 		return i.hint
 	}
 	i.hint.KeyboardOptions = res
@@ -172,7 +171,7 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
 	res, err := r.GetCacheHints(m, c.STX_DESC)
 	if err != nil {
-		log.Printf("Error occurred getting cached hint (hintDescription): %s", err.Error())
+		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (hintDescription): %s", err.Error())
 	}
 	h.KeyboardOptions = res
 	return h

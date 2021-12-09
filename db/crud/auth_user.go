@@ -3,10 +3,10 @@ package crud
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -24,14 +24,14 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 		return err
 	}
 	if ce == nil {
-		log.Printf("Creating user for the first time in the 'auth::user' db table: {chatId: %d, userId: %d, username: %s}", tgChatId, tgUserId, tgUsername)
+		LogDbf(r, helpers.TRACE, m, "Creating user for the first time in the 'auth::user' db table")
 		_, err := r.db.Exec(`INSERT INTO "auth::user" ("tgChatId", "tgUserId", "tgUsername")
 			VALUES ($1, $2, $3);`, tgChatId, tgUserId, tgUsername)
 		return err
 	}
 	// Check whether some changeable attributes differ
 	if ce.TgUsername != m.Sender.Username {
-		log.Printf("Updating attributes of user in table 'auth::user': {chatId: %d, userId: %d, username: %s}", tgChatId, tgUserId, tgUsername)
+		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user'")
 		_, err := r.db.Exec(`UPDATE "auth::user" SET "tgUserId" = $2, "tgUsername" = $3 WHERE "tgChatId" = $1`, tgChatId, tgUserId, tgUsername)
 		return err
 	}
@@ -104,7 +104,7 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID)
 	if err != nil {
-		log.Printf("Encountered error while getting user currency (user: %d): %s", m.Chat.ID, err.Error())
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user currency: %s", err.Error())
 	}
 	defer rows.Close()
 
@@ -112,7 +112,7 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 	if rows.Next() {
 		err = rows.Scan(&currency)
 		if err != nil {
-			log.Printf("Encountered error while scanning user currency into var (user: %d): %s", m.Chat.ID, err.Error())
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user currency into var: %s", err.Error())
 		}
 		if currency.Valid && currency.String != "" {
 			return currency.String
@@ -128,7 +128,7 @@ func (r *Repo) UserIsAdmin(m *tb.Message) bool {
 		WHERE "tgChatId" = $1 AND "tgUserId" = "tgChatId" -- is a private chat
 	`, m.Chat.ID)
 	if err != nil {
-		log.Printf("Encountered error while getting user currency (user: %d): %s", m.Chat.ID, err.Error())
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user currency: %s", err.Error())
 	}
 	defer rows.Close()
 
@@ -136,7 +136,7 @@ func (r *Repo) UserIsAdmin(m *tb.Message) bool {
 	if rows.Next() {
 		err = rows.Scan(&isAdmin)
 		if err != nil {
-			log.Printf("Encountered error while scanning user isAdmin into var (user: %d): %s", m.Chat.ID, err.Error())
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user isAdmin into var: %s", err.Error())
 			return false
 		}
 	}
@@ -155,14 +155,14 @@ func (r *Repo) IndividualsWithNotifications(myChatId int64, chatId string) (reci
 	if chatId != "" {
 		i, err := strconv.ParseInt(chatId, 10, 64)
 		if err != nil {
-			log.Printf("Error while parsing chatId to int64: %s", err.Error())
+			LogDbf(r, helpers.ERROR, nil, "Error while parsing chatId to int64: %s", err.Error())
 		}
 		query += `AND "tgChatId" = $2`
 		params = append(params, i)
 	}
 	rows, err := r.db.Query(query, params...)
 	if err != nil {
-		log.Printf("Encountered error while getting user currency: %s", err.Error())
+		LogDbf(r, helpers.ERROR, nil, "Encountered error while getting user currency: %s", err.Error())
 	}
 	defer rows.Close()
 
@@ -170,7 +170,7 @@ func (r *Repo) IndividualsWithNotifications(myChatId int64, chatId string) (reci
 	if rows.Next() {
 		err = rows.Scan(&rec)
 		if err != nil {
-			log.Printf("Encountered error while scanning into var: %s", err.Error())
+			LogDbf(r, helpers.ERROR, nil, "Encountered error while scanning into var: %s", err.Error())
 			return []string{}
 		}
 		recipients = append(recipients, rec)
@@ -194,7 +194,7 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID)
 	if err != nil {
-		log.Printf("Encountered error while getting user tag (user: %d): %s", m.Chat.ID, err.Error())
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user tag: %s", err.Error())
 	}
 	defer rows.Close()
 
@@ -202,7 +202,7 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 	if rows.Next() {
 		err = rows.Scan(&tag)
 		if err != nil {
-			log.Printf("Encountered error while scanning user tag into var (user: %d): %s", m.Chat.ID, err.Error())
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user tag into var: %s", err.Error())
 		}
 		if tag.Valid && tag.String != "" {
 			return tag.String
@@ -235,7 +235,7 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 		WHERE "tgChatId" = $1
 	`, m.Chat.ID)
 	if err != nil {
-		log.Printf("Encountered error while getting user notification setting (user: %d): %s", m.Chat.ID, err.Error())
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user notification setting: %s", err.Error())
 	}
 	defer rows.Close()
 
@@ -243,7 +243,7 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 	if rows.Next() {
 		err = rows.Scan(&delayHours, &hour)
 		if err != nil {
-			log.Printf("Encountered error while scanning user notification setting into var (user: %d): %s", m.Chat.ID, err.Error())
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user notification setting into var: %s", err.Error())
 		}
 		return delayHours / 24, hour, nil
 	}
