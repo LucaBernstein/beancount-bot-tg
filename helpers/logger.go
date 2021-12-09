@@ -30,10 +30,16 @@ func (l Level) String() string {
 	}
 }
 
-func LogLocalf(level Level, m *tb.Message, format string, v ...interface{}) string {
-	msg := fmt.Sprintf("[%s] %s%s", level, LogMessagePrefix(m), fmt.Sprintf(format, v...))
+func LogLocalf(level Level, m *tb.Message, format string, v ...interface{}) (prefix, message string) {
+	prefix = LogMessagePrefix(m)
+	prefixBrack := prefix
+	if prefix != "" {
+		prefixBrack = "[" + prefix + "] "
+	}
+	message = fmt.Sprintf(format, v...)
+	msg := fmt.Sprintf("[%s] %s%s", level, prefixBrack, message)
 	log.Print(msg)
-	return msg
+	return
 }
 
 func LogMessagePrefix(m *tb.Message) string {
@@ -43,7 +49,7 @@ func LogMessagePrefix(m *tb.Message) string {
 		if m.Sender == nil {
 			m.Sender = &tb.User{ID: -1}
 		}
-		prefix = fmt.Sprintf("[C%d/U%d] ", m.Chat.ID, m.Sender.ID)
+		prefix = fmt.Sprintf("C%d/U%d", m.Chat.ID, m.Sender.ID)
 	}
 	return prefix
 }
