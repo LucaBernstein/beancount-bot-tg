@@ -39,7 +39,7 @@ jobs:
         run: |
           docker build . -t ${{ env.IMAGE_NAME }}:${GITHUB_REF##*/} --build-arg VERSION=${GITHUB_REF##*/} --build-arg GIT_SHA=${GITHUB_SHA}
           # Only tag 'release' if REF startsWith 'v'
-          [[ ${GITHUB_REF##*/} = v* ]] && docker tag app ${{ env.IMAGE_NAME }}:release || echo "Not a release tag"
+          [[ ${GITHUB_REF##*/} = v* ]] && docker tag ${{ env.IMAGE_NAME }}:${GITHUB_REF##*/} ${{ env.IMAGE_NAME }}:release || echo "Not a release tag"
 
       - name: Push image
         if: github.event_name != 'pull_request'
