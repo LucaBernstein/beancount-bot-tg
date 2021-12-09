@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,8 @@ func (bc *BotController) configHandler(m *tb.Message) {
 	sc.
 		Add("currency", bc.configHandleCurrency).
 		Add("tag", bc.configHandleTag).
-		Add("notify", bc.configHandleNotification)
+		Add("notify", bc.configHandleNotification).
+		Add("about", bc.configHandleAbout)
 	err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
@@ -28,7 +30,9 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
 	tz, _ := time.Now().Zone()
-	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf("Usage help for /%s:\n\n/%s currency <c> - Change default currency"+
+	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf("Usage help for /%s:\n\n"+
+		"/%s currency <c> - Change default currency"+
+		"\n/%s about - Display the version this bot is running on"+
 		"\n\nTags will be added to each new transaction with a '#':\n"+
 		"\n/%s tag - Get currently set tag"+
 		"\n/%s tag off - Turn off tag"+
@@ -37,7 +41,7 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 		"\n/%s notify - Get current notification status"+
 		"\n/%s notify off - Disable reminder notifications"+
 		"\n/%s notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day (%s)",
-		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, tz))
+		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, tz))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -178,4 +182,28 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 		return
 	}
 	bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
+}
+
+func (bc *BotController) configHandleAbout(m *tb.Message, params ...string) {
+	if len(params) > 0 {
+		bc.configHelp(m, fmt.Errorf("no parameters expected"))
+		return
+	}
+	version := os.Getenv("VERSION")
+	versionLink := "https://github.com/LucaBernstein/beancount-bot-tg/releases/"
+	if strings.HasPrefix(version, "v") {
+		versionLink += "tag/" + version
+	}
+	if version == "" {
+		version = "not specified"
+	}
+	_, err := bc.Bot.Send(m.Sender, fmt.Sprintf(`Version information about [LucaBernstein/beancount\-bot\-tg](https://github.com/LucaBernstein/beancount\-bot\-tg)
+
+Version: [%s](%s)`,
+		version,
+		strings.ReplaceAll(versionLink, "-", "\\-"),
+	), tb.ModeMarkdownV2)
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
 }
