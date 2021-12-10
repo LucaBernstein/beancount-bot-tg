@@ -14,7 +14,7 @@ services:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
   app:
-    image: ghcr.io/lucabernstein/beancount-bot-tg:main
+    image: ghcr.io/lucabernstein/beancount-bot-tg:release
     container_name: bc_tg_bot
     restart: unless-stopped
     networks:

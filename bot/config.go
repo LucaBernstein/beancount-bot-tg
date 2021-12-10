@@ -197,13 +197,20 @@ func (bc *BotController) configHandleAbout(m *tb.Message, params ...string) {
 	if version == "" {
 		version = "not specified"
 	}
-	_, err := bc.Bot.Send(m.Sender, fmt.Sprintf(`Version information about [LucaBernstein/beancount\-bot\-tg](https://github.com/LucaBernstein/beancount\-bot\-tg)
+	_, err := bc.Bot.Send(m.Sender, escapeCharacters(fmt.Sprintf(`Version information about [LucaBernstein/beancount-bot-tg](https://github.com/LucaBernstein/beancount-bot-tg)
 
 Version: [%s](%s)`,
 		version,
-		strings.ReplaceAll(versionLink, "-", "\\-"),
-	), tb.ModeMarkdownV2)
+		versionLink,
+	), ".", "-"), tb.ModeMarkdownV2)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
+}
+
+func escapeCharacters(s string, c ...string) string {
+	for _, char := range c {
+		s = strings.ReplaceAll(s, char, "\\"+char)
+	}
+	return s
 }
