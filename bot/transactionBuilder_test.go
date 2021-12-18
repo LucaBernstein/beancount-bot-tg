@@ -38,7 +38,7 @@ func TestHandleFloat(t *testing.T) {
 }
 
 func TestTransactionBuilding(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"})
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"}, "")
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -63,7 +63,7 @@ func TestTransactionBuilding(t *testing.T) {
 }
 
 func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"})
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"}, "")
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -88,7 +88,7 @@ func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 }
 
 func TestTransactionBuildingWithDate(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"})
+	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"}, "")
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -118,7 +118,7 @@ func TestCountLeadingDigits(t *testing.T) {
 }
 
 func TestTaggedTransaction(t *testing.T) {
-	tx, _ := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"})
+	tx, _ := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"}, "")
 	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})   // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"}) // to

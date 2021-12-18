@@ -24,8 +24,8 @@ func (s *StateHandler) Get(m *tb.Message) Tx {
 	return s.states[(chatId)(m.Chat.ID)]
 }
 
-func (s *StateHandler) SimpleTx(m *tb.Message) (Tx, error) {
-	tx, err := CreateSimpleTx(m)
+func (s *StateHandler) SimpleTx(m *tb.Message, suggestedCur string) (Tx, error) {
+	tx, err := CreateSimpleTx(m, suggestedCur)
 	if err != nil {
 		return nil, err
 	}

@@ -173,7 +173,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
-	tx, err = bc.State.SimpleTx(m) // create new tx
+	tx, err = bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
 			"\n\nYou can create a simple transaction using this command: /simple [YYYY-MM-DD]\ne.g. /simple 2021-01-24\n"+

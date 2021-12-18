@@ -47,6 +47,10 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		WithArgs(chat.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
 	mock.
+		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
+	mock.
 		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
