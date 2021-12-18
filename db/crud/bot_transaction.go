@@ -12,7 +12,7 @@ func (r *Repo) RecordTransaction(chatId int64, tx string) error {
 	return err
 }
 
-func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) (string, error) {
+func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) ([]string, error) {
 	LogDbf(r, helpers.TRACE, m, "Getting transactions")
 	rows, err := r.db.Query(`
 		SELECT "value" FROM "bot::transaction"
@@ -20,19 +20,18 @@ func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) (string, error) {
 		ORDER BY "created" ASC
 	`, m.Chat.ID, isArchived)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer rows.Close()
 
-	SEP := "\n"
-	allTransactionsMessage := ""
+	allTransactionsMessage := []string{}
 	var transactionString string
 	for rows.Next() {
 		err = rows.Scan(&transactionString)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		allTransactionsMessage += transactionString + SEP
+		allTransactionsMessage = append(allTransactionsMessage, transactionString)
 	}
 	return allTransactionsMessage, nil
 }

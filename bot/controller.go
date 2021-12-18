@@ -209,7 +209,26 @@ func (bc *BotController) commandList(m *tb.Message) {
 		}
 		return
 	}
-	if tx == "" {
+	if tx == nil {
+		bc.Logf(ERROR, m, "Tx unexpectedly was nil")
+		return
+	}
+	SEP := "\n"
+	TG_MAX_MSG_CHAR_LEN := 4096
+	txMessages := []string{}
+	transactionsList := ""
+	for _, t := range tx {
+		if len(transactionsList)+len(t) >= TG_MAX_MSG_CHAR_LEN {
+			bc.Logf(TRACE, m, "Listed messages extend max message length. Splitting into multiple messages.")
+			txMessages = append(txMessages, transactionsList)
+			transactionsList = ""
+		}
+		transactionsList += t + SEP
+	}
+	if transactionsList != "" {
+		txMessages = append(txMessages, transactionsList)
+	}
+	if len(txMessages) == 0 {
 		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
 			"\nYou might also be looking for archived transactions using '/list archived'.", CMD_HELP), clearKeyboard())
 		if err != nil {
@@ -217,7 +236,9 @@ func (bc *BotController) commandList(m *tb.Message) {
 		}
 		return
 	}
-	_, err = bc.Bot.Send(m.Sender, tx, clearKeyboard())
+	for _, message := range txMessages {
+		_, err = bc.Bot.Send(m.Sender, message, clearKeyboard())
+	}
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
