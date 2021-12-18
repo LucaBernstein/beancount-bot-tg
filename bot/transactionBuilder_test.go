@@ -131,3 +131,14 @@ func TestTaggedTransaction(t *testing.T) {
 		t.Errorf("Tx did not contain tag: %s", template)
 	}
 }
+
+func TestParseAmount(t *testing.T) {
+	helpers.TestExpect(t, bot.ParseAmount(-1), "-1.00", "At least two decimal places should be present")
+	helpers.TestExpect(t, bot.ParseAmount(0), "0.00", "At least two decimal places should be present")
+	helpers.TestExpect(t, bot.ParseAmount(17), "17.00", "At least two decimal places should be present")
+	helpers.TestExpect(t, bot.ParseAmount(16.8), "16.80", "At least two decimal places should be present")
+	helpers.TestExpect(t, bot.ParseAmount(9.8), "9.80", "At least two decimal places should be present")
+
+	helpers.TestExpect(t, bot.ParseAmount(9.801), "9.801", "If higher precision is given, that should be applied")
+	helpers.TestExpect(t, bot.ParseAmount(17.3456), "17.3456", "If higher precision is given, that should be applied")
+}

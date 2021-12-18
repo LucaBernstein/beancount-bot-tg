@@ -210,14 +210,7 @@ func (tx *SimpleTx) FillTemplate(currency, tag string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var amountF string
-	if math.Remainder(f*100, 1.0) != 0 {
-		// float has more than 2 remainder digits (e.g. 17.234)
-		amountF = strings.TrimRight(fmt.Sprintf("%f", f), "0")
-	} else {
-		// at max 2 digits after the dot (e.g. 17.10)
-		amountF = fmt.Sprintf("%.2f", f)
-	}
+	amountF := ParseAmount(f)
 	// Add spaces
 	spacesNeeded := c.DOT_INDENT - (utf8.RuneCountInString(string(txRaw[c.STX_ACCF]))) // accFrom
 	spacesNeeded -= CountLeadingDigits(f)                                              // float length before point
@@ -242,6 +235,18 @@ func (tx *SimpleTx) FillTemplate(currency, tag string) (string, error) {
 		currency = amount[1]
 	}
 	return fmt.Sprintf(tpl, txRaw[c.STX_DATE], txRaw[c.STX_DESC], tagS, txRaw[c.STX_ACCF], addSpacesFrom, amountF, currency, txRaw[c.STX_ACCT]), nil
+}
+
+func ParseAmount(f float64) string {
+	var amountF string
+	if math.Abs(math.Remainder(f*100, 1.0)) >= 1e-12 {
+		// float has more than 2 remainder digits (e.g. 17.234)
+		amountF = strings.TrimRight(fmt.Sprintf("%f", f), "0")
+	} else {
+		// at max 2 digits after the dot (e.g. 17.10)
+		amountF = fmt.Sprintf("%.2f", f)
+	}
+	return amountF
 }
 
 func (tx *SimpleTx) Debug() string {
