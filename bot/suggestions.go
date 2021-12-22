@@ -8,6 +8,13 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+var (
+	suggestionsMenu    = &tb.ReplyMarkup{}
+	btnSuggListAccFrom = suggestionsMenu.Data("/suggestions list accFrom", "btnSuggestionsListAccFrom")
+	btnSuggListAccTo   = suggestionsMenu.Data("/suggestions list accTo", "btnSuggestionsListAccTo")
+	btnSuggListTxDesc  = suggestionsMenu.Data("/suggestions list txDesc", "btnSuggestionsListTxDesc")
+)
+
 func (bc *BotController) suggestionsHandler(m *tb.Message) {
 	sc := h.MakeSubcommandHandler("/"+CMD_SUGGEST, true)
 	sc.
@@ -26,12 +33,15 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
+
+	suggestionsMenu.Inline(suggestionsMenu.Row(btnSuggListAccFrom, btnSuggListAccTo, btnSuggListTxDesc))
+
 	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
 /suggestions rm <type> [value]
 
-Parameter <type> is one from: [%s]`, suggestionTypes))
+Parameter <type> is one from: [%s]`, suggestionTypes), suggestionsMenu)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}

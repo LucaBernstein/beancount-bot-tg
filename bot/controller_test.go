@@ -26,6 +26,9 @@ func (b *MockBot) Send(to tb.Recipient, what interface{}, options ...interface{}
 	b.AllLastSentWhat = append(b.AllLastSentWhat, what)
 	return nil, nil
 }
+func (b *MockBot) Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error {
+	return nil
+}
 func (b *MockBot) Me() *tb.User {
 	return &tb.User{Username: "Test bot"}
 }
