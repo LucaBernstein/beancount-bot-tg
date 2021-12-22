@@ -143,21 +143,20 @@ func (r *Repo) UserIsAdmin(m *tb.Message) bool {
 	return isAdmin
 }
 
-func (r *Repo) IndividualsWithNotifications(myChatId int64, chatId string) (recipients []string) {
+func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string) {
 	query := `
 		SELECT "tgChatId"
 		FROM "auth::user"
 		WHERE "tgUserId" = "tgChatId" -- is a private chat
-			AND "tgChatId" != $1
 	`
-	params := []interface{}{myChatId}
+	params := []interface{}{}
 
 	if chatId != "" {
 		i, err := strconv.ParseInt(chatId, 10, 64)
 		if err != nil {
 			LogDbf(r, helpers.ERROR, nil, "Error while parsing chatId to int64: %s", err.Error())
 		}
-		query += `AND "tgChatId" = $2`
+		query += `AND "tgChatId" = $1`
 		params = append(params, i)
 	}
 	rows, err := r.db.Query(query, params...)

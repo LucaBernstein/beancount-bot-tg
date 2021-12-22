@@ -420,7 +420,7 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 		target = command[1]
 	}
 
-	receivers := bc.Repo.IndividualsWithNotifications(m.Chat.ID, target)
+	receivers := bc.Repo.IndividualsWithNotifications(target)
 	if len(receivers) == 0 {
 		_, err := bc.Bot.Send(m.Sender, "No receivers found to send notification to (you being excluded).")
 		if err != nil {
