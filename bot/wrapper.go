@@ -9,6 +9,7 @@ type IBot interface {
 	Start()
 	Handle(endpoint interface{}, handler interface{})
 	Send(to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error)
+	Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error
 	// custom by me:
 	Me() *tb.User
 }
@@ -27,6 +28,10 @@ func (b *Bot) Handle(endpoint interface{}, handler interface{}) {
 
 func (b *Bot) Send(to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
 	return b.bot.Send(to, what, options...)
+}
+
+func (b *Bot) Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error {
+	return b.bot.Respond(c, resp...)
 }
 
 func (b *Bot) Me() *tb.User {
