@@ -24,4 +24,6 @@ WORKDIR /
 
 COPY --from=builder /src/app /bin/app
 
+EXPOSE 8081
+
 ENTRYPOINT [ "/bin/app" ]
