@@ -28,25 +28,25 @@ func MonitoringEndpoint(bc *bot.BotController) func(w http.ResponseWriter, r *ht
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := gatherMetrics(bc)
 		fmt.Fprintf(w, `
-# HELP logs_daily Count of logs of specified type in the previous 24h
-# TYPE logs_daily gauge
-logs_daily{level="error"} %d
-logs_daily{level="warning"} %d
+# HELP bc_bot_logs_daily Count of logs of specified type in the previous 24h
+# TYPE bc_bot_logs_daily gauge
+bc_bot_logs_daily{level="error"} %d
+bc_bot_logs_daily{level="warning"} %d
 
-# HELP transactions_count Count of transactions in the database per status
-# TYPE transactions_count gauge
-transactions_count{type="open"} %d
-transactions_count{type="archived"} %d
+# HELP bc_bot_transactions_count Count of transactions in the database per status
+# TYPE bc_bot_transactions_count gauge
+bc_bot_transactions_count{type="open"} %d
+bc_bot_transactions_count{type="archived"} %d
 
-# HELP users_count Count of unique users by user ID in the database
-# TYPE users_count gauge
-users_count %d
+# HELP bc_bot_users_count Count of unique users by user ID in the database
+# TYPE bc_bot_users_count gauge
+bc_bot_users_count %d
 
-# HELP cache_entries Count of cache entries per type
-# TYPE cache_entries gauge
-cache_entries{type="accTo"} %d
-cache_entries{type="accFrom"} %d
-cache_entries{type="txDesc"} %d
+# HELP bc_bot_cache_entries Count of cache entries per type
+# TYPE bc_bot_cache_entries gauge
+bc_bot_cache_entries{type="accTo"} %d
+bc_bot_cache_entries{type="accFrom"} %d
+bc_bot_cache_entries{type="txDesc"} %d
 		`,
 			m.logs_daily_error,
 			m.logs_daily_warning,
