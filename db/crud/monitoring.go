@@ -13,6 +13,7 @@ func (r *Repo) HealthGetLogs(lastHours int) (errors int, warnings int, err error
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	var (
 		level int
 		count int
@@ -37,6 +38,7 @@ func (r *Repo) HealthGetTransactions() (open int, archived int, err error) {
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	var (
 		isArchived bool
 		count      int
@@ -59,6 +61,7 @@ func (r *Repo) HealthGetUserCount() (count int, err error) {
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	if rows.Next() {
 		rows.Scan(&count)
 	}
@@ -73,6 +76,7 @@ func (r *Repo) HealthGetCacheStats() (accTo int, accFrom int, txDesc int, err er
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 	var (
 		t     string
 		count int

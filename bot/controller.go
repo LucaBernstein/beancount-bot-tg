@@ -335,6 +335,7 @@ func (bc *BotController) cronNotifications() {
 	if err != nil {
 		bc.Logf(ERROR, nil, "Error getting users to notify: %s", err.Error())
 	}
+	defer rows.Close()
 
 	var (
 		tgChatId  string
