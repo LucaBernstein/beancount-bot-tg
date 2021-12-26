@@ -7,6 +7,7 @@ import (
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/go-co-op/gocron"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -91,6 +92,7 @@ const (
 	CMD_HELP        = "help"
 	CMD_CANCEL      = "cancel"
 	CMD_SIMPLE      = "simple"
+	CMD_COMMENT     = "comment"
 	CMD_LIST        = "list"
 	CMD_ARCHIVE_ALL = "archiveAll"
 	CMD_DELETE_ALL  = "deleteAll"
@@ -107,6 +109,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
 		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today", Optional: "YYYY-MM-DD"},
+		{Command: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: "archived"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{Command: CMD_CONFIG, Handler: bc.commandConfig, Help: "Bot configurations"},
@@ -184,7 +187,7 @@ func (bc *BotController) commandCancel(m *tb.Message) {
 func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	tx := bc.State.Get(m)
 	if tx != nil {
-		_, err := bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.", clearKeyboard())
+		_, err := bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -210,6 +213,41 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	}
 	hint := tx.NextHint(bc.Repo, m) // get first hint
 	_, err = bc.Bot.Send(m.Sender, hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+}
+
+func (bc *BotController) commandAddComment(m *tb.Message) {
+	if bc.State.Get(m) != nil {
+		bc.Logf(INFO, m, "commandAddComment while in another transaction")
+		_, err := bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.")
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	remainingCommand := strings.TrimPrefix(strings.TrimLeft(m.Text, ""), "/"+CMD_COMMENT)
+	remainingSplits := helpers.SplitQuotedCommand(remainingCommand)
+	if len(remainingSplits) != 1 {
+		bc.Logf(INFO, m, "commandAddComment: extracting comment value failed for '%s'", remainingCommand)
+		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Please use this command like this:\n/%s \"<comment to add>\"", CMD_COMMENT))
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	comment := remainingSplits[0]
+	err := bc.Repo.RecordTransaction(m.Chat.ID, comment)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while recording the comment: "+err.Error())
+		_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	_, err = bc.Bot.Send(m.Sender, "Successfully added the comment to your transaction /list", clearKeyboard())
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}

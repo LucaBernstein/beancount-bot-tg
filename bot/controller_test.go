@@ -39,6 +39,7 @@ func (b *MockBot) reset() {
 // GitHub-Issue #16: Panic if plain message without state arrives
 func TestTextHandlingWithoutPriorState(t *testing.T) {
 	// create test dependencies
+	crud.TEST_MODE = true
 	chat := &tb.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -165,6 +166,33 @@ func TestTransactionListMaxLength(t *testing.T) {
 	}
 	if bot.LastSentWhat != strings.Repeat("**********", 100)+"\n" {
 		t.Errorf("Expected last message to contain last transaction as it flowed over the first message: %v", bot.LastSentWhat)
+	}
+}
+
+func TestWritingComment(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	mock.
+		ExpectExec(`INSERT INTO "bot::transaction"`).
+		WithArgs(chat.ID, "; This is a comment").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/comment \"; This is a comment\""})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
+		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
 

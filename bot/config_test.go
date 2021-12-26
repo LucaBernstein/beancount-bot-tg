@@ -7,11 +7,13 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 func TestConfigCurrency(t *testing.T) {
 	// Test dependencies
+	crud.TEST_MODE = true
 	chat := &tb.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {

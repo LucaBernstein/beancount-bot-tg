@@ -25,6 +25,7 @@ func logToDb(r *Repo, chat string, level helpers.Level, message string) {
 		_, err := r.db.Exec(`INSERT INTO "app::log" ("level", "message", "chat") VALUES ($1, $2, $3)`, values...)
 		if err != nil {
 			helpers.LogLocalf(helpers.ERROR, nil, "Error inserting log statement into db: %s", err.Error())
+			log.Fatal("Logging to database was not possible.")
 		}
 	} else {
 		log.Printf("DB LOGGER IS IN TEST MODE")
