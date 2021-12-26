@@ -50,3 +50,19 @@ func TestSubcommandHelper(t *testing.T) {
 	state.testCase(t, sh, "base subcommand \"single arg\" multi arg", false, []string{"single arg", "multi", "arg"})
 	state.testCase(t, sh, "base notregistered subcommand", true, nil)
 }
+
+func TestSplitQuotedCommand(t *testing.T) {
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`something`), []string{"something"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command`), []string{"/command"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`  /command  `), []string{"/command"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`  /command  anotherone `), []string{"/command", "anotherone"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command "anotherone"`), []string{"/command", "anotherone"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command "is quoted" non-quoted and sep`), []string{"/command", "is quoted", "non-quoted", "and", "sep"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello"world"`), []string{"/command", "helloworld"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello "world"`), []string{"/command", "hello", "world"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello" world"`), []string{"/command", "hello world"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command "wrongly quoted`), []string{}, "quotes opened but not closed")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command \"correctly quoted`), []string{"/command", "\"correctly", "quoted"}, "quotes opened but not closed")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello\ world`), []string{"/command", "hello world"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`"onlyquoted"`), []string{"onlyquoted"}, "")
+}

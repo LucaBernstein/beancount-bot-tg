@@ -60,22 +60,10 @@ func (sh *SubcommandHandler) Handle(m *tb.Message) error {
 		return nil
 	}
 
-	// More than just subcommand is left.
-	// Split by \" and interpret place odd as unquoted and even as quoted
-	// e.g. 'a b "c d" e f'
 	remainingCommand := strings.TrimSpace(strings.TrimPrefix(commandRemainder, subcommand))
-	parameters = []string{}
-	params := strings.Split(remainingCommand, "\"")
-	for i, e := range params {
-		e = strings.TrimSpace(e)
-		if e == "" {
-			continue
-		}
-		if (i+1)%2 == 0 { // Even: Quoted
-			parameters = append(parameters, e)
-		} else { // Odd: Unquoted
-			parameters = append(parameters, strings.Split(e, " ")...)
-		}
+	parameters = SplitQuotedCommand(remainingCommand)
+	if ArraysEqual(parameters, []string{}) {
+		return fmt.Errorf("this remainingCommand could not be split: '%s'", remainingCommand)
 	}
 	fn(m, parameters...)
 	return nil
@@ -98,4 +86,41 @@ func ExtractTypeValue(params ...string) (*TV, error) {
 		e.Value = params[1]
 	}
 	return e, nil
+}
+
+func SplitQuotedCommand(s string) (res []string) {
+	isEscaped := false
+	isQuoted := false
+	split := ""
+	for _, c := range s {
+		if isEscaped {
+			isEscaped = false
+			split += string(c)
+			continue
+		}
+		if c == '\\' {
+			isEscaped = true
+			continue
+		}
+		if c == '"' {
+			isQuoted = !isQuoted
+			continue
+		}
+		if c == ' ' && !isQuoted {
+			if split == "" {
+				continue
+			}
+			res = append(res, split)
+			split = ""
+			continue
+		}
+		split += string(c)
+	}
+	if split != "" {
+		res = append(res, split)
+	}
+	if isEscaped || isQuoted {
+		return []string{}
+	}
+	return
 }
