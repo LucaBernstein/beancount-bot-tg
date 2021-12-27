@@ -13,7 +13,6 @@ type SubcommandHandler struct {
 	base               string
 	quotedSingleParams bool
 	mappings           map[string]handlerFunc
-	separator          string
 }
 
 func MakeSubcommandHandler(base string, quotedSingleParams bool) *SubcommandHandler {
@@ -21,19 +20,13 @@ func MakeSubcommandHandler(base string, quotedSingleParams bool) *SubcommandHand
 		base:               base,
 		mappings:           make(map[string]handlerFunc),
 		quotedSingleParams: quotedSingleParams,
-		separator:          " ",
 	}
 }
 
-func (sh *SubcommandHandler) SetSeparator(sep string) *SubcommandHandler {
-	sh.separator = sep
-	return sh
-}
-
 func (sh *SubcommandHandler) Add(command string, handler handlerFunc) *SubcommandHandler {
-	if strings.Contains(command, sh.separator) {
+	if strings.Contains(command, " ") {
 		LogLocalf(WARN, nil, "Subcommand '%s' contains a space. This most probably won't work with set separator '%s'",
-			command, sh.separator)
+			command, " ")
 	}
 	_, exists := sh.mappings[command]
 	if exists {
@@ -45,7 +38,7 @@ func (sh *SubcommandHandler) Add(command string, handler handlerFunc) *Subcomman
 
 func (sh *SubcommandHandler) Handle(m *tb.Message) error {
 	commandRemainder := strings.TrimSpace(strings.TrimPrefix(m.Text, sh.base))
-	parameters := strings.Split(commandRemainder, sh.separator)
+	parameters := strings.Split(commandRemainder, " ")
 
 	var subcommand string
 	if len(parameters) > 0 {
