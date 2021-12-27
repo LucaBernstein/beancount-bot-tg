@@ -25,12 +25,11 @@ func MakeSubcommandHandler(base string, quotedSingleParams bool) *SubcommandHand
 
 func (sh *SubcommandHandler) Add(command string, handler handlerFunc) *SubcommandHandler {
 	if strings.Contains(command, " ") {
-		LogLocalf(WARN, nil, "Subcommand '%s' contains a space. This most probably won't work with set separator '%s'",
-			command, " ")
+		LogLocalf(WARN, nil, "Subcommand '%s' contains a space. This most probably won't work with space (' ') separator", command)
 	}
 	_, exists := sh.mappings[command]
 	if exists {
-		LogLocalf(WARN, nil, "Subcommand '%s' already exists. Will ignore remapping.", command)
+		LogLocalf(WARN, nil, "Subcommand '%s' already exists. Performing remapping! Please check whether this is desired behavior.", command)
 	}
 	sh.mappings[command] = handler
 	return sh
