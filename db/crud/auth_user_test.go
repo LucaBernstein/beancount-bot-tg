@@ -1,6 +1,7 @@
 package crud_test
 
 import (
+	"fmt"
 	"log"
 	"testing"
 
@@ -70,6 +71,38 @@ func TestEnrichUserData(t *testing.T) {
 	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: int(chat.ID), Username: "old_username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestEnrichUserDataErrors(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	crud.USER_CACHE[987] = &crud.UserCacheEntry{} // For test coverage: Old entry will be removed by userCachePrune
+
+	// Error returned
+	mock.
+		ExpectQuery(`
+			SELECT "tgUserId", "tgUsername"
+			FROM "auth::user"
+			WHERE "tgChatId" = ?
+		`).
+		WithArgs(789).
+		WillReturnError(fmt.Errorf("testing error behavior for EnrichUserData"))
+	err = r.EnrichUserData(&tb.Message{Chat: &tb.Chat{ID: 789}, Sender: &tb.User{ID: 789, Username: "username2"}})
+	if err == nil {
+		t.Errorf("There should have been an error from the db query")
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -249,6 +282,60 @@ func TestUserSetTag(t *testing.T) {
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestUserSetCurrency(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	mock.ExpectExec(`
+		UPDATE "auth::user"
+		SET "currency" = ?
+	`).
+		WithArgs(9123, "TEST_CUR_SPECIAL").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	err = r.UserSetCurrency(&tb.Message{Chat: &tb.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
+	if err != nil {
+		t.Errorf("No error should have been thrown: %s", err.Error())
+	}
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestUserGetTag(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	mock.ExpectQuery(`
+		SELECT "tag"
+		FROM "auth::user"
+	`).
+		WithArgs(9123).
+		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("TEST_TAG"))
+	tag := r.UserGetTag(&tb.Message{Chat: &tb.Chat{ID: 9123}})
+	if tag != "TEST_TAG" {
+		t.Errorf("TEST_TAG should have been returned as tag: %s", tag)
+	}
+
+	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
