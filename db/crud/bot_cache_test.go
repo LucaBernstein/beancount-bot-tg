@@ -12,6 +12,7 @@ import (
 
 func TestCacheOnlySuggestible(t *testing.T) {
 	// create test dependencies
+	crud.TEST_MODE = true
 	chat := &tb.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {

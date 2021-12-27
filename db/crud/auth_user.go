@@ -31,7 +31,7 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	}
 	// Check whether some changeable attributes differ
 	if ce.TgUsername != m.Sender.Username {
-		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user'")
+		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user' (%s, %s)", ce.TgUsername, m.Sender.Username)
 		_, err := r.db.Exec(`UPDATE "auth::user" SET "tgUserId" = $2, "tgUsername" = $3 WHERE "tgChatId" = $1`, tgChatId, tgUserId, tgUsername)
 		return err
 	}
@@ -166,7 +166,7 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 	defer rows.Close()
 
 	var rec string
-	if rows.Next() {
+	for rows.Next() {
 		err = rows.Scan(&rec)
 		if err != nil {
 			LogDbf(r, helpers.ERROR, nil, "Encountered error while scanning into var: %s", err.Error())

@@ -174,6 +174,10 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 			bc.configHelp(m, fmt.Errorf("error converting hour to number: %s: %s", params[1], err.Error()))
 			return
 		}
+		if hour > 23 || hour < 0 {
+			bc.configHelp(m, fmt.Errorf("invalid hour (%d is out of valid range 1-23)", hour))
+			return
+		}
 		err = bc.Repo.UserSetNotificationSetting(m, daysDelay, hour)
 		if err != nil {
 			bc.configHelp(m, fmt.Errorf("error setting notification schedule: %s", err.Error()))

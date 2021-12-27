@@ -66,3 +66,53 @@ func TestSplitQuotedCommand(t *testing.T) {
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello\ world`), []string{"/command", "hello world"}, "")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`"onlyquoted"`), []string{"onlyquoted"}, "")
 }
+
+func TestSubcommandAddingWarnings(t *testing.T) {
+	sh := helpers.MakeSubcommandHandler("base", true)
+	result := 0
+	sh.Add("subcommand", func(m *tb.Message, params ...string) { result++ })
+	sh.Add("subcommand", func(m *tb.Message, params ...string) { result += 2 }) // again though already exists
+	err := sh.Handle(&tb.Message{Text: "base subcommand"})
+	if err != nil {
+		t.Errorf("No error should have been returned: %s", err.Error())
+	}
+	if result != 2 {
+		t.Errorf("Second mapping should take precedence. Expected %d to be 2.", result)
+	}
+
+	sh.Add("subcommand with spaces", func(m *tb.Message, params ...string) { result++ }) // for coverage
+
+	err = sh.Handle(&tb.Message{Text: "base subcommand with \"invalid quoting"})
+	if err == nil {
+		t.Errorf("Should return error for handling with invalid quoting")
+	}
+}
+
+func TestExtractTypeValue(t *testing.T) {
+	tv, err := helpers.ExtractTypeValue("onlyType")
+	if err != nil {
+		t.Errorf("No error should have been returned")
+	}
+	if tv.T != "onlyType" || tv.Value != "" {
+		t.Errorf("Only key should be set")
+	}
+
+	tv, err = helpers.ExtractTypeValue("aKey", "and_a_value")
+	if err != nil {
+		t.Errorf("No error should have been returned")
+	}
+	if tv.T != "aKey" || tv.Value != "and_a_value" {
+		t.Errorf("Only key should be set")
+	}
+
+	_, err = helpers.ExtractTypeValue()
+	if err == nil {
+		t.Errorf("Should return error for no params")
+	}
+
+	// Error case: Too many params
+	_, err = helpers.ExtractTypeValue("", "", "")
+	if err == nil {
+		t.Errorf("Should return error for too many params")
+	}
+}
