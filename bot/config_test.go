@@ -86,19 +86,6 @@ func TestConfigTag(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	mock. // SET
-		ExpectExec(`UPDATE "auth::user" SET "tag" = ?`).
-		WithArgs(chat.ID, "vacation2021").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	mock. // GET
-		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
-	mock. // DELETE
-		ExpectExec(`UPDATE "auth::user" SET "tag" = NULL WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
-
 	bc := NewBotController(db)
 	bot := &MockBot{}
 	bc.AddBotAndStart(bot)
@@ -109,6 +96,10 @@ func TestConfigTag(t *testing.T) {
 	}
 
 	// SET tag
+	mock.
+		ExpectExec(`UPDATE "auth::user" SET "tag" = ?`).
+		WithArgs(chat.ID, "vacation2021").
+		WillReturnResult(sqlmock.NewResult(1, 1))
 	bc.commandConfig(&tb.Message{Text: "/config tag vacation2021", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag vacation2021: %s", bot.LastSentWhat)
@@ -118,6 +109,10 @@ func TestConfigTag(t *testing.T) {
 	}
 
 	// GET tag
+	mock.
+		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
 	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag: %s", bot.LastSentWhat)
@@ -126,7 +121,23 @@ func TestConfigTag(t *testing.T) {
 		t.Errorf("/config tag vacation2021 response did not contain set tag: %s", bot.LastSentWhat)
 	}
 
+	mock.
+		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow(nil))
+	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
+	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
+		t.Errorf("/config tag: %s", bot.LastSentWhat)
+	}
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "disabled") {
+		t.Errorf("/config tag vacation2021 response did not contain set tag: %s", bot.LastSentWhat)
+	}
+
 	// DELETE tag
+	mock.
+		ExpectExec(`UPDATE "auth::user" SET "tag" = NULL WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 	bc.commandConfig(&tb.Message{Text: "/config tag off", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag off: %s", bot.LastSentWhat)
@@ -203,5 +214,21 @@ func TestConfigHandleNotification(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestConfigAbout(t *testing.T) {
+	// Test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	bc := NewBotController(nil)
+
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	bc.commandConfig(&tb.Message{Text: "/config about", Chat: chat})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat),
+		"LucaBernstein/beancount\\-bot\\-tg") {
+		t.Errorf("Should contain repo link: %s", bot.LastSentWhat)
 	}
 }

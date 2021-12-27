@@ -203,3 +203,57 @@ func stringArr(i []interface{}) []string {
 	}
 	return arr
 }
+
+func TestCommandStartHelp(t *testing.T) {
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	mock.
+		ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(false))
+	bc.commandStart(&tb.Message{Chat: chat})
+
+	if !strings.Contains(fmt.Sprintf("%v", bot.AllLastSentWhat[0]), "Welcome") {
+		t.Errorf("Bot should welcome user first")
+	}
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "/help - List this command help") {
+		t.Errorf("Bot should send help message as well")
+	}
+	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {
+		t.Errorf("Bot should not send admin commands in help message for default user")
+	}
+
+	// Admin check
+	mock.
+		ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(true))
+	bc.commandHelp(&tb.Message{Chat: chat})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {
+		t.Errorf("Bot should send admin commands in help message for admin user")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestCommandCancel(t *testing.T) {
+	chat := &tb.Chat{ID: 12345}
+	bc := NewBotController(nil)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+	bc.commandCancel(&tb.Message{Chat: chat})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "no active transactions open to cancel") {
+		t.Errorf("Unexpectedly there were open tx before")
+	}
+}
