@@ -33,10 +33,44 @@ func HandleFloat(m *tb.Message) (string, error) {
 	input = strings.ReplaceAll(input, ",", ".")
 	split := strings.Split(input, " ")
 	var (
-		value = split[0]
+		value    = split[0]
+		currency = ""
 	)
-	if len(split) >= 3 {
-		return "", fmt.Errorf("Input '%s' contained too many spaces. It should only contain the value and an optional currency", input)
+	if len(split) > 2 {
+		return "", fmt.Errorf("input '%s' contained too many spaces. It should only contain the value and an optional currency", input)
+	}
+	if len(split) == 2 {
+		currency = " " + split[1]
+	}
+	// Should fail if tx is left open (with trailing '+' operator) and currency is given
+	if strings.HasSuffix(value, "+") && currency != "" {
+		return "", fmt.Errorf("for transactions being kept open with trailing '+' operator, no additionally specified currency is allowed")
+	}
+	if strings.Contains(value, "+") {
+		additionsSplit := strings.Split(value, "+")
+		sum := 0.0
+		for _, add := range additionsSplit {
+			v, err := strconv.ParseFloat(add, 64)
+			if err != nil {
+				return "", fmt.Errorf("tried to sum up values due to '%s' operator found, failed at value '%s': %s", "+", add, err.Error())
+			}
+			sum += v
+		}
+		return ParseAmount(sum) + currency, nil
+	} else if strings.Contains(value, "*") {
+		multiplicationsSplit := strings.Split(value, "*")
+		if len(multiplicationsSplit) != 2 {
+			return "", fmt.Errorf("expected exactly two multiplicators ('a*b')")
+		}
+		product := 1.0
+		for _, multiplicator := range multiplicationsSplit {
+			v, err := strconv.ParseFloat(multiplicator, 64)
+			if err != nil {
+				return "", fmt.Errorf("tried to sum up values due to '%s' operator found, failed at value '%s': %s", "*", multiplicator, err.Error())
+			}
+			product *= v
+		}
+		return ParseAmount(product) + currency, nil
 	}
 	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
@@ -47,7 +81,7 @@ func HandleFloat(m *tb.Message) (string, error) {
 		v *= -1
 	}
 	c.LogLocalf(TRACE, nil, "Handled float: '%s' -> %f", m.Text, v)
-	return input, nil
+	return ParseAmount(v) + currency, nil
 }
 
 func HandleRaw(m *tb.Message) (string, error) {
