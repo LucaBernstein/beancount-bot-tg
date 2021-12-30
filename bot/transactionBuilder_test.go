@@ -18,11 +18,11 @@ func TestHandleFloat(t *testing.T) {
 
 	handledFloat, err := bot.HandleFloat(&tb.Message{Text: "27.5"})
 	helpers.TestExpect(t, err, nil, "Should not throw an error for 27.5")
-	helpers.TestExpect(t, handledFloat, "27.5", "")
+	helpers.TestExpect(t, handledFloat, "27.50", "")
 
 	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "27,8"})
 	helpers.TestExpect(t, err, nil, "Should not throw an error for 27,8")
-	helpers.TestExpect(t, handledFloat, "27.8", "Should come out as clean float")
+	helpers.TestExpect(t, handledFloat, "27.80", "Should come out as clean float")
 
 	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "  27,12  "})
 	helpers.TestExpect(t, err, nil, "Should not throw an error for 27,12")
@@ -35,6 +35,74 @@ func TestHandleFloat(t *testing.T) {
 	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "4.44 USD_CUSTOM"})
 	helpers.TestExpect(t, err, nil, "Should not throw an error for 4.44 USD_CUSTOM")
 	helpers.TestExpect(t, handledFloat, "4.44 USD_CUSTOM", "Should include custom currency")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "-5.678"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for -5.678")
+	helpers.TestExpect(t, handledFloat, "5.678", "Should use absolute value")
+}
+
+func TestHandleFloatSimpleCalculations(t *testing.T) {
+	// Additions should work
+	handledFloat, err := bot.HandleFloat(&tb.Message{Text: "10+3"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 10+3")
+	helpers.TestExpect(t, handledFloat, "13.00", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "11.45+3,12345"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 11.45+3,12345")
+	helpers.TestExpect(t, handledFloat, "14.57345", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "006+9.999"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 006+9.999")
+	helpers.TestExpect(t, handledFloat, "15.999", "")
+
+	// Multiplications should work
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "10*3"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 10*3")
+	helpers.TestExpect(t, handledFloat, "30.00", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "10*3,12345"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 10*3,12345")
+	helpers.TestExpect(t, handledFloat, "31.2345", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "001.1*3.5"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 001.1*3.5")
+	helpers.TestExpect(t, handledFloat, "3.85", "")
+
+	// Simple calculations also work with currencies
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "11*3 TEST_CUR"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 11*3 TEST_CUR")
+	helpers.TestExpect(t, handledFloat, "33.00 TEST_CUR", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "14.5+16+1+1+3 ANOTHER_CURRENCY"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 14.5+16+1+1+3 ANOTHER_CURRENCY")
+	helpers.TestExpect(t, handledFloat, "35.50 ANOTHER_CURRENCY", "")
+
+	// Check some error behaviors
+	// Mixed calculation operators
+	_, err = bot.HandleFloat(&tb.Message{Text: "1+1*2"})
+	if err == nil || !strings.Contains(err.Error(), "failed at value '1*2'") {
+		t.Errorf("Error message should state that mixing operators is not allowed")
+	}
+	// Too many spaces in input
+	_, err = bot.HandleFloat(&tb.Message{Text: "some many spaces"})
+	if err == nil || !strings.Contains(err.Error(), "contained too many spaces") {
+		t.Errorf("Error message should state that amount contained too many spaces")
+	}
+	// tx left open / spaced
+	_, err = bot.HandleFloat(&tb.Message{Text: "1+ 1"})
+	if err == nil || !strings.Contains(err.Error(), "additionally specified currency is allowed") {
+		t.Errorf("Error message should state that no additionally specified currency is allowed for trailing + tx (left open)")
+	}
+	// Multiplications only work with exactly two multiplicators
+	_, err = bot.HandleFloat(&tb.Message{Text: "1*1*1"})
+	if err == nil || !strings.Contains(err.Error(), "exactly two multiplicators") {
+		t.Errorf("Error message should state that parser expected exactly two multiplicators")
+	}
+	// some hiccup value in multiplication
+	_, err = bot.HandleFloat(&tb.Message{Text: "1*EUR"})
+	if err == nil || !strings.Contains(err.Error(), "failed at value 'EUR'") {
+		t.Errorf("Error message should state that it could not interpret 'EUR' as a number: %s", err.Error())
+	}
 }
 
 func TestTransactionBuilding(t *testing.T) {
