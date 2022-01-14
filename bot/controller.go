@@ -108,7 +108,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
 		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
-		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today", Optional: "YYYY-MM-DD"},
+		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: "YYYY-MM-DD"},
 		{Command: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: "archived"},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
@@ -205,7 +205,8 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
 			"\n\nYou can create a simple transaction using this command: /simple [YYYY-MM-DD]\ne.g. /simple 2021-01-24\n"+
-			"The date parameter is non-mandatory, if not specified, today's date will be taken.", clearKeyboard())
+			"The date parameter is non-mandatory, if not specified, today's date will be taken."+
+			"Alternatively it is also possible to send an amount directly to start a new simple transaction.", clearKeyboard())
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -482,6 +483,28 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 func (bc *BotController) handleTextState(m *tb.Message) {
 	tx := bc.State.Get(m)
 	if tx == nil {
+		if _, err := HandleFloat(m); err == nil { // Not in tx, but input would suffice for correct parsing of amount field of new tx
+			bc.Logf(DEBUG, m, "Creating new simple transaction as amount has been entered though not in tx")
+			_, err = bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
+			if err != nil {
+				_, err := bc.Bot.Send(m.Sender, "Something went wrong creating a new transaction: "+err.Error(), clearKeyboard())
+				if err != nil {
+					bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+				}
+				return
+			}
+			_, err := bc.Bot.Send(m.Sender, "Automatically created a new transaction for you.", clearKeyboard())
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+			bc.handleTextState(m)
+		}
+
+		// If number has been entered
+		// Create new tx, inform user that tx has automatically been started, call handleTextState with same message again (infininite loop protection?)
+		// return
+		// else: warn
+
 		bc.Logf(WARN, m, "Received text without having any prior state")
 		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		if err != nil {
