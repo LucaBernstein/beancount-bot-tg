@@ -493,7 +493,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 				}
 				return
 			}
-			_, err := bc.Bot.Send(m.Sender, "Automatically created a new transaction for you.", clearKeyboard())
+			_, err := bc.Bot.Send(m.Sender, "Automatically created a new transaction for you. If you think this was a mistake you can /cancel it.", clearKeyboard())
 			if err != nil {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
