@@ -498,6 +498,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
 			bc.handleTextState(m)
+			return
 		}
 
 		// If number has been entered
