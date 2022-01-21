@@ -191,6 +191,17 @@ func TestWritingComment(t *testing.T) {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
 
+	// Comment does not require quotes, as it only has a single parameter
+	mock.
+		ExpectExec(`INSERT INTO "bot::transaction"`).
+		WithArgs(chat.ID, "This is another comment without \" (quotes)").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/comment This is another comment without \\\" (quotes)"})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
+		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
+	}
+
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
