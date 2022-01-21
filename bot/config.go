@@ -29,19 +29,33 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
+
 	tz, _ := time.Now().Zone()
-	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf("Usage help for /%s:\n\n"+
-		"/%s currency <c> - Change default currency"+
-		"\n/%s about - Display the version this bot is running on"+
-		"\n\nTags will be added to each new transaction with a '#':\n"+
-		"\n/%s tag - Get currently set tag"+
-		"\n/%s tag off - Turn off tag"+
-		"\n/%s tag <name> - Set tag to apply to new transactions, e.g. when on vacation"+
-		"\n\nCreate a schedule to be notified of open transactions (i.e. not archived or deleted):\n"+
-		"\n/%s notify - Get current notification status"+
-		"\n/%s notify off - Disable reminder notifications"+
-		"\n/%s notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day (%s)",
-		CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, CMD_CONFIG, tz))
+	filledTemplate, err := h.Template(`Usage help for /{{.CONFIG_COMMAND}}:
+
+/{{.CONFIG_COMMAND}} currency <c> - Change default currency
+/{{.CONFIG_COMMAND}} about - Display the version this bot is running on
+
+Tags will be added to each new transaction with a '#':
+
+/{{.CONFIG_COMMAND}} tag - Get currently set tag
+/{{.CONFIG_COMMAND}} tag off - Turn off tag
+/{{.CONFIG_COMMAND}} tag <name> - Set tag to apply to new transactions, e.g. when on vacation
+
+Create a schedule to be notified of open transactions (i.e. not archived or deleted):
+
+/{{.CONFIG_COMMAND}} notify - Get current notification status
+/{{.CONFIG_COMMAND}} notify off - Disable reminder notifications
+/{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day ({{.TZ}})",
+`, map[string]interface{}{
+		"CONFIG_COMMAND": CMD_CONFIG,
+		"TZ":             tz,
+	})
+	if err != nil {
+		bc.Logf(ERROR, m, "Parsing configHelp template failed: %s", err.Error())
+	}
+
+	_, err = bc.Bot.Send(m.Sender, errorMsg+filledTemplate)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
