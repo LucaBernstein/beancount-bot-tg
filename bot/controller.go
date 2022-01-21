@@ -7,7 +7,6 @@ import (
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/go-co-op/gocron"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -229,16 +228,14 @@ func (bc *BotController) commandAddComment(m *tb.Message) {
 		return
 	}
 	remainingCommand := strings.TrimPrefix(strings.TrimLeft(m.Text, ""), "/"+CMD_COMMENT)
-	remainingSplits := helpers.SplitQuotedCommand(remainingCommand)
-	if len(remainingSplits) != 1 {
-		bc.Logf(INFO, m, "commandAddComment: extracting comment value failed for '%s'", remainingCommand)
-		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Please use this command like this:\n/%s \"<comment to add>\"", CMD_COMMENT))
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
-		return
+
+	// Issue #91: Support unquoted comments
+	comment := strings.TrimSpace(remainingCommand)
+	if strings.HasPrefix(comment, "\"") && strings.HasSuffix(comment, "\"") {
+		comment = strings.Trim(comment, "\"")
 	}
-	comment := remainingSplits[0]
+	comment = strings.ReplaceAll(comment, "\\\"", "\"")
+
 	err := bc.Repo.RecordTransaction(m.Chat.ID, comment)
 	if err != nil {
 		bc.Logf(ERROR, m, "Something went wrong while recording the comment: "+err.Error())
