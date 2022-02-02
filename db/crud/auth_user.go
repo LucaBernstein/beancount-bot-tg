@@ -267,12 +267,19 @@ func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) er
 
 func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
 	return r.db.Query(`
-	SELECT DISTINCT u."tgChatId", COUNT(tx.id)
-	FROM "auth::user" u, "bot::notificationSchedule" s, "bot::transaction" tx
-	WHERE u."tgChatId" = s."tgChatId" AND s."tgChatId" = tx."tgChatId"
-		AND tx.archived = FALSE
-		AND s."notificationHour" = $1
-		AND tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
-	GROUP BY u."tgChatId"
+	SELECT overdue."tgChatId", overdue."count" overdue, COUNT(tx2.*) "allTx"
+	FROM
+		(
+			SELECT DISTINCT u."tgChatId", COUNT(tx.id)
+			FROM "auth::user" u, "bot::notificationSchedule" s, "bot::transaction" tx
+			WHERE u."tgChatId" = s."tgChatId" AND s."tgChatId" = tx."tgChatId"
+				AND tx.archived = FALSE
+				AND tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
+				AND s."notificationHour" = $1
+			GROUP BY u."tgChatId"
+		) AS overdue,
+	  	"bot::transaction" tx2
+	WHERE tx2."tgChatId" = overdue."tgChatId"
+	GROUP BY overdue."tgChatId", overdue."count"
 	`, time.Now().Hour())
 }

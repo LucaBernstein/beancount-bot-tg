@@ -376,9 +376,10 @@ func (bc *BotController) cronNotifications() {
 	var (
 		tgChatId  string
 		openCount int
+		overdue   int
 	)
 	for rows.Next() {
-		err = rows.Scan(&tgChatId, &openCount)
+		err = rows.Scan(&tgChatId, &overdue, &openCount)
 		if err != nil {
 			bc.Logf(ERROR, nil, "Error occurred extracting tgChatId to send open tx notification to: %s", err.Error())
 			continue
@@ -390,8 +391,8 @@ func (bc *BotController) cronNotifications() {
 		}
 		_, err := bc.Bot.Send(ReceiverImpl{chatId: tgChatId}, fmt.Sprintf(
 			// TODO: Replace hard-coded command directives:
-			" This is your reminder to inform you that you currently have %d open transaction%s. Check '/list' to see your open transactions. If you don't need them anymore you can /archiveAll or /delete them."+
-				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s))
+			" This is your reminder to inform you that you currently have %d open transaction%s (%d triggering this notification). Check '/list' to see your open transactions. If you don't need them anymore you can /archiveAll or /delete them."+
+				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s, overdue))
 		if err != nil {
 			bc.Logf(ERROR, nil, "Sending bot message failed: %s", err.Error())
 		}
