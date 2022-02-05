@@ -526,7 +526,8 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	if tx.IsDone() {
 		currency := bc.Repo.UserGetCurrency(m)
 		tag := bc.Repo.UserGetTag(m)
-		transaction, err := tx.FillTemplate(currency, tag)
+		tzOffset := bc.Repo.UserGetTzOffset(m)
+		transaction, err := tx.FillTemplate(currency, tag, tzOffset)
 		if err != nil {
 			bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
 			_, err := bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())

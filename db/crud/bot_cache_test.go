@@ -68,11 +68,11 @@ func TestSetCacheLimit(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(`DELETE FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.limitCache.txDesc").
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.
 		ExpectExec(`INSERT INTO "bot::userSetting"`).
-		WithArgs(chat.ID, "user.limitCache.txDesc", "23").
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC, "23").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -84,7 +84,7 @@ func TestSetCacheLimit(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(`DELETE FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.limitCache.txDesc").
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
@@ -121,8 +121,8 @@ func TestGetCacheLimit(t *testing.T) {
 
 	mock.
 		ExpectQuery(`SELECT "setting", "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.limitCache.%").
-		WillReturnRows(sqlmock.NewRows([]string{"setting", "value"}).AddRow("user.limitCache.txDesc", "79"))
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+"%").
+		WillReturnRows(sqlmock.NewRows([]string{"setting", "value"}).AddRow(helpers.USERSET_LIM_PREFIX+helpers.STX_DESC, "79"))
 
 	limits, err := bc.CacheUserSettingGetLimits(message)
 	if err != nil {

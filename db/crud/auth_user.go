@@ -98,7 +98,7 @@ func (r *Repo) getUser(id int64) (*User, error) {
 const DEFAULT_CURRENCY = "EUR"
 
 func (r *Repo) UserGetCurrency(m *tb.Message) string {
-	currencyCacheKey := "user.currency"
+	currencyCacheKey := helpers.USERSET_CUR
 
 	rows, err := r.db.Query(`
 		SELECT "value"
@@ -124,7 +124,7 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 }
 
 func (r *Repo) UserIsAdmin(m *tb.Message) bool {
-	adminCacheKey := "user.isAdmin"
+	adminCacheKey := helpers.USERSET_ADM
 	rows, err := r.db.Query(`
 		SELECT "value"
 		FROM "bot::userSetting"
@@ -189,7 +189,7 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 }
 
 func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
-	currencyCacheKey := "user.currency"
+	currencyCacheKey := helpers.USERSET_CUR
 
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -213,7 +213,7 @@ func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
 }
 
 func (r *Repo) UserGetTag(m *tb.Message) string {
-	vacationTagCacheKey := "user.vacationTag"
+	vacationTagCacheKey := helpers.USERSET_TAG
 	rows, err := r.db.Query(`
 		SELECT "value"
 		FROM "bot::userSetting"
@@ -238,7 +238,7 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 }
 
 func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
-	vacationTagCacheKey := "user.vacationTag"
+	vacationTagCacheKey := helpers.USERSET_TAG
 
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -281,6 +281,48 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 		return delayHours / 24, hour, nil
 	}
 	return -1, -1, nil
+}
+
+func (r *Repo) UserGetTzOffset(m *tb.Message) (tzOffset int) {
+	rows, err := r.db.Query(`
+		SELECT "value"
+		FROM "bot::userSetting"
+		WHERE "tgChatId" = $1 AND "setting" = $2
+	`, m.Chat.ID, helpers.USERSET_TZOFF)
+	if err != nil {
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user timezone offset setting: %s", err.Error())
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&tzOffset)
+		if err != nil {
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user timezone offset setting into var: %s", err.Error())
+		}
+	}
+	return
+}
+
+func (r *Repo) UserSetTzOffset(m *tb.Message, timezoneOffset int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("could not create db tx for setting timezone offset: %s", err.Error())
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, helpers.USERSET_TZOFF)
+	if err != nil {
+		return fmt.Errorf("could not delete setting timezone offset: %s", err.Error())
+	}
+	if timezoneOffset != 0 {
+		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, helpers.USERSET_TZOFF, timezoneOffset)
+		if err != nil {
+			return fmt.Errorf("could not insert setting timezone offset: %s", err.Error())
+		}
+	}
+
+	tx.Commit()
+	return nil
 }
 
 /**

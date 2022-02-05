@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 func (bc *BotController) configHandler(m *tb.Message) {
-	sc := h.MakeSubcommandHandler("/"+CMD_CONFIG, true)
+	sc := helpers.MakeSubcommandHandler("/"+CMD_CONFIG, true)
 	sc.
 		Add("currency", bc.configHandleCurrency).
 		Add("tag", bc.configHandleTag).
 		Add("notify", bc.configHandleNotification).
 		Add("limit", bc.configHandleLimit).
-		Add("about", bc.configHandleAbout)
+		Add("about", bc.configHandleAbout).
+		Add("tz_offset", bc.configHandleTimezoneOffset)
 	err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
@@ -33,7 +33,7 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 	}
 
 	tz, _ := time.Now().Zone()
-	filledTemplate, err := h.Template(`Usage help for /{{.CONFIG_COMMAND}}:
+	filledTemplate, err := helpers.Template(`Usage help for /{{.CONFIG_COMMAND}}:
 
 /{{.CONFIG_COMMAND}} currency <c> - Change default currency
 /{{.CONFIG_COMMAND}} about - Display the version this bot is running on
@@ -54,6 +54,11 @@ Set suggestion cache limits (i.e. only cache new values until limit is reached, 
 
 /{{.CONFIG_COMMAND}} limit - Get currently set cache limits
 /{{.CONFIG_COMMAND}} limit <suggestionType> <amount>|off - Set or disable suggestion limit for a type
+
+Set timezone offset from UTC for transactions where date is added automatically:
+
+/{{.CONFIG_COMMAND}} tz_offset - Get current timezone offset from UTC
+/{{.CONFIG_COMMAND}} tz_offset <hours> - Set timezone offset from UTC, default 0
 `, map[string]interface{}{
 		"CONFIG_COMMAND": CMD_CONFIG,
 		"TZ":             tz,
@@ -324,4 +329,47 @@ func escapeCharacters(s string, c ...string) string {
 		s = strings.ReplaceAll(s, char, "\\"+char)
 	}
 	return s
+}
+
+func (bc *BotController) configHandleTimezoneOffset(m *tb.Message, params ...string) {
+	tz_offset := bc.Repo.UserGetTzOffset(m)
+	if len(params) == 0 { // 0 params: GET
+		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Your current timezone offset is set to 'UTC%s'.", prettyTzOffset(tz_offset)))
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	} else if len(params) > 1 { // 2 or more params: too many
+		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
+		return
+	}
+	// Set new tz_offset
+	newTzOffset := params[0]
+	newTzParsed, err := strconv.Atoi(newTzOffset)
+	if err != nil {
+		_, err = bc.Bot.Send(m.Sender, "An error ocurred saving your timezone offset preference: "+err.Error())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	err = bc.Repo.UserSetTzOffset(m, newTzParsed)
+	if err != nil {
+		_, err = bc.Bot.Send(m.Sender, "An error ocurred saving your timezone offset preference: "+err.Error())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Changed timezone offset for default dates for all future transactions from 'UTC%s' to 'UTC%s'.", prettyTzOffset(tz_offset), prettyTzOffset(newTzParsed)))
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+}
+
+func prettyTzOffset(tzOffset int) string {
+	if tzOffset < 0 {
+		return strconv.Itoa(tzOffset)
+	}
+	return "+" + strconv.Itoa(tzOffset)
 }

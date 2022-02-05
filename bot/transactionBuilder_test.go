@@ -119,7 +119,7 @@ func TestTransactionBuilding(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("USD", "")
+	templated, err := tx.FillTemplate("USD", "", 0)
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -144,7 +144,7 @@ func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("EUR", "")
+	templated, err := tx.FillTemplate("EUR", "", 0)
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -169,7 +169,7 @@ func TestTransactionBuildingWithDate(t *testing.T) {
 		t.Errorf("With given input transaction data should be complete for SimpleTx")
 	}
 
-	templated, err := tx.FillTemplate("EUR", "")
+	templated, err := tx.FillTemplate("EUR", "", 0)
 	if err != nil {
 		t.Errorf("There should be no error raised during templating: %s", err.Error())
 	}
@@ -191,7 +191,7 @@ func TestTaggedTransaction(t *testing.T) {
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"}) // to
 	tx.Input(&tb.Message{Text: "Buy something"})      // description
-	template, err := tx.FillTemplate("EUR", "someTag")
+	template, err := tx.FillTemplate("EUR", "someTag", 0)
 	if err != nil {
 		t.Errorf("Unexpected error: %s", err.Error())
 	}

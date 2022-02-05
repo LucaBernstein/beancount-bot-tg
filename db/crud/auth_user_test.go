@@ -122,14 +122,14 @@ func TestUserGetCurrency(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.currency").
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	cur := r.UserGetCurrency(&tb.Message{Chat: chat})
 	if cur != crud.DEFAULT_CURRENCY {
 		t.Errorf("If no currency is given for user in db, use default currency")
 	}
 
-	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.currency").
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CUR"))
 	cur = r.UserGetCurrency(&tb.Message{Chat: chat})
 	if cur != "TEST_CUR" {
@@ -153,21 +153,21 @@ func TestUserIsAdmin(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	res := r.UserIsAdmin(&tb.Message{Chat: chat})
 	if res {
 		t.Errorf("User should not be admin")
 	}
 
-	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("false"))
 	res = r.UserIsAdmin(&tb.Message{Chat: chat})
 	if res {
 		t.Errorf("User should not be admin")
 	}
 
-	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
 	res = r.UserIsAdmin(&tb.Message{Chat: chat})
 	if !res {
@@ -273,9 +273,9 @@ func TestUserSetTag(t *testing.T) {
 	r := crud.NewRepo(db)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TAG).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
-		WithArgs(12345, "user.vacationTag", "TestTag").
+		WithArgs(12345, helpers.USERSET_TAG, "TestTag").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	err = r.UserSetTag(message, "TestTag")
@@ -284,7 +284,7 @@ func TestUserSetTag(t *testing.T) {
 	}
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TAG).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	r.UserSetTag(message, "")
 	if err != nil {
@@ -308,7 +308,7 @@ func TestUserGetTag(t *testing.T) {
 	r := crud.NewRepo(db)
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(9123, "user.vacationTag").
+		WithArgs(9123, helpers.USERSET_TAG).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_TAG"))
 	tag := r.UserGetTag(&tb.Message{Chat: &tb.Chat{ID: 9123}})
 	if tag != "TEST_TAG" {
@@ -332,9 +332,9 @@ func TestUserSetCurrency(t *testing.T) {
 	r := crud.NewRepo(db)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(9123, "user.currency").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(9123, helpers.USERSET_CUR).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
-		WithArgs(9123, "user.currency", "TEST_CUR_SPECIAL").
+		WithArgs(9123, helpers.USERSET_CUR, "TEST_CUR_SPECIAL").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	err = r.UserSetCurrency(&tb.Message{Chat: &tb.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
