@@ -34,6 +34,8 @@ func v8AddTable(db *sql.Tx) {
 		('user.limitCache.txDesc', 'limit caching of simple transaction descriptions'),
 		('user.limitCache.accFrom', 'limit caching of simple transaction from accounts'),
 		('user.limitCache.accTo', 'limit caching of simple transaction to accounts');
+		
+		('user.tzOffset', 'set timezone offset for automatic transaction dates and notifications');
 
 	-- Migrate values from "auth::user" to userSettings
 

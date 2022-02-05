@@ -106,18 +106,19 @@ type Tx interface {
 	Debug() string
 	NextHint(*crud.Repo, *tb.Message) *Hint
 	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
-	FillTemplate(currency, tag string) (string, error)
+	FillTemplate(currency, tag string, tzOffset int) (string, error)
 	DataKeys() map[string]string
 
 	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
-	setDate(*tb.Message) (Tx, error)
+	setDateIfProvided(*tb.Message) (Tx, error)
+	setTimeIfEmpty(tzOffset int) bool
 }
 
 type SimpleTx struct {
 	steps       []command
 	stepDetails map[command]Input
 	data        []data
-	date        string
+	date_upd    string
 	step        int
 }
 
@@ -129,17 +130,17 @@ func CreateSimpleTx(m *tb.Message, suggestedCur string) (Tx, error) {
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw)
-	return tx.setDate(m)
+	return tx.setDateIfProvided(m)
 }
 
-func (tx *SimpleTx) setDate(m *tb.Message) (Tx, error) {
+func (tx *SimpleTx) setDateIfProvided(m *tb.Message) (Tx, error) {
 	command := strings.Split(m.Text, " ")
 	if len(command) >= 2 {
 		date, err := ParseDate(command[1])
 		if err != nil {
 			return nil, err
 		}
-		tx.date = date
+		tx.date_upd = date
 	}
 	return tx, nil
 }
@@ -217,12 +218,8 @@ func (tx *SimpleTx) hintDate(h *Hint) *Hint {
 }
 
 func (tx *SimpleTx) DataKeys() map[string]string {
-	if tx.date == "" {
-		// set today as fallback/default date
-		tx.date = time.Now().Format(c.BEANCOUNT_DATE_FORMAT)
-	}
 	return map[string]string{
-		c.STX_DATE: tx.date,
+		c.STX_DATE: tx.date_upd,
 		c.STX_DESC: string(tx.data[3]),
 		c.STX_ACCF: string(tx.data[1]),
 		c.STX_AMTF: string(tx.data[0]),
@@ -234,10 +231,22 @@ func (tx *SimpleTx) IsDone() bool {
 	return tx.step >= len(tx.steps)
 }
 
-func (tx *SimpleTx) FillTemplate(currency, tag string) (string, error) {
+func (tx *SimpleTx) setTimeIfEmpty(tzOffset int) bool {
+	if tx.date_upd == "" {
+		// set today as fallback/default date
+		timezoneOff := time.Duration(tzOffset) * time.Hour
+		tx.date_upd = time.Now().UTC().Add(timezoneOff).Format(c.BEANCOUNT_DATE_FORMAT)
+		return true
+	}
+	return false
+}
+
+func (tx *SimpleTx) FillTemplate(currency, tag string, tzOffset int) (string, error) {
 	if !tx.IsDone() {
 		return "", fmt.Errorf("not all data for this tx has been gathered")
 	}
+	// If still empty, set time and correct for timezone
+	tx.setTimeIfEmpty(tzOffset)
 	// Variables
 	txRaw := tx.DataKeys()
 	f, err := strconv.ParseFloat(strings.Split(string(txRaw[c.STX_AMTF]), " ")[0], 64)

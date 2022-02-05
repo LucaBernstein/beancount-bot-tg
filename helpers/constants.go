@@ -15,6 +15,7 @@ const (
 	USERSET_ADM        = "user.isAdmin"
 	USERSET_TAG        = "user.vacationTag"
 	USERSET_LIM_PREFIX = "user.limitCache."
+	USERSET_TZOFF      = "user.tzOffset"
 )
 
 func AllowedSuggestionTypes() []string {

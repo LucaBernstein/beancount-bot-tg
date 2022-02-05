@@ -60,6 +60,10 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
 	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
 	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_TZOFF).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}))
+	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
 		WithArgs(chat.ID, today+` * "Buy something in the grocery store" #vacation2021
   Assets:Wallet                               -17.34 TEST_CURRENCY
@@ -92,7 +96,6 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	}
 }
 
-// GitHub-Issue #16: Panic if plain message without state arrives
 func TestTransactionDeletion(t *testing.T) {
 	// create test dependencies
 	chat := &tb.Chat{ID: 12345}
@@ -266,5 +269,64 @@ func TestCommandCancel(t *testing.T) {
 	bc.commandCancel(&tb.Message{Chat: chat})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "no active transactions open to cancel") {
 		t.Errorf("Unexpectedly there were open tx before")
+	}
+}
+
+func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_CUR).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_CUR).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_TAG).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
+	yesterday_tzCorrection := time.Now().Add(-24 * time.Hour).Format(helpers.BEANCOUNT_DATE_FORMAT)
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_TZOFF).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("-24"))
+	mock.
+		ExpectExec(`INSERT INTO "bot::transaction"`).
+		WithArgs(chat.ID, yesterday_tzCorrection+` * "Buy something in the grocery store" #vacation2021
+  Assets:Wallet                               -17.34 TEST_CURRENCY
+  Expenses:Groceries
+`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	// Create simple tx and fill it completely
+	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
+	tx := bc.State.states[12345]
+	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
+	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
+	bc.handleTextState(&tb.Message{Chat: chat, Text: "Buy something in the grocery store"}) // description (via handleTextState)
+
+	// After the first tx is done, send some command
+	m := &tb.Message{Chat: chat}
+	bc.handleTextState(m)
+
+	// should catch and send help instead of fail
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "you might need to start a transaction first") {
+		t.Errorf("String did not contain substring as expected (was: '%s')", bot.LastSentWhat)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }

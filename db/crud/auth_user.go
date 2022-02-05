@@ -283,6 +283,48 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 	return -1, -1, nil
 }
 
+func (r *Repo) UserGetTzOffset(m *tb.Message) (tzOffset int) {
+	rows, err := r.db.Query(`
+		SELECT "value"
+		FROM "bot::userSetting"
+		WHERE "tgChatId" = $1 AND "setting" = $2
+	`, m.Chat.ID, helpers.USERSET_TZOFF)
+	if err != nil {
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user timezone offset setting: %s", err.Error())
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(&tzOffset)
+		if err != nil {
+			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user timezone offset setting into var: %s", err.Error())
+		}
+	}
+	return
+}
+
+func (r *Repo) UserSetTzOffset(m *tb.Message, timezoneOffset int) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("could not create db tx for setting timezone offset: %s", err.Error())
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, helpers.USERSET_TZOFF)
+	if err != nil {
+		return fmt.Errorf("could not delete setting timezone offset: %s", err.Error())
+	}
+	if timezoneOffset != 0 {
+		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, helpers.USERSET_TZOFF, timezoneOffset)
+		if err != nil {
+			return fmt.Errorf("could not insert setting timezone offset: %s", err.Error())
+		}
+	}
+
+	tx.Commit()
+	return nil
+}
+
 /**
 UserSetNotificationSetting sets user's notification settings.
 If daysDelay is < 0, schedule will be disabled.
