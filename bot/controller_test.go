@@ -48,15 +48,15 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	defer db.Close()
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.currency").
+		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.currency").
+		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.vacationTag").
+		WithArgs(chat.ID, helpers.USERSET_TAG).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
 	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
 	mock.
@@ -229,7 +229,7 @@ func TestCommandStartHelp(t *testing.T) {
 
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.isAdmin").
+		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(false))
 	bc.commandStart(&tb.Message{Chat: chat})
 
@@ -246,7 +246,7 @@ func TestCommandStartHelp(t *testing.T) {
 	// Admin check
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.isAdmin").
+		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
 	bc.commandHelp(&tb.Message{Chat: chat})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {

@@ -149,7 +149,7 @@ func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) (sql.Re
 }
 
 func (r *Repo) CacheUserSettingGetLimits(m *tb.Message) (limits map[string]int, err error) {
-	userSettingPrefix := "user.limitCache."
+	userSettingPrefix := helpers.USERSET_LIM_PREFIX
 
 	rows, err := r.db.Query(`SELECT "setting", "value" FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" LIKE $2`,
 		m.Chat.ID, userSettingPrefix+"%")
@@ -196,7 +196,7 @@ func (r *Repo) CacheUserSettingSetLimit(m *tb.Message, key string, limit int) (e
 		return fmt.Errorf("caching userSettingLimit did not work as db tx could not be begun: %s", err.Error())
 	}
 
-	compositeKey := "user.limitCache." + key
+	compositeKey := helpers.USERSET_LIM_PREFIX + key
 
 	q := `DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2;`
 	params := []interface{}{m.Chat.ID, compositeKey}

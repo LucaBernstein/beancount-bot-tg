@@ -9,6 +9,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -22,20 +23,20 @@ func TestConfigCurrency(t *testing.T) {
 	}
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.currency").
+		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.currency").
+		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("SOMEEUR"))
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.currency").
+		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("SOMEEUR"))
 
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.currency").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(`INSERT`).WithArgs(12345, "user.currency", "USD").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_CUR).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT`).WithArgs(12345, helpers.USERSET_CUR, "USD").WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
 	bc := NewBotController(db)
@@ -99,9 +100,9 @@ func TestConfigTag(t *testing.T) {
 
 	// SET tag
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TAG).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
-		WithArgs(12345, "user.vacationTag", "vacation2021").
+		WithArgs(12345, helpers.USERSET_TAG, "vacation2021").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	bc.commandConfig(&tb.Message{Text: "/config tag vacation2021", Chat: chat})
@@ -115,7 +116,7 @@ func TestConfigTag(t *testing.T) {
 	// GET tag
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.vacationTag").
+		WithArgs(chat.ID, helpers.USERSET_TAG).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
 	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
@@ -127,7 +128,7 @@ func TestConfigTag(t *testing.T) {
 
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
-		WithArgs(chat.ID, "user.vacationTag").
+		WithArgs(chat.ID, helpers.USERSET_TAG).
 		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow(nil))
 	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
@@ -139,7 +140,7 @@ func TestConfigTag(t *testing.T) {
 
 	// DELETE tag
 	mock.ExpectBegin()
-	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TAG).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	bc.commandConfig(&tb.Message{Text: "/config tag off", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {

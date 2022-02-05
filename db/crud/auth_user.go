@@ -98,7 +98,7 @@ func (r *Repo) getUser(id int64) (*User, error) {
 const DEFAULT_CURRENCY = "EUR"
 
 func (r *Repo) UserGetCurrency(m *tb.Message) string {
-	currencyCacheKey := "user.currency"
+	currencyCacheKey := helpers.USERSET_CUR
 
 	rows, err := r.db.Query(`
 		SELECT "value"
@@ -124,7 +124,7 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 }
 
 func (r *Repo) UserIsAdmin(m *tb.Message) bool {
-	adminCacheKey := "user.isAdmin"
+	adminCacheKey := helpers.USERSET_ADM
 	rows, err := r.db.Query(`
 		SELECT "value"
 		FROM "bot::userSetting"
@@ -189,7 +189,7 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 }
 
 func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
-	currencyCacheKey := "user.currency"
+	currencyCacheKey := helpers.USERSET_CUR
 
 	tx, err := r.db.Begin()
 	if err != nil {
@@ -213,7 +213,7 @@ func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
 }
 
 func (r *Repo) UserGetTag(m *tb.Message) string {
-	vacationTagCacheKey := "user.vacationTag"
+	vacationTagCacheKey := helpers.USERSET_TAG
 	rows, err := r.db.Query(`
 		SELECT "value"
 		FROM "bot::userSetting"
@@ -238,7 +238,7 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 }
 
 func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
-	vacationTagCacheKey := "user.vacationTag"
+	vacationTagCacheKey := helpers.USERSET_TAG
 
 	tx, err := r.db.Begin()
 	if err != nil {
