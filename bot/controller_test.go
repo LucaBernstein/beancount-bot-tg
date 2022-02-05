@@ -47,17 +47,17 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	}
 	defer db.Close()
 	mock.
-		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 	mock.
-		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CURRENCY"))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 	mock.
-		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.vacationTag").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
 	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
 	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
@@ -228,9 +228,9 @@ func TestCommandStartHelp(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	mock.
-		ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(false))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.isAdmin").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(false))
 	bc.commandStart(&tb.Message{Chat: chat})
 
 	if !strings.Contains(fmt.Sprintf("%v", bot.AllLastSentWhat[0]), "Welcome") {
@@ -245,9 +245,9 @@ func TestCommandStartHelp(t *testing.T) {
 
 	// Admin check
 	mock.
-		ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(true))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.isAdmin").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
 	bc.commandHelp(&tb.Message{Chat: chat})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {
 		t.Errorf("Bot should send admin commands in help message for admin user")
