@@ -122,15 +122,15 @@ func TestUserGetCurrency(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectQuery(`SELECT "currency" FROM "auth::user"`).WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}))
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	cur := r.UserGetCurrency(&tb.Message{Chat: chat})
 	if cur != crud.DEFAULT_CURRENCY {
 		t.Errorf("If no currency is given for user in db, use default currency")
 	}
 
-	mock.ExpectQuery(`SELECT "currency" FROM "auth::user"`).WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("TEST_CUR"))
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CUR"))
 	cur = r.UserGetCurrency(&tb.Message{Chat: chat})
 	if cur != "TEST_CUR" {
 		t.Errorf("If currency is given for user in db, that one should be used")
@@ -153,15 +153,22 @@ func TestUserIsAdmin(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(false))
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	res := r.UserIsAdmin(&tb.Message{Chat: chat})
 	if res {
 		t.Errorf("User should not be admin")
 	}
 
-	mock.ExpectQuery(`SELECT "isAdmin" FROM "auth::user"`).WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"isAdmin"}).AddRow(true))
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("false"))
+	res = r.UserIsAdmin(&tb.Message{Chat: chat})
+	if res {
+		t.Errorf("User should not be admin")
+	}
+
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, "user.isAdmin").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
 	res = r.UserIsAdmin(&tb.Message{Chat: chat})
 	if !res {
 		t.Errorf("User should be admin")
@@ -265,50 +272,26 @@ func TestUserSetTag(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectExec(`UPDATE "auth::user" SET "tag" = ?`).
-		WithArgs(12345, "TestTag").
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
+		WithArgs(12345, "user.vacationTag", "TestTag").
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 	err = r.UserSetTag(message, "TestTag")
 	if err != nil {
 		t.Errorf("Setting tag failed: %s", err.Error())
 	}
 
-	mock.ExpectExec(`UPDATE "auth::user" SET "tag" = NULL`).
-		WithArgs(12345).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 	r.UserSetTag(message, "")
 	if err != nil {
 		t.Errorf("Setting tag failed: %s", err.Error())
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-	}
-}
-
-func TestUserSetCurrency(t *testing.T) {
-	// create test dependencies
-	crud.TEST_MODE = true
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	r := crud.NewRepo(db)
-
-	mock.ExpectExec(`
-		UPDATE "auth::user"
-		SET "currency" = ?
-	`).
-		WithArgs(9123, "TEST_CUR_SPECIAL").
-		WillReturnResult(sqlmock.NewResult(1, 1))
-	err = r.UserSetCurrency(&tb.Message{Chat: &tb.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
-	if err != nil {
-		t.Errorf("No error should have been thrown: %s", err.Error())
-	}
-
-	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
@@ -324,15 +307,39 @@ func TestUserGetTag(t *testing.T) {
 
 	r := crud.NewRepo(db)
 
-	mock.ExpectQuery(`
-		SELECT "tag"
-		FROM "auth::user"
-	`).
-		WithArgs(9123).
-		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("TEST_TAG"))
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(9123, "user.vacationTag").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_TAG"))
 	tag := r.UserGetTag(&tb.Message{Chat: &tb.Chat{ID: 9123}})
 	if tag != "TEST_TAG" {
 		t.Errorf("TEST_TAG should have been returned as tag: %s", tag)
+	}
+
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestUserSetCurrency(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(9123, "user.currency").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
+		WithArgs(9123, "user.currency", "TEST_CUR_SPECIAL").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	err = r.UserSetCurrency(&tb.Message{Chat: &tb.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
+	if err != nil {
+		t.Errorf("No error should have been thrown: %s", err.Error())
 	}
 
 	if err = mock.ExpectationsWereMet(); err != nil {

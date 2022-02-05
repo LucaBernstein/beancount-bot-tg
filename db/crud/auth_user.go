@@ -98,11 +98,13 @@ func (r *Repo) getUser(id int64) (*User, error) {
 const DEFAULT_CURRENCY = "EUR"
 
 func (r *Repo) UserGetCurrency(m *tb.Message) string {
+	currencyCacheKey := "user.currency"
+
 	rows, err := r.db.Query(`
-		SELECT "currency"
-		FROM "auth::user"
-		WHERE "tgChatId" = $1
-	`, m.Chat.ID)
+		SELECT "value"
+		FROM "bot::userSetting"
+		WHERE "tgChatId" = $1 AND "setting" = $2
+	`, m.Chat.ID, currencyCacheKey)
 	if err != nil {
 		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user currency: %s", err.Error())
 	}
@@ -122,25 +124,34 @@ func (r *Repo) UserGetCurrency(m *tb.Message) string {
 }
 
 func (r *Repo) UserIsAdmin(m *tb.Message) bool {
+	adminCacheKey := "user.isAdmin"
 	rows, err := r.db.Query(`
-		SELECT "isAdmin"
-		FROM "auth::user"
-		WHERE "tgChatId" = $1 AND "tgUserId" = "tgChatId" -- is a private chat
-	`, m.Chat.ID)
+		SELECT "value"
+		FROM "bot::userSetting"
+		WHERE "tgChatId" = $1 AND "setting" = $2
+	`, m.Chat.ID, adminCacheKey)
 	if err != nil {
-		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user currency: %s", err.Error())
+		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user isAdmin flag: %s", err.Error())
 	}
 	defer rows.Close()
 
-	isAdmin := false
+	var isAdmin *sql.NullString
 	if rows.Next() {
 		err = rows.Scan(&isAdmin)
 		if err != nil {
 			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user isAdmin into var: %s", err.Error())
 			return false
 		}
+		isAdminB, err := strconv.ParseBool(isAdmin.String)
+		if err != nil {
+			LogDbf(r, helpers.ERROR, m, "Encountered error while parsing isAdmin setting value: %s", err.Error())
+			return false
+		}
+		if isAdmin.Valid && isAdminB {
+			return true
+		}
 	}
-	return isAdmin
+	return false
 }
 
 func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string) {
@@ -178,20 +189,36 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 }
 
 func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
-	_, err := r.db.Exec(`
-		UPDATE "auth::user"
-		SET "currency" = $2
-		WHERE "tgChatId" = $1
-	`, m.Chat.ID, currency)
-	return err
+	currencyCacheKey := "user.currency"
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("could not create db tx for setting currency: %s", err.Error())
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, currencyCacheKey)
+	if err != nil {
+		return fmt.Errorf("could not delete setting currency: %s", err.Error())
+	}
+	if currency != "" {
+		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, currencyCacheKey, currency)
+		if err != nil {
+			return fmt.Errorf("could not insert setting currency: %s", err.Error())
+		}
+	}
+
+	tx.Commit()
+	return nil
 }
 
 func (r *Repo) UserGetTag(m *tb.Message) string {
+	vacationTagCacheKey := "user.vacationTag"
 	rows, err := r.db.Query(`
-		SELECT "tag"
-		FROM "auth::user"
-		WHERE "tgChatId" = $1
-	`, m.Chat.ID)
+		SELECT "value"
+		FROM "bot::userSetting"
+		WHERE "tgChatId" = $1 AND "setting" = $2
+	`, m.Chat.ID, vacationTagCacheKey)
 	if err != nil {
 		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user tag: %s", err.Error())
 	}
@@ -211,19 +238,26 @@ func (r *Repo) UserGetTag(m *tb.Message) string {
 }
 
 func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
-	q := `UPDATE "auth::user"`
-	params := []interface{}{m.Chat.ID}
-	if tag == "" {
-		q += ` SET "tag" = NULL`
-	} else {
-		q += ` SET "tag" = $2`
-		params = append(params, tag)
-	}
-	q += ` WHERE "tgChatId" = $1`
-	_, err := r.db.Exec(q, params...)
+	vacationTagCacheKey := "user.vacationTag"
+
+	tx, err := r.db.Begin()
 	if err != nil {
-		return fmt.Errorf("error while setting user default tag: %s", err.Error())
+		return fmt.Errorf("could not create db tx for setting vacation tag: %s", err.Error())
 	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, vacationTagCacheKey)
+	if err != nil {
+		return fmt.Errorf("could not delete setting vacation tag: %s", err.Error())
+	}
+	if tag != "" {
+		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, vacationTagCacheKey, tag)
+		if err != nil {
+			return fmt.Errorf("could not insert setting vacation tag: %s", err.Error())
+		}
+	}
+
+	tx.Commit()
 	return nil
 }
 

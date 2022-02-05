@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -17,6 +18,7 @@ func (bc *BotController) configHandler(m *tb.Message) {
 		Add("currency", bc.configHandleCurrency).
 		Add("tag", bc.configHandleTag).
 		Add("notify", bc.configHandleNotification).
+		Add("limit", bc.configHandleLimit).
 		Add("about", bc.configHandleAbout)
 	err := sc.Handle(m)
 	if err != nil {
@@ -47,6 +49,11 @@ Create a schedule to be notified of open transactions (i.e. not archived or dele
 /{{.CONFIG_COMMAND}} notify - Get current notification status
 /{{.CONFIG_COMMAND}} notify off - Disable reminder notifications
 /{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day ({{.TZ}})",
+
+Set suggestion cache limits (i.e. only cache new values until limit is reached, then old ones get dismissed if new ones are added):
+
+/{{.CONFIG_COMMAND}} limit - Get currently set cache limits
+/{{.CONFIG_COMMAND}} limit <suggestionType> <amount>|off - Set or disable suggestion limit for a type
 `, map[string]interface{}{
 		"CONFIG_COMMAND": CMD_CONFIG,
 		"TZ":             tz,
@@ -199,6 +206,92 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 		bc.configHandleNotification(m) // Recursively call with zero params --> GET
 		return
 	}
+	bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
+}
+
+func (bc *BotController) configHandleLimit(m *tb.Message, params ...string) {
+	if len(params) == 0 {
+		// GET limits for all types
+		cacheLimits, err := bc.Repo.CacheUserSettingGetLimits(m)
+		if err != nil {
+			bc.Logf(WARN, m, "CacheUserSettingGetLimits failed: %s", err.Error())
+			bc.configHelp(m, fmt.Errorf("could not get your cache limits"))
+			return
+		}
+		message := "You have the following cache limits configured:\n"
+		for limit, value := range cacheLimits {
+			message += fmt.Sprintf("\n%s: %d", limit, value)
+		}
+		message += "\n\n"
+		message += "If new cache entries are created for the given types, old ones are automatically deleted.\nPlease note: If suggestions were added using /suggestions add, they will not be deleted automatically by this mechanism. '-1' means no limit."
+		_, err = bc.Bot.Send(m.Sender, message)
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	} else if len(params) == 1 {
+		// GET limit for type
+		cacheType := params[0]
+		cacheLimits, err := bc.Repo.CacheUserSettingGetLimits(m)
+		if err != nil {
+			bc.Logf(WARN, m, "CacheUserSettingGetLimits failed: %s", err.Error())
+			bc.configHelp(m, fmt.Errorf("an application error occurred while retrieving cache limits from database"))
+			return
+		}
+		message := "You have the following cache limit configured for '" + cacheType + "': " + strconv.Itoa(cacheLimits[cacheType])
+		message += "\n\n"
+		message += "If new cache entries are created for the given types, old ones are automatically deleted.\nPlease note: If suggestions were added using /suggestions add, they will not be deleted automatically by this mechanism. '-1' means no limit."
+		_, err = bc.Bot.Send(m.Sender, message)
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	} else if len(params) == 2 {
+		// SET limit for type
+		cacheType := params[0]
+		limitValue := params[1]
+
+		if !helpers.ArrayContains(helpers.AllowedSuggestionTypes(), cacheType) {
+			bc.configHelp(m, fmt.Errorf("unknown suggestion type: %s. Must be one from: %v", cacheType, helpers.AllowedSuggestionTypes()))
+			return
+		}
+
+		limitValueParsed, errParsing := strconv.Atoi(limitValue)
+		if errParsing != nil {
+			bc.configHelp(m, fmt.Errorf("an application error occurred while interpreting your amount as a number to set the limit to"))
+			return
+		}
+
+		if limitValue == "off" || (errParsing == nil && limitValueParsed < 0) {
+			err := bc.Repo.CacheUserSettingSetLimit(m, cacheType, -1)
+			if err != nil {
+				bc.Logf(ERROR, m, "Error disabling suggestions cache limit: %s", err.Error())
+				bc.configHelp(m, fmt.Errorf("an application error occurred while disabling suggestions cache: %s", err.Error()))
+				return
+			}
+			_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully disabled suggestions cache limits for type %s", cacheType))
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+		} else {
+			err := bc.Repo.CacheUserSettingSetLimit(m, cacheType, limitValueParsed)
+			if err != nil {
+				bc.Logf(ERROR, m, "Error setting suggestions cache limit: %s", err.Error())
+				bc.configHelp(m, fmt.Errorf("an application error occurred while setting a new suggestions cache limit: %s", err.Error()))
+				return
+			}
+			_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully set suggestions cache limits for type %s to %d", cacheType, limitValueParsed))
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+		}
+		err := bc.Repo.PruneUserCachedSuggestions(m)
+		if err != nil {
+			bc.Logf(WARN, m, "Could not prune suggestions: %s", err.Error())
+		}
+		return
+	}
+
 	bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
 }
 

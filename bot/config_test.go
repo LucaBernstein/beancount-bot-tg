@@ -21,21 +21,22 @@ func TestConfigCurrency(t *testing.T) {
 		log.Fatal(err)
 	}
 	mock.
-		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	mock.
-		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("SOMEEUR"))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("SOMEEUR"))
 	mock.
-		ExpectQuery(`SELECT "currency" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("SOMEEUR"))
-	mock.
-		ExpectExec(`UPDATE "auth::user"`).
-		WithArgs(12345, "USD").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.currency").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("SOMEEUR"))
+
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.currency").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT`).WithArgs(12345, "user.currency", "USD").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 
 	bc := NewBotController(db)
 
@@ -80,6 +81,7 @@ func TestConfigCurrency(t *testing.T) {
 
 func TestConfigTag(t *testing.T) {
 	// Test dependencies
+	crud.TEST_MODE = true
 	chat := &tb.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -96,10 +98,12 @@ func TestConfigTag(t *testing.T) {
 	}
 
 	// SET tag
-	mock.
-		ExpectExec(`UPDATE "auth::user" SET "tag" = ?`).
-		WithArgs(chat.ID, "vacation2021").
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
+		WithArgs(12345, "user.vacationTag", "vacation2021").
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 	bc.commandConfig(&tb.Message{Text: "/config tag vacation2021", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag vacation2021: %s", bot.LastSentWhat)
@@ -110,9 +114,9 @@ func TestConfigTag(t *testing.T) {
 
 	// GET tag
 	mock.
-		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow("vacation2021"))
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.vacationTag").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("vacation2021"))
 	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag: %s", bot.LastSentWhat)
@@ -122,8 +126,8 @@ func TestConfigTag(t *testing.T) {
 	}
 
 	mock.
-		ExpectQuery(`SELECT "tag" FROM "auth::user" WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, "user.vacationTag").
 		WillReturnRows(sqlmock.NewRows([]string{"tag"}).AddRow(nil))
 	bc.commandConfig(&tb.Message{Text: "/config tag", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
@@ -134,10 +138,9 @@ func TestConfigTag(t *testing.T) {
 	}
 
 	// DELETE tag
-	mock.
-		ExpectExec(`UPDATE "auth::user" SET "tag" = NULL WHERE "tgChatId" = ?`).
-		WithArgs(chat.ID).
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, "user.vacationTag").WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
 	bc.commandConfig(&tb.Message{Text: "/config tag off", Chat: chat})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /config") {
 		t.Errorf("/config tag off: %s", bot.LastSentWhat)
