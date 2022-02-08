@@ -95,65 +95,6 @@ func (r *Repo) getUser(id int64) (*User, error) {
 	return nil, nil
 }
 
-const DEFAULT_CURRENCY = "EUR"
-
-func (r *Repo) UserGetCurrency(m *tb.Message) string {
-	currencyCacheKey := helpers.USERSET_CUR
-
-	rows, err := r.db.Query(`
-		SELECT "value"
-		FROM "bot::userSetting"
-		WHERE "tgChatId" = $1 AND "setting" = $2
-	`, m.Chat.ID, currencyCacheKey)
-	if err != nil {
-		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user currency: %s", err.Error())
-	}
-	defer rows.Close()
-
-	var currency sql.NullString
-	if rows.Next() {
-		err = rows.Scan(&currency)
-		if err != nil {
-			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user currency into var: %s", err.Error())
-		}
-		if currency.Valid && currency.String != "" {
-			return currency.String
-		}
-	}
-	return DEFAULT_CURRENCY
-}
-
-func (r *Repo) UserIsAdmin(m *tb.Message) bool {
-	adminCacheKey := helpers.USERSET_ADM
-	rows, err := r.db.Query(`
-		SELECT "value"
-		FROM "bot::userSetting"
-		WHERE "tgChatId" = $1 AND "setting" = $2
-	`, m.Chat.ID, adminCacheKey)
-	if err != nil {
-		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user isAdmin flag: %s", err.Error())
-	}
-	defer rows.Close()
-
-	var isAdmin *sql.NullString
-	if rows.Next() {
-		err = rows.Scan(&isAdmin)
-		if err != nil {
-			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user isAdmin into var: %s", err.Error())
-			return false
-		}
-		isAdminB, err := strconv.ParseBool(isAdmin.String)
-		if err != nil {
-			LogDbf(r, helpers.ERROR, m, "Encountered error while parsing isAdmin setting value: %s", err.Error())
-			return false
-		}
-		if isAdmin.Valid && isAdminB {
-			return true
-		}
-	}
-	return false
-}
-
 func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string) {
 	query := `
 		SELECT "tgChatId"
@@ -188,79 +129,6 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 	return
 }
 
-func (r *Repo) UserSetCurrency(m *tb.Message, currency string) error {
-	currencyCacheKey := helpers.USERSET_CUR
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return fmt.Errorf("could not create db tx for setting currency: %s", err.Error())
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, currencyCacheKey)
-	if err != nil {
-		return fmt.Errorf("could not delete setting currency: %s", err.Error())
-	}
-	if currency != "" {
-		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, currencyCacheKey, currency)
-		if err != nil {
-			return fmt.Errorf("could not insert setting currency: %s", err.Error())
-		}
-	}
-
-	tx.Commit()
-	return nil
-}
-
-func (r *Repo) UserGetTag(m *tb.Message) string {
-	vacationTagCacheKey := helpers.USERSET_TAG
-	rows, err := r.db.Query(`
-		SELECT "value"
-		FROM "bot::userSetting"
-		WHERE "tgChatId" = $1 AND "setting" = $2
-	`, m.Chat.ID, vacationTagCacheKey)
-	if err != nil {
-		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user tag: %s", err.Error())
-	}
-	defer rows.Close()
-
-	var tag sql.NullString
-	if rows.Next() {
-		err = rows.Scan(&tag)
-		if err != nil {
-			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user tag into var: %s", err.Error())
-		}
-		if tag.Valid && tag.String != "" {
-			return tag.String
-		}
-	}
-	return ""
-}
-
-func (r *Repo) UserSetTag(m *tb.Message, tag string) error {
-	vacationTagCacheKey := helpers.USERSET_TAG
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return fmt.Errorf("could not create db tx for setting vacation tag: %s", err.Error())
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, vacationTagCacheKey)
-	if err != nil {
-		return fmt.Errorf("could not delete setting vacation tag: %s", err.Error())
-	}
-	if tag != "" {
-		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, vacationTagCacheKey, tag)
-		if err != nil {
-			return fmt.Errorf("could not insert setting vacation tag: %s", err.Error())
-		}
-	}
-
-	tx.Commit()
-	return nil
-}
-
 func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, err error) {
 	rows, err := r.db.Query(`
 		SELECT "delayHours", "notificationHour"
@@ -281,48 +149,6 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 		return delayHours / 24, hour, nil
 	}
 	return -1, -1, nil
-}
-
-func (r *Repo) UserGetTzOffset(m *tb.Message) (tzOffset int) {
-	rows, err := r.db.Query(`
-		SELECT "value"
-		FROM "bot::userSetting"
-		WHERE "tgChatId" = $1 AND "setting" = $2
-	`, m.Chat.ID, helpers.USERSET_TZOFF)
-	if err != nil {
-		LogDbf(r, helpers.ERROR, m, "Encountered error while getting user timezone offset setting: %s", err.Error())
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		err = rows.Scan(&tzOffset)
-		if err != nil {
-			LogDbf(r, helpers.ERROR, m, "Encountered error while scanning user timezone offset setting into var: %s", err.Error())
-		}
-	}
-	return
-}
-
-func (r *Repo) UserSetTzOffset(m *tb.Message, timezoneOffset int) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return fmt.Errorf("could not create db tx for setting timezone offset: %s", err.Error())
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, m.Chat.ID, helpers.USERSET_TZOFF)
-	if err != nil {
-		return fmt.Errorf("could not delete setting timezone offset: %s", err.Error())
-	}
-	if timezoneOffset != 0 {
-		_, err = tx.Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, m.Chat.ID, helpers.USERSET_TZOFF, timezoneOffset)
-		if err != nil {
-			return fmt.Errorf("could not insert setting timezone offset: %s", err.Error())
-		}
-	}
-
-	tx.Commit()
-	return nil
 }
 
 /**
