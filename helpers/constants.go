@@ -16,6 +16,8 @@ const (
 	USERSET_TAG        = "user.vacationTag"
 	USERSET_LIM_PREFIX = "user.limitCache."
 	USERSET_TZOFF      = "user.tzOffset"
+
+	DEFAULT_CURRENCY = "EUR"
 )
 
 func AllowedSuggestionTypes() []string {

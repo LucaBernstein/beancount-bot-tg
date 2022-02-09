@@ -125,7 +125,7 @@ func TestUserGetCurrency(t *testing.T) {
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	cur := r.UserGetCurrency(&tb.Message{Chat: chat})
-	if cur != crud.DEFAULT_CURRENCY {
+	if cur != helpers.DEFAULT_CURRENCY {
 		t.Errorf("If no currency is given for user in db, use default currency")
 	}
 
