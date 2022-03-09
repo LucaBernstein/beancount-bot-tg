@@ -34,7 +34,11 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
 
-	suggestionsMenu.Inline(suggestionsMenu.Row(btnSuggListAccFrom, btnSuggListAccTo, btnSuggListTxDesc))
+	suggestionsMenu.Inline(
+		suggestionsMenu.Row(btnSuggListAccFrom),
+		suggestionsMenu.Row(btnSuggListAccTo),
+		suggestionsMenu.Row(btnSuggListTxDesc),
+	)
 
 	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
