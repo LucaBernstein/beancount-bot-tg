@@ -3,6 +3,7 @@ package health
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -20,6 +21,8 @@ type MonitoringResult struct {
 	cache_entries_accTo   int
 	cache_entries_accFrom int
 	cache_entries_txDesc  int
+
+	version string
 }
 
 // TODO: Use package?
@@ -47,6 +50,10 @@ bc_bot_users_count %d
 bc_bot_cache_entries{type="accTo"} %d
 bc_bot_cache_entries{type="accFrom"} %d
 bc_bot_cache_entries{type="txDesc"} %d
+
+# HELP bc_bot_version_information
+# TYPE bc_bot_version_information counter
+bc_bot_version_information{version="%s"} 1
 		`,
 			m.logs_daily_error,
 			m.logs_daily_warning,
@@ -59,6 +66,8 @@ bc_bot_cache_entries{type="txDesc"} %d
 			m.cache_entries_accTo,
 			m.cache_entries_accFrom,
 			m.cache_entries_txDesc,
+
+			m.version,
 		)
 	}
 }
@@ -93,6 +102,8 @@ func gatherMetrics(bc *bot.BotController) (result *MonitoringResult) {
 	result.cache_entries_accTo = accTo
 	result.cache_entries_accFrom = accFrom
 	result.cache_entries_txDesc = txDesc
+
+	result.version = os.Getenv("VERSION")
 
 	return
 }
