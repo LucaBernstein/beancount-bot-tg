@@ -9,7 +9,7 @@ WORKDIR /src
 COPY . .
 
 RUN go mod download
-RUN go build -o app
+RUN go build -buildvcs=false -o app
 
 FROM alpine
 
