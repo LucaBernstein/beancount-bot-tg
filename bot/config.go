@@ -19,7 +19,8 @@ func (bc *BotController) configHandler(m *tb.Message) {
 		Add("notify", bc.configHandleNotification).
 		Add("limit", bc.configHandleLimit).
 		Add("about", bc.configHandleAbout).
-		Add("tz_offset", bc.configHandleTimezoneOffset)
+		Add("tz_offset", bc.configHandleTimezoneOffset).
+		Add("delete_account", bc.configHandleAccountDelete)
 	err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
@@ -48,7 +49,7 @@ Create a schedule to be notified of open transactions (i.e. not archived or dele
 
 /{{.CONFIG_COMMAND}} notify - Get current notification status
 /{{.CONFIG_COMMAND}} notify off - Disable reminder notifications
-/{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day ({{.TZ}})",
+/{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day ({{.TZ}})
 
 Set suggestion cache limits (i.e. only cache new values until limit is reached, then old ones get dismissed if new ones are added):
 
@@ -59,6 +60,10 @@ Set timezone offset from UTC for transactions where date is added automatically:
 
 /{{.CONFIG_COMMAND}} tz_offset - Get current timezone offset from UTC
 /{{.CONFIG_COMMAND}} tz_offset <hours> - Set timezone offset from UTC, default 0
+
+Reset your data stored by the bot. WARNING: This action is permanent!
+
+/{{.CONFIG_COMMAND}} delete_account yes - Permanently delete all account-related data
 `, map[string]interface{}{
 		"CONFIG_COMMAND": CMD_CONFIG,
 		"TZ":             tz,
@@ -372,4 +377,64 @@ func prettyTzOffset(tzOffset int) string {
 		return strconv.Itoa(tzOffset)
 	}
 	return "+" + strconv.Itoa(tzOffset)
+}
+
+func (bc *BotController) configHandleAccountDelete(m *tb.Message, params ...string) {
+	bc.Logf(INFO, m, "User issued account deletion command")
+	if len(params) == 1 && params[0] == "yes" {
+		bc.Logf(INFO, m, "Will delete all user data upon user request")
+
+		bc.deleteUserData(m)
+
+		_, err := bc.Bot.Send(m.Sender, "I'm sad to see you go. Hopefully one day, you will come back.\n\nI have deleted all of your data stored in the bot. You can simply start over by sending me a message again. Goodbye.")
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		_, err = bc.Bot.Send(m.Sender, "============")
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+	bc.Logf(INFO, m, "Reset command failed 'yes' verification. Aborting.")
+	_, err := bc.Bot.Send(m.Sender, "Reset has been aborted.\n\nYou tried to permanently delete your account. Please make sure to confirm this action by adding 'yes' to the end of your command. Please check /config for usage.")
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+}
+
+func (bc *BotController) deleteUserData(m *tb.Message) {
+	errors := errors{operation: "user deletion", bc: bc, m: m}
+	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_ACCT, ""))
+	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_ACCF, ""))
+	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_AMTF, ""))
+	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_DATE, ""))
+	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_DESC, ""))
+
+	errors.handle1(bc.Repo.UserSetNotificationSetting(m, -1, -1))
+
+	errors.handle1(bc.Repo.DeleteTransactions(m))
+
+	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_ADM, "", m.Chat.ID))
+	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_CUR, "", m.Chat.ID))
+	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_LIM_PREFIX, "", m.Chat.ID))
+	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_TAG, "", m.Chat.ID))
+	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_TZOFF, "", m.Chat.ID))
+
+	errors.handle1(bc.Repo.DeleteUser(m))
+}
+
+type errors struct {
+	operation string
+	m         *tb.Message
+	bc        *BotController
+}
+
+func (e *errors) handle1(err error) {
+	if err != nil {
+		e.bc.Logf(ERROR, e.m, "Handling error for operation '%s' (failing silently, proceeding): %s", e.operation, err.Error())
+	}
+}
+func (e *errors) handle2(_ interface{}, err error) {
+	e.handle1(err)
 }

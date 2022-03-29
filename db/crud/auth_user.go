@@ -18,7 +18,7 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
 
-	userCachePrune()
+	userCachePrune(0)
 	ce, err := r.getUser(m.Chat.ID)
 	if err != nil {
 		return err
@@ -38,6 +38,18 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	return nil
 }
 
+func (r *Repo) DeleteUser(m *tb.Message) error {
+	if m == nil {
+		return fmt.Errorf("provided message was nil")
+	}
+	tgChatId := m.Chat.ID
+
+	userCachePrune(tgChatId)
+
+	_, err := r.db.Exec(`DELETE FROM "auth::user" WHERE "tgChatId" = $1`, tgChatId)
+	return err
+}
+
 // User cache
 
 type User struct {
@@ -55,9 +67,9 @@ const CACHE_VALIDITY = 15 * time.Minute
 
 var USER_CACHE = make(map[int64]*UserCacheEntry)
 
-func userCachePrune() {
+func userCachePrune(tgChatId int64) {
 	for i, ce := range USER_CACHE {
-		if ce.Expiry.Before(time.Now()) {
+		if ce.Expiry.Before(time.Now()) || (i == tgChatId && i != 0) {
 			delete(USER_CACHE, i)
 		}
 	}

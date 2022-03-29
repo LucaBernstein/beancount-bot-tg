@@ -78,6 +78,35 @@ func TestEnrichUserData(t *testing.T) {
 	}
 }
 
+func TestDeleteUser(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	mock.
+		ExpectExec(`
+			DELETE FROM "auth::user"
+			WHERE "tgChatId" = ?`).
+		WithArgs(chat.ID).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err = r.DeleteUser(&tb.Message{Chat: chat})
+	if err != nil {
+		t.Errorf("Expected no error for user deletion")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
 func TestEnrichUserDataErrors(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
