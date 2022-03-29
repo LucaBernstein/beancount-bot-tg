@@ -52,7 +52,7 @@ bc_bot_cache_entries{type="accFrom"} %d
 bc_bot_cache_entries{type="txDesc"} %d
 
 # HELP bc_bot_version_information
-# TYPE bc_bot_version_information counter
+# TYPE bc_bot_version_information gauge
 bc_bot_version_information{version="%s"} 1
 		`,
 			m.logs_daily_error,
