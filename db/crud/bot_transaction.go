@@ -12,10 +12,15 @@ func (r *Repo) RecordTransaction(chatId int64, tx string) error {
 	return err
 }
 
-func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) ([]string, error) {
+type TransactionResult struct {
+	Tx   string
+	Date string
+}
+
+func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) ([]*TransactionResult, error) {
 	LogDbf(r, helpers.TRACE, m, "Getting transactions")
 	rows, err := r.db.Query(`
-		SELECT "value" FROM "bot::transaction"
+		SELECT "value", "created" FROM "bot::transaction"
 		WHERE "tgChatId" = $1 AND "archived" = $2
 		ORDER BY "created" ASC
 	`, m.Chat.ID, isArchived)
@@ -24,16 +29,20 @@ func (r *Repo) GetTransactions(m *tb.Message, isArchived bool) ([]string, error)
 	}
 	defer rows.Close()
 
-	allTransactionsMessage := []string{}
+	allTransactions := []*TransactionResult{}
 	var transactionString string
+	var created string
 	for rows.Next() {
-		err = rows.Scan(&transactionString)
+		err = rows.Scan(&transactionString, &created)
 		if err != nil {
 			return nil, err
 		}
-		allTransactionsMessage = append(allTransactionsMessage, transactionString)
+		allTransactions = append(allTransactions, &TransactionResult{
+			Tx:   transactionString,
+			Date: created,
+		})
 	}
-	return allTransactionsMessage, nil
+	return allTransactions, nil
 }
 
 func (r *Repo) ArchiveTransactions(m *tb.Message) error {
