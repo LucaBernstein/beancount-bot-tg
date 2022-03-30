@@ -7,13 +7,14 @@ import (
 
 	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/go-co-op/gocron"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 type CMD struct {
 	Command  string
-	Optional string
+	Optional []string
 	Handler  func(m *tb.Message)
 	Help     string
 }
@@ -107,9 +108,9 @@ func (bc *BotController) commandMappings() []*CMD {
 		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
 		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
-		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: "YYYY-MM-DD"},
+		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"YYYY-MM-DD"}},
 		{Command: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
-		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: "archived"},
+		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
 		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{Command: CMD_CONFIG, Handler: bc.commandConfig, Help: "Bot configurations"},
 		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
@@ -149,8 +150,10 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 			helpMsg += "\n"
 		}
 		var optional string
-		if cmd.Optional != "" {
-			optional = " [" + cmd.Optional + "]"
+		if cmd.Optional != nil {
+			for _, opt := range cmd.Optional {
+				optional += " [" + opt + "]"
+			}
 		}
 		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.Command, optional, cmd.Help)
 	}
@@ -254,14 +257,25 @@ func (bc *BotController) commandAddComment(m *tb.Message) {
 func (bc *BotController) commandList(m *tb.Message) {
 	bc.Logf(TRACE, m, "Listing transactions")
 	command := strings.Split(m.Text, " ")
-	if len(command) == 2 && command[1] != "archived" {
-		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Your parameter after %s could not be recognized. Please try again with '/list' or '/list archived'.", command[0]), clearKeyboard())
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	isArchived := false
+	isDated := false
+	if len(command) > 1 {
+		for _, option := range command[1:] {
+			if option == "archived" {
+				isArchived = true
+				continue
+			} else if option == "dated" {
+				isDated = true
+				continue
+			}
+
+			_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+			return
 		}
-		return
 	}
-	isArchived := len(command) == 2 && command[1] == "archived"
 	tx, err := bc.Repo.GetTransactions(m, isArchived)
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
@@ -279,12 +293,27 @@ func (bc *BotController) commandList(m *tb.Message) {
 	txMessages := []string{}
 	transactionsList := ""
 	for _, t := range tx {
-		if len(transactionsList)+len(t) >= TG_MAX_MSG_CHAR_LEN {
+		if len(transactionsList)+len(t.Tx) >= TG_MAX_MSG_CHAR_LEN {
 			bc.Logf(TRACE, m, "Listed messages extend max message length. Splitting into multiple messages.")
 			txMessages = append(txMessages, transactionsList)
 			transactionsList = ""
 		}
-		transactionsList += t + SEP
+		var dateComment string
+		if isDated {
+			tzOffset := bc.Repo.UserGetTzOffset(m)
+			timezoneOff := time.Duration(tzOffset) * time.Hour
+			// 2022-03-30T14:24:50.390084Z
+			dateParsed, err := time.Parse("2006-01-02T15:04:05Z", t.Date)
+			if err != nil {
+				bc.Logf(ERROR, m, "Parsing time failed: %s", err.Error())
+				bc.Logf(WARN, m, "Turning off dated option!")
+				isDated = false
+			} else {
+				date := dateParsed.Add(timezoneOff).Format(helpers.BEANCOUNT_DATE_FORMAT + " 15:04")
+				dateComment = "; recorded on " + date + SEP
+			}
+		}
+		transactionsList += dateComment + t.Tx + SEP
 	}
 	if transactionsList != "" {
 		txMessages = append(txMessages, transactionsList)

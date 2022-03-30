@@ -135,19 +135,19 @@ func TestTransactionListMaxLength(t *testing.T) {
 		log.Fatal(err)
 	}
 	mock.
-		ExpectQuery(`SELECT "value" FROM "bot::transaction"`).
+		ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).
 		WithArgs(chat.ID, false).
-		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(strings.Repeat("**********", 100)).AddRow(strings.Repeat("**********", 100))) // 1000 + 1000
+		WillReturnRows(sqlmock.NewRows([]string{"value", "created"}).AddRow(strings.Repeat("**********", 100), "").AddRow(strings.Repeat("**********", 100), "")) // 1000 + 1000
 	mock.
-		ExpectQuery(`SELECT "value" FROM "bot::transaction"`).
+		ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).
 		WithArgs(chat.ID, false).
-		WillReturnRows(sqlmock.NewRows([]string{"value"}).
+		WillReturnRows(sqlmock.NewRows([]string{"value", "created"}).
 			// 5 * 1000
-			AddRow(strings.Repeat("**********", 100)).
-			AddRow(strings.Repeat("**********", 100)).
-			AddRow(strings.Repeat("**********", 100)).
-			AddRow(strings.Repeat("**********", 100)).
-			AddRow(strings.Repeat("**********", 100)),
+			AddRow(strings.Repeat("**********", 100), "").
+			AddRow(strings.Repeat("**********", 100), "").
+			AddRow(strings.Repeat("**********", 100), "").
+			AddRow(strings.Repeat("**********", 100), "").
+			AddRow(strings.Repeat("**********", 100), ""),
 		)
 
 	bc := NewBotController(db)
@@ -169,6 +169,57 @@ func TestTransactionListMaxLength(t *testing.T) {
 	}
 	if bot.LastSentWhat != strings.Repeat("**********", 100)+"\n" {
 		t.Errorf("Expected last message to contain last transaction as it flowed over the first message: %v", bot.LastSentWhat)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestTransactionsListArchivedDated(t *testing.T) {
+	// create test dependencies
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	crud.TEST_MODE = true
+	if err != nil {
+		log.Fatal(err)
+	}
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	// successful date enrichment
+	mock.ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"value", "created"}).
+				AddRow("tx1", "2022-03-30T14:24:50.390084Z").
+				AddRow("tx2", "2022-03-30T15:24:50.390084Z"),
+		)
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
+
+	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
+
+	if bot.LastSentWhat != "; recorded on 2022-03-30 14:24\ntx1\n; recorded on 2022-03-30 15:24\ntx2\n" {
+		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
+	}
+
+	// fall back to undated if date parsing fails
+	mock.ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
+		WillReturnRows(
+			sqlmock.NewRows([]string{"value", "created"}).
+				AddRow("tx1", "123456789").
+				AddRow("tx2", "456789123"),
+		)
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
+
+	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
+
+	if bot.LastSentWhat != "tx1\ntx2\n" {
+		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
 
