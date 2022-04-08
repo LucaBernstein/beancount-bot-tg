@@ -50,3 +50,10 @@ To add module requirements and sums:
 ```
 go mod tidy
 ```
+
+To update modules:
+
+```
+go get -u
+go mod tidy
+```

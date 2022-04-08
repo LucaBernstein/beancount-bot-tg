@@ -58,21 +58,21 @@ func (bc *BotController) AddBotAndStart(b IBot) {
 		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
 		c.Message.Text = "/suggestions list accFrom"
 		// TODO: What happens in group chats?
-		c.Message.Sender = &tb.User{ID: int(c.Message.Chat.ID)} // hack to send chat user a message (in private chats userId = chatId)
+		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID} // hack to send chat user a message (in private chats userId = chatId)
 		bc.suggestionsHandler(c.Message)
 		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
 	})
 	bc.Bot.Handle(&btnSuggListAccTo, func(c *tb.Callback) {
 		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
 		c.Message.Text = "/suggestions list accTo"
-		c.Message.Sender = &tb.User{ID: int(c.Message.Chat.ID)}
+		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID}
 		bc.suggestionsHandler(c.Message)
 		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
 	})
 	bc.Bot.Handle(&btnSuggListTxDesc, func(c *tb.Callback) {
 		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
 		c.Message.Text = "/suggestions list txDesc"
-		c.Message.Sender = &tb.User{ID: int(c.Message.Chat.ID)}
+		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID}
 		bc.suggestionsHandler(c.Message)
 		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
 	})
