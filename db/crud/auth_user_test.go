@@ -62,13 +62,13 @@ func TestEnrichUserData(t *testing.T) {
 		WithArgs(chat.ID, chat.ID, "username").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: int(chat.ID), Username: "username"}})
+	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}
 
 	// User already exists, everything is fine
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: int(chat.ID), Username: "old_username"}})
+	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "old_username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}

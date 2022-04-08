@@ -3,8 +3,8 @@ module github.com/LucaBernstein/beancount-bot-tg
 go 1.17
 
 require (
-	github.com/go-co-op/gocron v1.10.0
-	gopkg.in/tucnak/telebot.v2 v2.4.0
+	github.com/go-co-op/gocron v1.13.0
+	gopkg.in/tucnak/telebot.v2 v2.5.0
 )
 
 require (
@@ -14,6 +14,6 @@ require (
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
-	github.com/lib/pq v1.10.3
+	github.com/lib/pq v1.10.5
 	github.com/pkg/errors v0.9.1 // indirect
 )
