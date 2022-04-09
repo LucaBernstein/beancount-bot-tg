@@ -2,24 +2,24 @@
 
 Supports you in keeping track of your beancount transactions also if you need to quickly note a transaction down or have no access to your file.
 
-## Links to access bot and webinterface
+## Usage
 
-* [Webinterface (coming soon...)]()
-* [Telegram Bot @LB_Bean_Bot](https://t.me/LB_Bean_Bot)
+You can use the bot [`@LB_Bean_Bot`](https://t.me/LB_Bean_Bot) to test/use it directly or to get started quickly.
 
-## Getting started
+Steps to get started after contacting the bot:
 
 1. Start a conversation with the bot (usually `/start`).
 1. If needed, the bot will lead you through any additional setup needed
 1. You can type `/help` to see the commands available to control the bot (e.g. to add accounts, record transactions, change account settings, ...)
 
-## Setup self-hosted
+## Installation (self-hosted)
 
-Check the [`SETUP.md`](SETUP.md) guide for more information about hosting the bot backend application.
+Check the [`SETUP.md`](./SETUP.md) guide for more information about hosting the bot backend application.
 
-## Setup local dev environment
+## Development
 
-To start the db and the backend server:
+To setup a local development environment you need a running database.
+The following commands help you to get started:
 
 ```bash
 # Prerequisites
@@ -57,3 +57,13 @@ To update modules:
 go get -u
 go mod tidy
 ```
+
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## License
+
+[Licensed under MIT license](./LICENSE)
