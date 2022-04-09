@@ -21,7 +21,7 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 		Add("list", bc.suggestionsHandleList).
 		Add("add", bc.suggestionsHandleAdd).
 		Add("rm", bc.suggestionsHandleRemove)
-	err := sc.Handle(m)
+	_, err := sc.Handle(m)
 	if err != nil {
 		bc.suggestionsHelp(m, nil)
 	}

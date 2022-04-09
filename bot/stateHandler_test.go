@@ -12,13 +12,13 @@ func TestStateClearing(t *testing.T) {
 	stateHandler := bot.NewStateHandler()
 
 	stateHandler.SimpleTx(message, "")
-	state := stateHandler.Get(message)
+	state := stateHandler.GetTx(message)
 	if state == nil {
 		t.Errorf("State from StateHandler before clearing was wrong, got: nil, want: not nil.")
 	}
 
 	stateHandler.Clear(message)
-	if stateHandler.Get(message) != nil {
+	if stateHandler.GetTx(message) != nil {
 		t.Errorf("State from StateHandler after clearing was wrong, got: not nil, want: nil.")
 	}
 }

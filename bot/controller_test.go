@@ -77,7 +77,7 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
-	tx := bc.State.states[12345]
+	tx := bc.State.txStates[12345]
 	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
@@ -318,7 +318,7 @@ func TestCommandCancel(t *testing.T) {
 	bot := &MockBot{}
 	bc.AddBotAndStart(bot)
 	bc.commandCancel(&tb.Message{Chat: chat})
-	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "no active transactions open to cancel") {
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "did not currently have any state or transaction open that could be cancelled") {
 		t.Errorf("Unexpectedly there were open tx before")
 	}
 }
@@ -363,7 +363,7 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
-	tx := bc.State.states[12345]
+	tx := bc.State.txStates[12345]
 	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
