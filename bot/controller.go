@@ -227,7 +227,11 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 		}
 		return
 	}
-	hint := tx.NextHint(bc.Repo, m) // get first hint
+	if tx.IsDone() {
+		bc.finishTransaction(m, tx)
+		return
+	}
+	hint := tx.NextHint(bc.Repo, m)
 	_, err = bc.Bot.Send(m.Sender, hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
@@ -571,53 +575,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 		}
 		bc.Logf(TRACE, m, "New data state is %v. (Last input was '%s')", tx.Debug(), m.Text)
 		if tx.IsDone() {
-			currency := bc.Repo.UserGetCurrency(m)
-			tag := bc.Repo.UserGetTag(m)
-			tzOffset := bc.Repo.UserGetTzOffset(m)
-			transaction, err := tx.FillTemplate(currency, tag, tzOffset)
-			if err != nil {
-				bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
-				_, err := bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
-				if err != nil {
-					bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-				}
-				return
-			}
-
-			err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
-			if err != nil {
-				bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
-				_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
-				if err != nil {
-					bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-				}
-				return
-			}
-
-			// TODO: Goroutine
-			err = bc.Repo.PutCacheHints(m, tx.DataKeys())
-			if err != nil {
-				bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
-				// Don't return, instead continue flow (if recording was successful)
-			}
-			err = bc.Repo.PruneUserCachedSuggestions(m)
-			if err != nil {
-				bc.Logf(ERROR, m, "Something went wrong while pruning suggestions cache. Error: %s", err.Error())
-				// Don't return, instead continue flow (if recording was successful)
-			}
-
-			_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully recorded your transaction.\n"+
-				"You can get a list of all your transactions using /%s. "+
-				"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
-				"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",
-				CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
-				clearKeyboard(),
-			)
-			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-			}
-
-			bc.State.Clear(m)
+			bc.finishTransaction(m, tx)
 			return
 		}
 		hint := tx.NextHint(bc.Repo, m)
@@ -640,4 +598,54 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 
 func clearKeyboard() *tb.ReplyMarkup {
 	return &tb.ReplyMarkup{ReplyKeyboardRemove: true}
+}
+
+func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
+	currency := bc.Repo.UserGetCurrency(m)
+	tag := bc.Repo.UserGetTag(m)
+	tzOffset := bc.Repo.UserGetTzOffset(m)
+	transaction, err := tx.FillTemplate(currency, tag, tzOffset)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
+		_, err := bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+
+	err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
+		_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+
+	// TODO: Goroutine
+	err = bc.Repo.PutCacheHints(m, tx.DataKeys())
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
+		// Don't return, instead continue flow (if recording was successful)
+	}
+	err = bc.Repo.PruneUserCachedSuggestions(m)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while pruning suggestions cache. Error: %s", err.Error())
+		// Don't return, instead continue flow (if recording was successful)
+	}
+
+	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully recorded your transaction.\n"+
+		"You can get a list of all your transactions using /%s. "+
+		"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
+		"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",
+		CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
+		clearKeyboard(),
+	)
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+
+	bc.State.Clear(m)
 }

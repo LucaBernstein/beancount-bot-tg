@@ -110,11 +110,12 @@ type Tx interface {
 	DataKeys() map[string]string
 
 	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
-	setDateIfProvided(*tb.Message) (Tx, error)
+	SetDate(string) (Tx, error)
 	setTimeIfEmpty(tzOffset int) bool
 }
 
 type SimpleTx struct {
+	template    string
 	steps       []command
 	stepDetails map[command]Input
 	data        []data
@@ -122,30 +123,88 @@ type SimpleTx struct {
 	step        int
 }
 
-func CreateSimpleTx(m *tb.Message, suggestedCur string) (Tx, error) {
+const TEMPLATE_SIMPLE_DEFAULT = `${date} * "${description}"${tag}
+  ${from} ${-amount}
+  ${to}`
+
+func CreateSimpleTx(suggestedCur, template string) (Tx, error) {
 	tx := (&SimpleTx{
 		stepDetails: make(map[command]Input),
+		template:    template,
 	}).
 		addStep("amount", fmt.Sprintf("Please enter the amount of money (e.g. '12.34' or '12.34 %s')", suggestedCur), HandleFloat).
 		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
 		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
 		addStep("description", "Please enter a description (or select one from the list)", HandleRaw)
-	return tx.setDateIfProvided(m)
-}
-
-func (tx *SimpleTx) setDateIfProvided(m *tb.Message) (Tx, error) {
-	command := strings.Split(m.Text, " ")
-	if len(command) >= 2 {
-		date, err := ParseDate(command[1])
-		if err != nil {
-			return nil, err
-		}
-		tx.date_upd = date
-	}
 	return tx, nil
 }
 
+func (tx *SimpleTx) SetDate(d string) (Tx, error) {
+	date, err := ParseDate(d)
+	if err != nil {
+		return nil, err
+	}
+	tx.date_upd = date
+	return tx, nil
+}
+
+func ParseTemplateFields(template string) (fields map[string]*TemplateField) {
+	fields = make(map[string]*TemplateField)
+	varBegins := strings.SplitAfter(template, "${")
+	for _, v := range varBegins {
+		field := ParseTemplateField(strings.Split(v, "}")[0])
+		fields[field.Raw] = field
+	}
+	return
+}
+
+type TemplateField struct {
+	Name string
+
+	Fraction int
+
+	IsNegative bool
+
+	Raw string
+}
+
+func ParseTemplateField(rawField string) *TemplateField {
+	field := &TemplateField{
+		Raw:      rawField,
+		Name:     rawField,
+		Fraction: 1,
+	}
+
+	field.IsNegative = strings.HasPrefix(field.Name, "-")
+	field.Name = strings.TrimLeft(field.Name, "-")
+
+	fractionSplits := strings.Split(field.Name, "/")
+	if len(fractionSplits) == 2 {
+		field.Name = fractionSplits[0]
+		var err error
+		field.Fraction, err = strconv.Atoi(fractionSplits[1])
+		if err != nil {
+			c.LogLocalf(ERROR, nil, "converting fraction for template failed: '%s' -> %s", rawField, err.Error())
+			field.Fraction = 1
+		}
+	} else {
+		field.Name = fractionSplits[0]
+	}
+
+	return field
+}
+
 func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
+	templateFields := ParseTemplateFields(tx.template)
+	exists := false
+	for _, f := range templateFields {
+		if f.Name == string(command) {
+			exists = true
+		}
+	}
+	if !exists {
+		return tx
+	}
 	tx.steps = append(tx.steps, command)
 	tx.stepDetails[command] = Input{key: string(command), hint: &Hint{Prompt: hint}, handler: handler}
 	tx.data = make([]data, len(tx.steps))
@@ -218,13 +277,12 @@ func (tx *SimpleTx) hintDate(h *Hint) *Hint {
 }
 
 func (tx *SimpleTx) DataKeys() map[string]string {
-	return map[string]string{
-		c.STX_DATE: tx.date_upd,
-		c.STX_DESC: string(tx.data[3]),
-		c.STX_ACCF: string(tx.data[1]),
-		c.STX_AMTF: string(tx.data[0]),
-		c.STX_ACCT: string(tx.data[2]),
+	varMap := make(map[string]string)
+	varMap["date"] = tx.date_upd
+	for i, v := range tx.steps {
+		varMap[string(v)] = string(tx.data[i])
 	}
+	return varMap
 }
 
 func (tx *SimpleTx) IsDone() bool {
@@ -247,37 +305,83 @@ func (tx *SimpleTx) FillTemplate(currency, tag string, tzOffset int) (string, er
 	}
 	// If still empty, set time and correct for timezone
 	tx.setTimeIfEmpty(tzOffset)
-	// Variables
-	txRaw := tx.DataKeys()
-	f, err := strconv.ParseFloat(strings.Split(string(txRaw[c.STX_AMTF]), " ")[0], 64)
-	if err != nil {
-		return "", err
+
+	varMap := tx.DataKeys()
+
+	template := tx.template
+	fields := ParseTemplateFields(tx.template)
+	var amountFields []*TemplateField
+	for _, f := range fields {
+		// TODO: Refactor!
+		value := f.Raw
+		if f.Name == "amount" {
+			amountFields = append(amountFields, f)
+			continue // Only replace last for formatting
+		} else if f.Name == "description" {
+			if v, exists := varMap["description"]; exists {
+				value = v
+			}
+		} else if f.Name == "tag" {
+			tagS := ""
+			if tag != "" {
+				tagS += " #" + tag
+			}
+			value = tagS
+		} else if f.Name == "date" {
+			if v, exists := varMap["date"]; exists {
+				value = v
+			}
+		} else if f.Name == "from" {
+			if v, exists := varMap["from"]; exists {
+				value = v
+			}
+		} else if f.Name == "to" {
+			if v, exists := varMap["to"]; exists {
+				value = v
+			}
+		} else {
+			continue
+		}
+		template = strings.ReplaceAll(template, fmt.Sprintf("${%s}", f.Raw), value)
 	}
-	amountF := ParseAmount(f)
-	// Add spaces
-	spacesNeeded := c.DOT_INDENT - (utf8.RuneCountInString(string(txRaw[c.STX_ACCF]))) // accFrom
-	spacesNeeded -= CountLeadingDigits(f)                                              // float length before point
-	spacesNeeded -= 2                                                                  // additional space in template + negative sign
-	if spacesNeeded < 0 {
-		spacesNeeded = 0
+	for _, amountField := range amountFields {
+		if v, exists := varMap["amount"]; exists {
+			amount := strings.Split(v, " ")
+			if len(amount) >= 2 {
+				// amount input contains currency
+				currency = amount[1]
+			}
+			f, err := strconv.ParseFloat(amount[0], 64)
+			if err != nil {
+				return "", err
+			}
+
+			oldTemplate := template
+			template = ""
+			for _, line := range strings.Split(oldTemplate, "\n") {
+				if strings.Contains(line, fmt.Sprintf("${%s}", amountField.Raw)) {
+					before := strings.Split(line, fmt.Sprintf("${%s}", amountField.Raw))[0]
+					spacesNeeded := c.DOT_INDENT - utf8.RuneCountInString(before)
+					fractionedAmount := f / float64(amountField.Fraction)
+					spacesNeeded -= CountLeadingDigits(fractionedAmount) // float length before point
+					spacesNeeded += 2                                    // indentation
+					negSign := ""
+					if amountField.IsNegative {
+						negSign = "-"
+						spacesNeeded -= 1
+					}
+					if spacesNeeded < 0 {
+						spacesNeeded = 0
+					}
+					addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
+					template += strings.ReplaceAll(line, fmt.Sprintf("${%s}", amountField.Raw), addSpacesFrom+negSign+ParseAmount(fractionedAmount)+" "+currency) + "\n"
+				} else {
+					template += line + "\n"
+				}
+			}
+		}
 	}
-	addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
-	// Tag
-	tagS := ""
-	if tag != "" {
-		tagS += " #" + tag
-	}
-	// Template
-	tpl := `%s * "%s"%s
-  %s%s -%s %s
-  %s
-`
-	amount := strings.Split(txRaw[c.STX_AMTF], " ")
-	if len(amount) >= 2 {
-		// amount input contains currency
-		currency = amount[1]
-	}
-	return fmt.Sprintf(tpl, txRaw[c.STX_DATE], txRaw[c.STX_DESC], tagS, txRaw[c.STX_ACCF], addSpacesFrom, amountF, currency, txRaw[c.STX_ACCT]), nil
+	return strings.TrimSpace(template) + "\n", nil
 }
 
 func ParseAmount(f float64) string {

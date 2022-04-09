@@ -19,6 +19,7 @@ func Migrate(db *sql.DB) {
 	migrationWrapper(v6, 6)(db)
 	migrationWrapper(v7, 7)(db)
 	migrationWrapper(v8, 8)(db)
+	migrationWrapper(v9, 9)(db)
 
 	helpers.LogLocalf(helpers.INFO, nil, "Migrations ran through. Schema version: %d", schema(db))
 }

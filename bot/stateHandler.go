@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"strings"
+
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -9,9 +11,9 @@ type StateType string
 type TemplateName string
 
 const (
-	ST_NONE = ""
-	ST_TX   = "tx"
-	ST_TPL  = "tpl"
+	ST_NONE StateType = ""
+	ST_TX   StateType = "tx"
+	ST_TPL  StateType = "tpl"
 )
 
 type StateHandler struct {
@@ -47,11 +49,44 @@ func (s *StateHandler) GetTx(m *tb.Message) Tx {
 }
 
 func (s *StateHandler) SimpleTx(m *tb.Message, suggestedCur string) (Tx, error) {
-	tx, err := CreateSimpleTx(m, suggestedCur)
+	tx, err := CreateSimpleTx(suggestedCur, TEMPLATE_SIMPLE_DEFAULT)
 	if err != nil {
 		return nil, err
 	}
 	s.states[(chatId)(m.Chat.ID)] = ST_TX
 	s.txStates[(chatId)(m.Chat.ID)] = tx
+	// Set date:
+	command := strings.Split(m.Text, " ")
+	if len(command) >= 2 {
+		date, err := ParseDate(command[1])
+		if err != nil {
+			return nil, err
+		}
+		return tx.SetDate(date)
+	}
 	return tx, nil
+}
+
+func (s *StateHandler) TemplateTx(m *tb.Message, template, suggestedCur, date string) (Tx, error) {
+	tx, err := CreateSimpleTx(suggestedCur, template)
+	if err != nil {
+		return nil, err
+	}
+	s.states[(chatId)(m.Chat.ID)] = ST_TX
+	s.txStates[(chatId)(m.Chat.ID)] = tx
+
+	// set date
+	if date != "" {
+		date, err := ParseDate(date)
+		if err != nil {
+			return nil, err
+		}
+		return tx.SetDate(date)
+	}
+	return tx, nil
+}
+
+func (s *StateHandler) StartTpl(m *tb.Message, name string) {
+	s.states[(chatId)(m.Chat.ID)] = ST_TPL
+	s.tplStates[(chatId)(m.Chat.ID)] = TemplateName(name)
 }

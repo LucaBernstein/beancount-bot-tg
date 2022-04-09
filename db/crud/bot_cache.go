@@ -18,7 +18,15 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 		return err
 	}
 
+	keyMappings := map[string]string{
+		"description": helpers.STX_DESC,
+		"from":        helpers.STX_ACCF,
+		"to":          helpers.STX_ACCT,
+	}
 	for key, value := range values {
+		if keyMappings[key] != "" {
+			key = keyMappings[key]
+		}
 		if !helpers.ArrayContains(helpers.AllowedSuggestionTypes(), key) {
 			// Don't cache non-suggestible data
 			continue
