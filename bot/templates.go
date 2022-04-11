@@ -132,12 +132,20 @@ func (bc *BotController) templatesHandleRemove(m *tb.Message, params ...string) 
 		return
 	}
 	name := params[0]
-	err := bc.Repo.RmTemplate(m.Chat.ID, string(name))
+	wasRemoved, err := bc.Repo.RmTemplate(m.Chat.ID, string(name))
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong while deleting your template.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
+		return
+	}
+	if !wasRemoved {
+		_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("There was no template called '%s' to remove. Please check '/t list'.", name))
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
 	}
 	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully removed your template '%s'.", name))
 	if err != nil {
@@ -190,10 +198,7 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 	tx, err := bc.State.TemplateTx(m, res[0].Template, bc.Repo.UserGetCurrency(m), date)
 	if err != nil {
 		bc.Logf(ERROR, m, "Creating tx from template failed: %s", err.Error())
-		_, err := bc.Bot.Send(m.Sender, "Something went wrong while creating a transaction from your template")
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		return fmt.Errorf("something went wrong creating a transaction from your template: %s", err.Error())
 	}
 	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Creating a new transaction from your template '%s'.", name))
 	if err != nil {

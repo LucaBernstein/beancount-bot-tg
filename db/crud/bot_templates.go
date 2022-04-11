@@ -54,8 +54,9 @@ func (r *Repo) AddTemplate(chatId int64, name, template string) error {
 	return err
 }
 
-func (r *Repo) RmTemplate(chatId int64, name string) error {
-	_, err := r.db.Exec(fmt.Sprintf(`DELETE FROM "%s" WHERE "tgChatId" = $1 AND "name" = $2;`, DB_TABLE_TEMPLATES),
+func (r *Repo) RmTemplate(chatId int64, name string) (bool, error) {
+	res, err := r.db.Exec(fmt.Sprintf(`DELETE FROM "%s" WHERE "tgChatId" = $1 AND "name" = $2;`, DB_TABLE_TEMPLATES),
 		chatId, name)
-	return err
+	rows, _ := res.RowsAffected()
+	return rows > 0, err
 }
