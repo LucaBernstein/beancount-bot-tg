@@ -16,7 +16,7 @@ func (state *subcommandTestState) record(m *tb.Message, params ...string) {
 }
 
 func (state *subcommandTestState) testCase(t *testing.T, sh *helpers.SubcommandHandler, msg string, shouldErr bool, expected []string) {
-	err := sh.Handle(&tb.Message{Text: msg})
+	_, err := sh.Handle(&tb.Message{Text: msg})
 	should := "should have occurred"
 	if !shouldErr {
 		should = "should not occur"
@@ -72,7 +72,7 @@ func TestSubcommandAddingWarnings(t *testing.T) {
 	result := 0
 	sh.Add("subcommand", func(m *tb.Message, params ...string) { result++ })
 	sh.Add("subcommand", func(m *tb.Message, params ...string) { result += 2 }) // again though already exists
-	err := sh.Handle(&tb.Message{Text: "base subcommand"})
+	_, err := sh.Handle(&tb.Message{Text: "base subcommand"})
 	if err != nil {
 		t.Errorf("No error should have been returned: %s", err.Error())
 	}
@@ -82,7 +82,7 @@ func TestSubcommandAddingWarnings(t *testing.T) {
 
 	sh.Add("subcommand with spaces", func(m *tb.Message, params ...string) { result++ }) // for coverage
 
-	err = sh.Handle(&tb.Message{Text: "base subcommand with \"invalid quoting"})
+	_, err = sh.Handle(&tb.Message{Text: "base subcommand with \"invalid quoting"})
 	if err == nil {
 		t.Errorf("Should return error for handling with invalid quoting")
 	}

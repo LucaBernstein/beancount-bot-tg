@@ -1,6 +1,9 @@
 package helpers
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestExpect(t *testing.T, e1 interface{}, e2 interface{}, msg string) {
 	if e1 != e2 {
@@ -11,6 +14,18 @@ func TestExpect(t *testing.T, e1 interface{}, e2 interface{}, msg string) {
 			errorMsg = "%s" + errorMsg
 		}
 		t.Errorf(errorMsg, msg, e1, e2)
+	}
+}
+
+func TestStringContains(t *testing.T, s, substring, msg string) {
+	if !strings.Contains(s, substring) {
+		errorMsg := "Expected '%s' to contain '%s'"
+		if msg != "" {
+			errorMsg = "%s -> " + errorMsg
+		} else {
+			errorMsg = "%s" + errorMsg
+		}
+		t.Errorf(errorMsg, msg, s, substring)
 	}
 }
 

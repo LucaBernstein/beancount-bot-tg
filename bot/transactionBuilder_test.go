@@ -1,6 +1,7 @@
 package bot_test
 
 import (
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -106,7 +107,7 @@ func TestHandleFloatSimpleCalculations(t *testing.T) {
 }
 
 func TestTransactionBuilding(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"}, "")
+	tx, err := bot.CreateSimpleTx("", bot.TEMPLATE_SIMPLE_DEFAULT)
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -131,7 +132,7 @@ func TestTransactionBuilding(t *testing.T) {
 }
 
 func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple"}, "")
+	tx, err := bot.CreateSimpleTx("", bot.TEMPLATE_SIMPLE_DEFAULT)
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -156,7 +157,8 @@ func TestTransactionBuildingCustomCurrencyInAmount(t *testing.T) {
 }
 
 func TestTransactionBuildingWithDate(t *testing.T) {
-	tx, err := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"}, "")
+	tx, err := bot.CreateSimpleTx("", bot.TEMPLATE_SIMPLE_DEFAULT)
+	tx.SetDate("2021-01-24")
 	if err != nil {
 		t.Errorf("Error creating simple tx: %s", err.Error())
 	}
@@ -186,7 +188,9 @@ func TestCountLeadingDigits(t *testing.T) {
 }
 
 func TestTaggedTransaction(t *testing.T) {
-	tx, _ := bot.CreateSimpleTx(&tb.Message{Text: "/simple 2021-01-24"}, "")
+	tx, _ := bot.CreateSimpleTx("", bot.TEMPLATE_SIMPLE_DEFAULT)
+	tx.SetDate("2021-01-24")
+	log.Print(tx.Debug())
 	tx.Input(&tb.Message{Text: "17.3456 USD_TEST"})   // amount
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})      // from
 	tx.Input(&tb.Message{Text: "Expenses:Groceries"}) // to
@@ -209,4 +213,16 @@ func TestParseAmount(t *testing.T) {
 
 	helpers.TestExpect(t, bot.ParseAmount(9.801), "9.801", "If higher precision is given, that should be applied")
 	helpers.TestExpect(t, bot.ParseAmount(17.3456), "17.3456", "If higher precision is given, that should be applied")
+}
+
+func TestParseTemplateFields(t *testing.T) {
+	fields := bot.ParseTemplateFields(`this is a ${description} field, and ${-amount/3}`)
+
+	helpers.TestExpect(t, fields["description"].Name, "description", "description field name")
+	helpers.TestExpect(t, fields["description"].IsNegative, false, "description not be negative")
+	helpers.TestExpect(t, fields["description"].Fraction, 1, "description fraction default = 1")
+
+	helpers.TestExpect(t, fields["-amount/3"].Name, "amount", "amount field name")
+	helpers.TestExpect(t, fields["-amount/3"].IsNegative, true, "amount to be negative")
+	helpers.TestExpect(t, fields["-amount/3"].Fraction, 3, "amount fraction")
 }

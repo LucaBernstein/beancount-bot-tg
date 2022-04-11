@@ -21,7 +21,7 @@ func (bc *BotController) configHandler(m *tb.Message) {
 		Add("about", bc.configHandleAbout).
 		Add("tz_offset", bc.configHandleTimezoneOffset).
 		Add("delete_account", bc.configHandleAccountDelete)
-	err := sc.Handle(m)
+	_, err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
 	}

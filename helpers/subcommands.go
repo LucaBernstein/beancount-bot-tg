@@ -35,7 +35,7 @@ func (sh *SubcommandHandler) Add(command string, handler handlerFunc) *Subcomman
 	return sh
 }
 
-func (sh *SubcommandHandler) Handle(m *tb.Message) error {
+func (sh *SubcommandHandler) Handle(m *tb.Message) ([]string, error) {
 	commandRemainder := strings.TrimSpace(strings.TrimPrefix(m.Text, sh.base))
 	parameters := strings.Split(commandRemainder, " ")
 
@@ -45,20 +45,20 @@ func (sh *SubcommandHandler) Handle(m *tb.Message) error {
 	}
 	fn, exists := sh.mappings[subcommand]
 	if !exists {
-		return fmt.Errorf("subcommand '%s' has not been mapped with this SubcommandHandler(%s)", subcommand, sh.base)
+		return parameters, fmt.Errorf("subcommand '%s' has not been mapped with this SubcommandHandler(%s)", subcommand, sh.base)
 	}
 	if len(parameters) <= 1 {
 		fn(m)
-		return nil
+		return parameters, nil
 	}
 
 	remainingCommand := strings.TrimSpace(strings.TrimPrefix(commandRemainder, subcommand))
 	parameters = SplitQuotedCommand(remainingCommand)
 	if ArraysEqual(parameters, []string{}) {
-		return fmt.Errorf("this remainingCommand could not be split: '%s'", remainingCommand)
+		return parameters, fmt.Errorf("this remainingCommand could not be split: '%s'", remainingCommand)
 	}
 	fn(m, parameters...)
-	return nil
+	return parameters, nil
 }
 
 type TV struct {

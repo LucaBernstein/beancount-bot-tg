@@ -13,10 +13,10 @@ import (
 )
 
 type CMD struct {
-	Command  string
-	Optional []string
-	Handler  func(m *tb.Message)
-	Help     string
+	CommandAlias []string
+	Optional     []string
+	Handler      func(m *tb.Message)
+	Help         string
 }
 
 func NewBotController(db dbWrapper.DB) *BotController {
@@ -47,7 +47,9 @@ func (bc *BotController) AddBotAndStart(b IBot) {
 	mappings := bc.commandMappings()
 
 	for _, m := range mappings {
-		b.Handle("/"+m.Command, m.Handler)
+		for _, alias := range m.CommandAlias {
+			b.Handle("/"+alias, m.Handler)
+		}
 	}
 
 	b.Handle(tb.OnText, bc.handleTextState)
@@ -103,21 +105,26 @@ const (
 	CMD_ADM_CRON   = "admin_cron"
 )
 
+var (
+	CMD_TEMPLATE = []string{"template", "t"}
+)
+
 func (bc *BotController) commandMappings() []*CMD {
 	return []*CMD{
-		{Command: CMD_HELP, Handler: bc.commandHelp, Help: "List this command help"},
-		{Command: CMD_START, Handler: bc.commandStart, Help: "Give introduction into this bot"},
-		{Command: CMD_CANCEL, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
-		{Command: CMD_SIMPLE, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"YYYY-MM-DD"}},
-		{Command: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
-		{Command: CMD_LIST, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
-		{Command: CMD_SUGGEST, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
-		{Command: CMD_CONFIG, Handler: bc.commandConfig, Help: "Bot configurations"},
-		{Command: CMD_ARCHIVE_ALL, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
-		{Command: CMD_DELETE_ALL, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
+		{CommandAlias: []string{CMD_HELP}, Handler: bc.commandHelp, Help: "List this command help"},
+		{CommandAlias: []string{CMD_START}, Handler: bc.commandStart, Help: "Give introduction into this bot"},
+		{CommandAlias: []string{CMD_CANCEL}, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
+		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"YYYY-MM-DD"}},
+		{CommandAlias: []string{CMD_COMMENT}, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
+		{CommandAlias: CMD_TEMPLATE, Handler: bc.commandTemplates, Help: "Create and use template transactions"},
+		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
+		{CommandAlias: []string{CMD_SUGGEST}, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
+		{CommandAlias: []string{CMD_CONFIG}, Handler: bc.commandConfig, Help: "Bot configurations"},
+		{CommandAlias: []string{CMD_ARCHIVE_ALL}, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
+		{CommandAlias: []string{CMD_DELETE_ALL}, Handler: bc.commandDeleteTransactions, Help: "Permanently delete recorded transactions"},
 
-		{Command: CMD_ADM_NOTIFY, Handler: bc.commandAdminNofify, Help: "Send notification to user(s): /" + CMD_ADM_NOTIFY + " [chatId] \"<message>\""},
-		{Command: CMD_ADM_CRON, Handler: bc.commandAdminCronInfo, Help: "Check cron status"},
+		{CommandAlias: []string{CMD_ADM_NOTIFY}, Handler: bc.commandAdminNofify, Help: "Send notification to user(s): /" + CMD_ADM_NOTIFY + " [chatId] \"<message>\""},
+		{CommandAlias: []string{CMD_ADM_CRON}, Handler: bc.commandAdminCronInfo, Help: "Check cron status"},
 	}
 }
 
@@ -142,7 +149,7 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 		if cmd.Help == "" {
 			continue
 		}
-		if strings.HasPrefix(cmd.Command, "admin") {
+		if strings.HasPrefix(cmd.CommandAlias[0], "admin") {
 			adminCommands = append(adminCommands, cmd)
 			continue
 		}
@@ -155,12 +162,12 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 				optional += " [" + opt + "]"
 			}
 		}
-		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.Command, optional, cmd.Help)
+		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.CommandAlias[0], optional, cmd.Help)
 	}
 	if len(adminCommands) > 0 && bc.Repo.UserIsAdmin(m) {
 		helpMsg += "\n\n** ADMIN COMMANDS **"
 		for _, cmd := range adminCommands {
-			helpMsg += fmt.Sprintf("\n/%s - %s", cmd.Command, cmd.Help)
+			helpMsg += fmt.Sprintf("\n/%s - %s", cmd.CommandAlias[0], cmd.Help)
 		}
 	}
 	_, err := bc.Bot.Send(m.Sender, helpMsg, clearKeyboard())
@@ -170,26 +177,32 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 }
 
 func (bc *BotController) commandCancel(m *tb.Message) {
-	tx := bc.State.Get(m)
-	isInTx := tx != nil
-	bc.Logf(TRACE, m, "Clearing state. Was in tx? %t", isInTx)
+	tx := bc.State.GetType(m)
+	hasState := tx != ST_NONE
+	bc.Logf(TRACE, m, "Clearing state. Had state? %t > '%s'", hasState, tx)
 
 	bc.State.Clear(m)
 
-	msg := "There were no active transactions open to cancel."
-	if isInTx {
-		msg = "Your currently running transaction has been cancelled."
+	msg := "You did not currently have any state or transaction open that could be cancelled."
+	if hasState {
+		if tx == ST_TPL {
+			msg = "Your currently running template creation has been cancelled."
+		} else {
+			msg = "Your currently running transaction has been cancelled."
+		}
 	}
-	_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("%s\nType /%s to see available commands or type /%s to start a new simple transaction.", msg, CMD_HELP, CMD_SIMPLE), clearKeyboard())
+	_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("%s\nType /%s to get available commands.", msg, CMD_HELP), clearKeyboard())
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
 }
 
+const MSG_UNFINISHED_STATE = "You have an unfinished operation running. Please finish it or /cancel it before starting a new one."
+
 func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
-	tx := bc.State.Get(m)
-	if tx != nil {
-		_, err := bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.")
+	state := bc.State.GetType(m)
+	if state != ST_NONE {
+		_, err := bc.Bot.Send(m.Sender, MSG_UNFINISHED_STATE)
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -203,7 +216,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
-	tx, err = bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
+	tx, err := bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
 			"\n\nYou can create a simple transaction using this command: /simple [YYYY-MM-DD]\ne.g. /simple 2021-01-24\n"+
@@ -214,7 +227,11 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 		}
 		return
 	}
-	hint := tx.NextHint(bc.Repo, m) // get first hint
+	if tx.IsDone() {
+		bc.finishTransaction(m, tx)
+		return
+	}
+	hint := tx.NextHint(bc.Repo, m)
 	_, err = bc.Bot.Send(m.Sender, hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
@@ -222,9 +239,9 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 }
 
 func (bc *BotController) commandAddComment(m *tb.Message) {
-	if bc.State.Get(m) != nil {
+	if bc.State.GetType(m) != ST_NONE {
 		bc.Logf(INFO, m, "commandAddComment while in another transaction")
-		_, err := bc.Bot.Send(m.Sender, "You are already in a transaction. Please finish it or /cancel it before starting a new one.")
+		_, err := bc.Bot.Send(m.Sender, MSG_UNFINISHED_STATE)
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -373,6 +390,10 @@ func (bc *BotController) commandDeleteTransactions(m *tb.Message) {
 	}
 }
 
+func (bc *BotController) commandTemplates(m *tb.Message) {
+	bc.templatesHandler(m)
+}
+
 func (bc *BotController) commandSuggestions(m *tb.Message) {
 	bc.suggestionsHandler(m)
 }
@@ -508,8 +529,8 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 }
 
 func (bc *BotController) handleTextState(m *tb.Message) {
-	tx := bc.State.Get(m)
-	if tx == nil {
+	state := bc.State.GetType(m)
+	if state == ST_NONE {
 		if _, err := HandleFloat(m); err == nil { // Not in tx, but input would suffice for correct parsing of amount field of new tx
 			bc.Logf(DEBUG, m, "Creating new simple transaction as amount has been entered though not in tx")
 			_, err = bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
@@ -539,78 +560,92 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
-	}
-	err := tx.Input(m)
-	if err != nil {
-		bc.Logf(WARN, m, "Invalid text state input: '%s'. Err: %s", m.Text, err.Error())
-		_, err := bc.Bot.Send(m.Sender, "Your last input seems to have not worked.\n"+
-			fmt.Sprintf("(Error: %s)\n", err.Error())+
-			"Please try again.",
-		)
+	} else if state == ST_TX {
+		tx := bc.State.GetTx(m)
+		err := tx.Input(m)
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
-	}
-	bc.Logf(TRACE, m, "New data state is %v. (Last input was '%s')", tx.Debug(), m.Text)
-	if tx.IsDone() {
-		currency := bc.Repo.UserGetCurrency(m)
-		tag := bc.Repo.UserGetTag(m)
-		tzOffset := bc.Repo.UserGetTzOffset(m)
-		transaction, err := tx.FillTemplate(currency, tag, tzOffset)
-		if err != nil {
-			bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
-			_, err := bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
+			bc.Logf(WARN, m, "Invalid text state input: '%s'. Err: %s", m.Text, err.Error())
+			_, err := bc.Bot.Send(m.Sender, "Your last input seems to have not worked.\n"+
+				fmt.Sprintf("(Error: %s)\n", err.Error())+
+				"Please try again.",
+			)
 			if err != nil {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
+		}
+		bc.Logf(TRACE, m, "New data state is %v. (Last input was '%s')", tx.Debug(), m.Text)
+		if tx.IsDone() {
+			bc.finishTransaction(m, tx)
 			return
 		}
-
-		err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
-		if err != nil {
-			bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
-			_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
-			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-			}
-			return
-		}
-
-		// TODO: Goroutine
-		err = bc.Repo.PutCacheHints(m, tx.DataKeys())
-		if err != nil {
-			bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
-			// Don't return, instead continue flow (if recording was successful)
-		}
-		err = bc.Repo.PruneUserCachedSuggestions(m)
-		if err != nil {
-			bc.Logf(ERROR, m, "Something went wrong while pruning suggestions cache. Error: %s", err.Error())
-			// Don't return, instead continue flow (if recording was successful)
-		}
-
-		_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully recorded your transaction.\n"+
-			"You can get a list of all your transactions using /%s. "+
-			"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
-			"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",
-			CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
-			clearKeyboard(),
-		)
+		hint := tx.NextHint(bc.Repo, m)
+		replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
+		bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
+		_, err = bc.Bot.Send(m.Sender, hint.Prompt, replyKeyboard)
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
-
-		bc.State.Clear(m)
+		return
+	} else if state == ST_TPL {
+		if bc.processNewTemplateResponse(m, bc.State.tplStates[chatId(m.Chat.ID)]) {
+			bc.State.Clear(m)
+		}
 		return
 	}
-	hint := tx.NextHint(bc.Repo, m)
-	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
-	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-	_, err = bc.Bot.Send(m.Sender, hint.Prompt, replyKeyboard)
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
+	bc.Logf(ERROR, m, "Something went wrong processing text input. Ran to end, though should have been caught by a branch. "+
+		"Are there new state types not maintained yet?")
 }
 
 func clearKeyboard() *tb.ReplyMarkup {
 	return &tb.ReplyMarkup{ReplyKeyboardRemove: true}
+}
+
+func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
+	currency := bc.Repo.UserGetCurrency(m)
+	tag := bc.Repo.UserGetTag(m)
+	tzOffset := bc.Repo.UserGetTzOffset(m)
+	transaction, err := tx.FillTemplate(currency, tag, tzOffset)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
+		_, err := bc.Bot.Send(m.Sender, "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+
+	err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
+		_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	}
+
+	// TODO: Goroutine
+	err = bc.Repo.PutCacheHints(m, tx.DataKeys())
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
+		// Don't return, instead continue flow (if recording was successful)
+	}
+	err = bc.Repo.PruneUserCachedSuggestions(m)
+	if err != nil {
+		bc.Logf(ERROR, m, "Something went wrong while pruning suggestions cache. Error: %s", err.Error())
+		// Don't return, instead continue flow (if recording was successful)
+	}
+
+	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully recorded your transaction.\n"+
+		"You can get a list of all your transactions using /%s. "+
+		"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
+		"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",
+		CMD_LIST, CMD_ARCHIVE_ALL, CMD_SIMPLE, CMD_HELP),
+		clearKeyboard(),
+	)
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+
+	bc.State.Clear(m)
 }
