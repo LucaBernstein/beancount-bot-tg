@@ -18,6 +18,8 @@ const (
 	USERSET_TZOFF      = "user.tzOffset"
 
 	DEFAULT_CURRENCY = "EUR"
+
+	TG_MAX_MSG_CHAR_LEN = 4096
 )
 
 func AllowedSuggestionTypes() []string {

@@ -167,7 +167,7 @@ func TestTransactionListMaxLength(t *testing.T) {
 	if len(bot.AllLastSentWhat) != 2 {
 		t.Errorf("Expected exactly two messages to be sent out: %v", strings.Join(stringArr(bot.AllLastSentWhat), ", "))
 	}
-	if bot.LastSentWhat != strings.Repeat("**********", 100)+"\n" {
+	if bot.LastSentWhat != strings.Repeat("**********", 100) {
 		t.Errorf("Expected last message to contain last transaction as it flowed over the first message: %v", bot.LastSentWhat)
 	}
 
@@ -199,7 +199,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 
 	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
 
-	if bot.LastSentWhat != "; recorded on 2022-03-30 14:24\ntx1\n; recorded on 2022-03-30 15:24\ntx2\n" {
+	if bot.LastSentWhat != "; recorded on 2022-03-30 14:24\ntx1\n; recorded on 2022-03-30 15:24\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
 	}
 
@@ -214,7 +214,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 
 	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
 
-	if bot.LastSentWhat != "tx1\ntx2\n" {
+	if bot.LastSentWhat != "tx1\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
 	}
 
