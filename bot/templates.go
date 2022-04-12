@@ -34,7 +34,7 @@ func (bc *BotController) templatesHelp(m *tb.Message, err error) {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
 	_, err = bc.Bot.Send(m.Sender, errorMsg+`Usage help for /template:
-	/template list <name>
+	/template list [name]
 	/template add <name>
 	/template rm <name>
 	
@@ -75,13 +75,16 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 			}
 		}
 	} else {
-		templateList := ""
+		templateList := []string{"These templates are currently available to you:"}
 		for _, t := range templates {
-			templateList += fmt.Sprintf("\n\n%s:\n%s", t.Name, t.Template)
+			templateList = append(templateList, fmt.Sprintf("%s:\n%s", t.Name, t.Template))
 		}
-		_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("These templates are currently available to you:%s", templateList))
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		messageSplits := bc.MergeMessagesHonorSendLimit(templateList, "\n\n")
+		for _, message := range messageSplits {
+			_, err = bc.Bot.Send(m.Sender, message, clearKeyboard())
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
 		}
 	}
 }
