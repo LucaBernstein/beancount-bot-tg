@@ -39,11 +39,11 @@ func (bc *BotController) templatesHelp(m *tb.Message, err error) {
 	/template rm <name>
 	
 	To use an existing template, type:
-	/template <name> [YYYY-MM-DD]
+	/template <name> [date]
 	or use the short form:
-	/t <name> [YYYY-MM-DD]
+	/t <name> [date]
 	
-	If omitted, date (YYYY-MM-DD) defaults to today.`)
+	If omitted, date defaults to today.`)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}

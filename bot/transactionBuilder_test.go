@@ -1,6 +1,7 @@
 package bot_test
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -225,4 +226,33 @@ func TestParseTemplateFields(t *testing.T) {
 	helpers.TestExpect(t, fields["-amount/3"].Name, "amount", "amount field name")
 	helpers.TestExpect(t, fields["-amount/3"].IsNegative, true, "amount to be negative")
 	helpers.TestExpect(t, fields["-amount/3"].Fraction, 3, "amount fraction")
+}
+
+func dateCase(t *testing.T, given, expected string) {
+	handledDate, err := bot.ParseDate(given)
+	helpers.TestExpect(t, err, nil, fmt.Sprintf("Should not throw an error for %s", given))
+	helpers.TestExpect(t, handledDate, expected, "")
+}
+
+func TestEnhancedDateParsing(t *testing.T) {
+	// helpers.BEANCOUNT_DATE_FORMAT
+	today := time.Now().UTC()
+	dateCase(t, "1999-04-14", "1999-04-14")
+	dateCase(t, "19990414", "1999-04-14")
+	dateCase(t, "03-31", fmt.Sprintf("%s-03-31", today.Format("2006")))
+	dateCase(t, "0331", fmt.Sprintf("%s-03-31", today.Format("2006")))
+	dateCase(t, "16", fmt.Sprintf("%s-16", today.Format("2006-01")))
+	dateCase(t, "16", fmt.Sprintf("%s-16", today.Format("2006-01")))
+
+	if _, err := bot.ParseDate("04-31"); err == nil {
+		t.Errorf("Expected error for 04-31")
+	}
+
+	if _, err := bot.ParseDate("32"); err == nil {
+		t.Errorf("Expected error for 32")
+	}
+
+	if _, err := bot.ParseDate("-01"); err == nil {
+		t.Errorf("Expected error for 32")
+	}
 }

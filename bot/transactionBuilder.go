@@ -3,7 +3,6 @@ package bot
 import (
 	"fmt"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -89,15 +88,28 @@ func HandleRaw(m *tb.Message) (string, error) {
 }
 
 func ParseDate(m string) (string, error) {
-	// Handle YYYY-MM-DD
-	matched, err := regexp.MatchString("\\d{4}-\\d{2}-\\d{2}", m)
-	if err != nil {
-		return "", err
+	// TODO: Handle tz offset
+	today := time.Now()
+	patterns := []string{
+		"2006-01-02",
+		"20060102",
+		"01-02",
+		"0102",
+		"02",
 	}
-	if !matched {
-		return "", fmt.Errorf("Input did not match pattern 'YYYY-MM-DD'")
+	for _, p := range patterns {
+		t, err := time.Parse(p, m)
+		if err == nil {
+			if len(m) < len("20060102") {
+				t, _ = time.Parse(c.BEANCOUNT_DATE_FORMAT, fmt.Sprintf("%s-%s", today.Format("2006"), t.Format("01-02")))
+			}
+			if len(m) < len("0102") {
+				t, _ = time.Parse(c.BEANCOUNT_DATE_FORMAT, fmt.Sprintf("%s-%s", today.Format("2006-01"), t.Format("02")))
+			}
+			return t.Format(c.BEANCOUNT_DATE_FORMAT), nil
+		}
 	}
-	return m, nil
+	return "", fmt.Errorf("Input could not be parsed to a specific date. Multiple date formats are allowed, e.g. YYYY-MM-DD, MM-DD or DD")
 }
 
 type Tx interface {
