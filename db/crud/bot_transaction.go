@@ -1,11 +1,16 @@
 package crud
 
 import (
+	"fmt"
+
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 func (r *Repo) RecordTransaction(chatId int64, tx string) error {
+	if tx == "" {
+		return fmt.Errorf("a transaction inserted into the database must not be empty")
+	}
 	_, err := r.db.Exec(`
 		INSERT INTO "bot::transaction" ("tgChatId", "value")
 		VALUES ($1, $2);`, chatId, tx)
