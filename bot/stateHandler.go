@@ -53,8 +53,6 @@ func (s *StateHandler) SimpleTx(m *tb.Message, suggestedCur string) (Tx, error) 
 	if err != nil {
 		return nil, err
 	}
-	s.states[(chatId)(m.Chat.ID)] = ST_TX
-	s.txStates[(chatId)(m.Chat.ID)] = tx
 	// Set date:
 	command := strings.Split(m.Text, " ")
 	if len(command) >= 2 {
@@ -62,8 +60,10 @@ func (s *StateHandler) SimpleTx(m *tb.Message, suggestedCur string) (Tx, error) 
 		if err != nil {
 			return nil, err
 		}
-		return tx.SetDate(date)
+		tx.SetDate(date)
 	}
+	s.states[(chatId)(m.Chat.ID)] = ST_TX
+	s.txStates[(chatId)(m.Chat.ID)] = tx
 	return tx, nil
 }
 

@@ -114,7 +114,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{CommandAlias: []string{CMD_HELP}, Handler: bc.commandHelp, Help: "List this command help"},
 		{CommandAlias: []string{CMD_START}, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{CommandAlias: []string{CMD_CANCEL}, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
-		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"YYYY-MM-DD"}},
+		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"date"}},
 		{CommandAlias: []string{CMD_COMMENT}, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{CommandAlias: CMD_TEMPLATE, Handler: bc.commandTemplates, Help: "Create and use template transactions"},
 		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
@@ -219,7 +219,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 	tx, err := bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
 	if err != nil {
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
-			"\n\nYou can create a simple transaction using this command: /simple [YYYY-MM-DD]\ne.g. /simple 2021-01-24\n"+
+			"\n\nYou can create a simple transaction using this command: /simple [date]\ne.g. /simple 2021-01-24\n"+
 			"The date parameter is non-mandatory, if not specified, today's date will be taken."+
 			"Alternatively it is also possible to send an amount directly to start a new simple transaction.", clearKeyboard())
 		if err != nil {
