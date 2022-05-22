@@ -198,12 +198,13 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 		bc.Logf(ERROR, m, "Getting template to create tx failed: Got multiple results for name '%s'.", name)
 		return fmt.Errorf("could not find the template you specified. Please create it first")
 	}
-	tx, err := bc.State.TemplateTx(m, res[0].Template, bc.Repo.UserGetCurrency(m), date)
+	tpl := res[0]
+	tx, err := bc.State.TemplateTx(m, tpl.Template, bc.Repo.UserGetCurrency(m), date)
 	if err != nil {
 		bc.Logf(ERROR, m, "Creating tx from template failed: %s", err.Error())
 		return fmt.Errorf("something went wrong creating a transaction from your template: %s", err.Error())
 	}
-	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Creating a new transaction from your template '%s'.", name))
+	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Creating a new transaction from your template '%s'.", tpl.Name))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}

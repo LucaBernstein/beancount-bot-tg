@@ -19,8 +19,8 @@ func (r *Repo) GetTemplates(m *tb.Message, name string) ([]*TemplateResult, erro
 	additionalCondition := ""
 	params := []interface{}{m.Chat.ID}
 	if name != "" {
-		additionalCondition = `AND "name" = $2`
-		params = append(params, name)
+		additionalCondition = `AND "name" LIKE $2`
+		params = append(params, name+"%")
 	}
 	rows, err := r.db.Query(fmt.Sprintf(`
 		SELECT "name", "template" FROM "%s"
@@ -38,6 +38,12 @@ func (r *Repo) GetTemplates(m *tb.Message, name string) ([]*TemplateResult, erro
 		err = rows.Scan(&templateName, &templateValue)
 		if err != nil {
 			return nil, err
+		}
+		if name != "" && templateName == name {
+			return []*TemplateResult{{
+				Name:     templateName,
+				Template: templateValue,
+			}}, nil
 		}
 		results = append(results, &TemplateResult{
 			Name:     templateName,
