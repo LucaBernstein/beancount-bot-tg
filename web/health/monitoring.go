@@ -50,8 +50,8 @@ bc_bot_users_count %d
 
 # HELP users_active_last Count of unique users by user ID active in the previous timeframe
 # TYPE users_active_last gauge
-users_active_last{timeframe="1d"} %d
-users_active_last{timeframe="7d"} %d
+bc_bot_users_active_last{timeframe="1d"} %d
+bc_bot_users_active_last{timeframe="7d"} %d
 
 # HELP bc_bot_cache_entries Count of cache entries per type
 # TYPE bc_bot_cache_entries gauge
