@@ -26,8 +26,8 @@ func TestTemplateHelpForNonexistingTemplate(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	mock.
-		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" = $2`)).
-		WithArgs(12345, "notexist").
+		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" LIKE $2`)).
+		WithArgs(12345, "notexist%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}))
 
 	bc.commandTemplates(&tb.Message{Chat: chat, Text: "/t notexist"})
@@ -77,16 +77,16 @@ test2:
 tpl2`, "templates")
 
 	mock.
-		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" = $2`)).
-		WithArgs(12345, "test3").
+		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" LIKE $2`)).
+		WithArgs(12345, "test3%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}))
 
 	bc.commandTemplates(&tb.Message{Chat: chat, Text: "/t list test3"})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "No template name matched your query 'test3'", "single template response")
 
 	mock.
-		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" = $2`)).
-		WithArgs(12345, "test2").
+		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" LIKE $2`)).
+		WithArgs(12345, "test2%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}).AddRow("test2", "tpl2"))
 
 	bc.commandTemplates(&tb.Message{Chat: chat, Text: "/t list test2"})
@@ -170,8 +170,8 @@ func TestTemplateUse(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	mock.
-		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" = $2`)).
-		WithArgs(12345, "test").
+		ExpectQuery(regexp.QuoteMeta(`SELECT "name", "template" FROM "bot::template" WHERE "tgChatId" = $1 AND "name" LIKE $2`)).
+		WithArgs(12345, "test%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}).AddRow("test", `${date} * "Test" "${description}"
   fromFix ${-amount}
   toFix1 ${amount/2}
