@@ -146,3 +146,32 @@ func TestHealthGetCacheStats(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
+
+func TestHealthGetUsersActiveCounts(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	r := crud.NewRepo(db)
+
+	mock.ExpectQuery("").
+		WithArgs(72).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).
+			AddRow(4))
+
+	count, err := r.HealthGetUsersActiveCounts(3)
+	if err != nil {
+		t.Errorf("Should not fail for getting active user count: %s", err.Error())
+	}
+	if count != 4 {
+		t.Errorf("Unexpected active user count: %d != %d", count, 4)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}

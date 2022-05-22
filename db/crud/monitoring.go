@@ -68,6 +68,25 @@ func (r *Repo) HealthGetUserCount() (count int, err error) {
 	return
 }
 
+func (r *Repo) HealthGetUsersActiveCounts(maxDays int) (count int, err error) {
+	maxDiffHours := maxDays * 24
+	rows, err := r.db.Query(`
+		SELECT COUNT("difference") from (
+			SELECT DISTINCT EXTRACT(EPOCH FROM (NOW() - MAX(l."created"))) / 3600 AS difference
+			FROM "app::log" l JOIN "auth::user" u ON CONCAT('C', u."tgChatId", '/U', u."tgUserId") = l.chat
+			GROUP BY l."chat"
+		) q
+		WHERE "difference" < $1`, maxDiffHours)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	if rows.Next() {
+		rows.Scan(&count)
+	}
+	return
+}
+
 func (r *Repo) HealthGetCacheStats() (accTo int, accFrom int, txDesc int, err error) {
 	rows, err := r.db.Query(`
 		SELECT "type", COUNT(*) "c"
