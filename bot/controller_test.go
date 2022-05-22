@@ -251,7 +251,7 @@ func TestWritingComment(t *testing.T) {
 		WithArgs(chat.ID, "This is another comment without \" (quotes)").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/comment This is another comment without \\\" (quotes)"})
+	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
