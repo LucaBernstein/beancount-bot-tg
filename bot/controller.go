@@ -94,7 +94,6 @@ const (
 	CMD_HELP        = "help"
 	CMD_CANCEL      = "cancel"
 	CMD_SIMPLE      = "simple"
-	CMD_COMMENT     = "comment"
 	CMD_LIST        = "list"
 	CMD_ARCHIVE_ALL = "archiveAll"
 	CMD_DELETE_ALL  = "deleteAll"
@@ -106,6 +105,7 @@ const (
 )
 
 var (
+	CMD_COMMENT  = []string{"comment", "c"}
 	CMD_TEMPLATE = []string{"template", "t"}
 )
 
@@ -115,7 +115,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{CommandAlias: []string{CMD_START}, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{CommandAlias: []string{CMD_CANCEL}, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
 		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"date"}},
-		{CommandAlias: []string{CMD_COMMENT}, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
+		{CommandAlias: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{CommandAlias: CMD_TEMPLATE, Handler: bc.commandTemplates, Help: "Create and use template transactions"},
 		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
 		{CommandAlias: []string{CMD_SUGGEST}, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
@@ -247,7 +247,11 @@ func (bc *BotController) commandAddComment(m *tb.Message) {
 		}
 		return
 	}
-	remainingCommand := strings.TrimPrefix(strings.TrimLeft(m.Text, ""), "/"+CMD_COMMENT)
+	base := CMD_COMMENT[0]
+	if !strings.HasPrefix(m.Text, "/"+base) {
+		base = CMD_COMMENT[1]
+	}
+	remainingCommand := strings.TrimPrefix(strings.TrimLeft(m.Text, ""), "/"+base)
 
 	// Issue #91: Support unquoted comments
 	comment := strings.TrimSpace(remainingCommand)
