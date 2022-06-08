@@ -202,7 +202,7 @@ func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
 				userset."setting" = 'user.tzOffset' AND
 				
 				tx.archived = FALSE AND
-				MOD(s."notificationHour" + 24 + CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value"::DECIMAL END, 24) = $1 AND
+				MOD(s."notificationHour" + 24 - CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value"::DECIMAL END, 24) = $1 AND
 				tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
 			GROUP BY u."tgChatId"
 		) AS overdue,
