@@ -49,17 +49,17 @@ Create a schedule to be notified of open transactions (i.e. not archived or dele
 
 /{{.CONFIG_COMMAND}} notify - Get current notification status
 /{{.CONFIG_COMMAND}} notify off - Disable reminder notifications
-/{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day ({{.TZ}})
+/{{.CONFIG_COMMAND}} notify <delay> <hour> - Notify of open transaction after <delay> days at <hour> of the day. Honors configured timezone offset (see below)
 
 Set suggestion cache limits (i.e. only cache new values until limit is reached, then old ones get dismissed if new ones are added):
 
 /{{.CONFIG_COMMAND}} limit - Get currently set cache limits
 /{{.CONFIG_COMMAND}} limit <suggestionType> <amount>|off - Set or disable suggestion limit for a type
 
-Set timezone offset from UTC for transactions where date is added automatically:
+Timezone offset from {{.TZ}} to honor for notifications and current date (if set automatically) in new transactions:
 
-/{{.CONFIG_COMMAND}} tz_offset - Get current timezone offset from UTC
-/{{.CONFIG_COMMAND}} tz_offset <hours> - Set timezone offset from UTC, default 0
+/{{.CONFIG_COMMAND}} tz_offset - Get current timezone offset from {{.TZ}} (default 0)
+/{{.CONFIG_COMMAND}} tz_offset <hours> - Set timezone offset from {{.TZ}}
 
 Reset your data stored by the bot. WARNING: This action is permanent!
 
