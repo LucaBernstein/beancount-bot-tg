@@ -233,7 +233,7 @@ func TestWritingComment(t *testing.T) {
 	}
 	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
-		WithArgs(chat.ID, "; This is a comment").
+		WithArgs(chat.ID, "; This is a comment"+"\n").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc := NewBotController(db)
@@ -248,7 +248,7 @@ func TestWritingComment(t *testing.T) {
 	// Comment does not require quotes, as it only has a single parameter
 	mock.
 		ExpectExec(`INSERT INTO "bot::transaction"`).
-		WithArgs(chat.ID, "This is another comment without \" (quotes)").
+		WithArgs(chat.ID, "This is another comment without \" (quotes)"+"\n").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"})

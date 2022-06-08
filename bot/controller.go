@@ -260,7 +260,7 @@ func (bc *BotController) commandAddComment(m *tb.Message) {
 	}
 	comment = strings.ReplaceAll(comment, "\\\"", "\"")
 
-	err := bc.Repo.RecordTransaction(m.Chat.ID, comment)
+	err := bc.Repo.RecordTransaction(m.Chat.ID, comment+"\n")
 	if err != nil {
 		bc.Logf(ERROR, m, "Something went wrong while recording the comment: "+err.Error())
 		_, err := bc.Bot.Send(m.Sender, "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
