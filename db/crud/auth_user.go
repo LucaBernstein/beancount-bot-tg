@@ -181,19 +181,35 @@ func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) er
 
 func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
 	return r.db.Query(`
-	SELECT overdue."tgChatId", overdue."count" overdue, COUNT(tx2.*) "allTx"
+	SELECT
+		overdue."tgChatId",
+		overdue."count" overdue,
+		COUNT(tx2.*) "allTx"
 	FROM
 		(
-			SELECT DISTINCT u."tgChatId", COUNT(tx.id)
-			FROM "auth::user" u, "bot::notificationSchedule" s, "bot::transaction" tx
-			WHERE u."tgChatId" = s."tgChatId" AND s."tgChatId" = tx."tgChatId"
-				AND tx.archived = FALSE
-				AND tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
-				AND s."notificationHour" = $1
+			SELECT DISTINCT
+				u."tgChatId",
+				COUNT(tx.id)
+			FROM
+				"auth::user" u,
+				"bot::notificationSchedule" s,
+				"bot::transaction" tx,
+				"bot::userSetting" userset
+			WHERE
+				u."tgChatId" = s."tgChatId" AND
+				u."tgChatId" = tx."tgChatId" AND
+				u."tgChatId" = userset."tgChatId" AND
+				userset."setting" = 'user.tzOffset' AND
+				
+				tx.archived = FALSE AND
+				MOD(s."notificationHour" + 24 + CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value"::DECIMAL END, 24) = $1 AND
+				tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
 			GROUP BY u."tgChatId"
 		) AS overdue,
 	  	"bot::transaction" tx2
-	WHERE tx2."tgChatId" = overdue."tgChatId"
+	WHERE
+		tx2."tgChatId" = overdue."tgChatId" AND
+		tx2.archived = FALSE
 	GROUP BY overdue."tgChatId", overdue."count"
 	`, time.Now().Hour())
 }
