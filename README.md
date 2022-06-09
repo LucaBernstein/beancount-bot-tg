@@ -2,15 +2,36 @@
 
 Supports you in keeping track of your beancount transactions also if you need to quickly note a transaction down or have no access to your file.
 
-## Usage
+## Features and advantages
 
-You can use the bot [`@LB_Bean_Bot`](https://t.me/LB_Bean_Bot) to test/use it directly or to get started quickly.
+* [x] Quickly record beancount transactions while on-the-go. Start as simple as entering the amount - no boilerplate
+* [x] Suggestions for accounts and descriptions used in the past or configured manually (can be limited or turned off)
+* [x] Templates with variables and advanced amount splitting for recurring or more complex transactions
+* [x] Reminder notifications of recorded transactions with flexible schedule
+* [x] Many optional commands, shorthands and parameters, leaving the full flexibility up to you
+* [x] Automatically apply tags to transactions, e.g. when on vacation
+* [x] Auto-format amount decimal point alignment to match [VSCode Beancount plugin](https://marketplace.visualstudio.com/items?itemName=Lencerf.beancount)
 
-Steps to get started after contacting the bot:
+Check out `/help` in the bot for all available commands and don't forget to configure your bot with `/config`. Just give it a try.
 
-1. Start a conversation with the bot (usually `/start`).
-1. If needed, the bot will lead you through any additional setup needed
-1. You can type `/help` to see the commands available to control the bot (e.g. to add accounts, record transactions, change account settings, ...)
+Are you missing a feature, have an idea or a question? Feel free to [create an issue](https://github.com/LucaBernstein/beancount-bot-tg/issues/new/choose).
+
+## Basic Usage
+
+You can use the bot [`@LB_Bean_Bot`](https://t.me/LB_Bean_Bot) ([https://t.me/LB_Bean_Bot](https://t.me/LB_Bean_Bot)) to test/use it directly or to get started quickly.
+
+* `/help`: Get a list of all the available commands
+* `/config`: Get an overview of all the available commands for configuring the bot, e.g. default currency, reminder notification schedule, timezone offset, ...
+* `/simple`: Create a new questionnaire-based transaction. The transaction date defaults to the current date. To override the date, provide it as parameter, i.e. `/simple 2022-01-24`. To shorten the date parameter, the year and the month can be left out, defaulting to the current year/month, i.e. if the current year is 2022, the following command has the same result: `/simple 01-24`.
+  * `123.45`: Entering an amount also starts a new transaction directly, leaving out the step shown above. It also guides you through the rest of the questionnaire of accounts to use for the transactions and so on.
+* `/template` or `/t`: Get an overview of the commands to use for managing templates.
+  * `/t add myTemplate`: Create a new template under the specified name. In the next step enter the full template. Variables can be inserted as shown in the help text sent back by the bot. This help also contains an example transaction.
+  * `/t myTemplate`: Use the template created before. For all variables used, the value to use will be asked. It is possible to call a template with only a subset of its name, as long as it's uniquely identifiable, e.g. `/t myTempl`
+* `/cancel`: Cancel either the current transaction recording questionnaire or the creation of a new template.
+* `/comment` or `/c`: Add arbitrary text to the transaction list (e.g. for follow-ups). Example: `/c Checking account balance needs to be asserted`. (Note that no comment prefix (`;`) is added automatically, so that by default the entered comment string causes a syntax error in a beancount file to ease follow-up and so that comments don't drown in long transaction lists)
+* `/list`: Show a list of all currently recorded transactions (for easy copy-and-paste into your beancount file). The parameter `/list dated` adds a comment prior to each transaction in the list with the date and time the transaction has been added. `/list archived` shows all archived transactions. The parameters can also be used in conjunction, i.e. `/list archived dated`.
+* `/archiveAll`: Mark all currently opened transactions as archived. They can be revisited using `/list archived`.
+* `/deleteAll yes`: Permanently delete all transactions, both open and archived.
 
 ## Installation (self-hosted)
 
