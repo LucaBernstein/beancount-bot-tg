@@ -83,7 +83,7 @@ func TestHandleFloatSimpleCalculations(t *testing.T) {
 	// Mixed calculation operators
 	_, err = bot.HandleFloat(&tb.Message{Text: "1+1*2"})
 	if err == nil || !strings.Contains(err.Error(), "failed at value '1*2'") {
-		t.Errorf("Error message should state that mixing operators is not allowed")
+		t.Errorf("Error message should state that mixing operators is not allowed: %e", err)
 	}
 	// Too many spaces in input
 	_, err = bot.HandleFloat(&tb.Message{Text: "some many spaces"})
@@ -105,6 +105,44 @@ func TestHandleFloatSimpleCalculations(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "failed at value 'EUR'") {
 		t.Errorf("Error message should state that it could not interpret 'EUR' as a number: %s", err.Error())
 	}
+}
+
+func TestHandleFloatThousandsSeparator(t *testing.T) {
+	handledFloat, err := bot.HandleFloat(&tb.Message{Text: "100,000,000.00"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 100 million with comma thousands separator")
+	helpers.TestExpect(t, handledFloat, "100000000.00", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "100.000.000,00"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 100 million with dot thousands separator")
+	helpers.TestExpect(t, handledFloat, "100000000.00", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "24,123.7"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 24,123.7")
+	helpers.TestExpect(t, handledFloat, "24123.70", "")
+
+	_, err = bot.HandleFloat(&tb.Message{Text: "24,24.7"})
+	if err == nil || !strings.Contains(err.Error(), "invalid separators in value '24,24.7'") {
+		t.Errorf("Error message should state that separators used were invalid: %e", err)
+	}
+
+	_, err = bot.HandleFloat(&tb.Message{Text: "1.,23"})
+	if err == nil || !strings.Contains(err.Error(), "invalid separators in value '1.,23'") {
+		t.Errorf("Error message should state that separators used were invalid: %e", err)
+	}
+
+	_, err = bot.HandleFloat(&tb.Message{Text: "100,000.000,000"})
+	if err == nil || !strings.Contains(err.Error(), "invalid separators in value '100,000.000,000'") {
+		t.Errorf("Error message should state that separators used were invalid: %e", err)
+	}
+
+	_, err = bot.HandleFloat(&tb.Message{Text: "100,000.000,000.000"})
+	if err == nil || !strings.Contains(err.Error(), "invalid separators in value '100,000.000,000.000'") {
+		t.Errorf("Error message should state that separators used were invalid: %e", err)
+	}
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "1,000.00+24"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 1,000.00+24")
+	helpers.TestExpect(t, handledFloat, "1024.00", "")
 }
 
 func TestTransactionBuilding(t *testing.T) {

@@ -29,7 +29,6 @@ type Input struct {
 
 func HandleFloat(m *tb.Message) (string, error) {
 	input := strings.TrimSpace(m.Text)
-	input = strings.ReplaceAll(input, ",", ".")
 	split := strings.Split(input, " ")
 	var (
 		value    = split[0]
@@ -45,42 +44,82 @@ func HandleFloat(m *tb.Message) (string, error) {
 	if strings.HasSuffix(value, "+") && currency != "" {
 		return "", fmt.Errorf("for transactions being kept open with trailing '+' operator, no additionally specified currency is allowed")
 	}
+	operator := ""
+	amounts := []string{value}
 	if strings.Contains(value, "+") {
-		additionsSplit := strings.Split(value, "+")
-		sum := 0.0
-		for _, add := range additionsSplit {
-			v, err := strconv.ParseFloat(add, 64)
-			if err != nil {
-				return "", fmt.Errorf("tried to sum up values due to '%s' operator found, failed at value '%s': %s", "+", add, err.Error())
-			}
-			sum += v
-		}
-		return ParseAmount(sum) + currency, nil
+		amounts = strings.Split(value, "+")
+		operator = "+"
 	} else if strings.Contains(value, "*") {
-		multiplicationsSplit := strings.Split(value, "*")
-		if len(multiplicationsSplit) != 2 {
+		amounts = strings.Split(value, "*")
+		operator = "*"
+		if len(amounts) != 2 {
 			return "", fmt.Errorf("expected exactly two multiplicators ('a*b')")
 		}
+	}
+	values := []float64{}
+	for _, amount := range amounts {
+		value, err := handleThousandsSeparators(amount)
+		if err != nil {
+			return "", err
+		}
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return "", fmt.Errorf("parsing failed at value '%s': %s", value, err.Error())
+		}
+		if v < 0 {
+			c.LogLocalf(INFO, nil, "Got negative value. Inverting.")
+			v *= -1
+		}
+		c.LogLocalf(TRACE, nil, "Handled float: '%s' -> %f", amount, v)
+		values = append(values, v)
+	}
+	finalAmount := 0.0
+	if operator == "+" {
+		sum := 0.0
+		for _, v := range values {
+			sum += v
+		}
+		finalAmount = sum
+	} else if operator == "*" {
 		product := 1.0
-		for _, multiplicator := range multiplicationsSplit {
-			v, err := strconv.ParseFloat(multiplicator, 64)
-			if err != nil {
-				return "", fmt.Errorf("tried to sum up values due to '%s' operator found, failed at value '%s': %s", "*", multiplicator, err.Error())
-			}
+		for _, v := range values {
 			product *= v
 		}
-		return ParseAmount(product) + currency, nil
+		finalAmount = product
+	} else {
+		finalAmount = values[0]
 	}
-	v, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return "", err
+	return ParseAmount(finalAmount) + currency, nil
+}
+
+func handleThousandsSeparators(value string) (cleanValue string, err error) {
+	err = fmt.Errorf("invalid separators in value '%s'", value)
+	if !(strings.Contains(value, ".") && strings.Contains(value, ",")) {
+		return strings.ReplaceAll(value, ",", "."), nil
 	}
-	if v < 0 {
-		c.LogLocalf(INFO, nil, "Got negative value. Inverting.")
-		v *= -1
+
+	thousandsSeparator := '.'
+	decimalSeparator := ','
+	if strings.IndexRune(value, ',') < strings.IndexRune(value, '.') {
+		thousandsSeparator = ','
+		decimalSeparator = '.'
 	}
-	c.LogLocalf(TRACE, nil, "Handled float: '%s' -> %f", m.Text, v)
-	return ParseAmount(v) + currency, nil
+	if strings.Count(value, string(decimalSeparator)) > 1 {
+		return
+	}
+	if strings.Contains(strings.SplitN(value, string(decimalSeparator), 2)[1], string(thousandsSeparator)) {
+		return
+	}
+	const DIGITS_PER_BLOCK = 3
+	for idx, block := range strings.Split(strings.Split(value, string(decimalSeparator))[0], string(thousandsSeparator)) {
+		if len(block) < DIGITS_PER_BLOCK && idx != 0 {
+			return
+		}
+	}
+	newValue := value
+	newValue = strings.ReplaceAll(newValue, string(thousandsSeparator), "")
+	newValue = strings.ReplaceAll(newValue, ",", ".")
+	return newValue, nil
 }
 
 func HandleRaw(m *tb.Message) (string, error) {
