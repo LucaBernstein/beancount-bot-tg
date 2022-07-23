@@ -68,8 +68,7 @@ func (r *Repo) HealthGetUserCount() (count int, err error) {
 	return
 }
 
-func (r *Repo) HealthGetUsersActiveCounts(maxDays int) (count int, err error) {
-	maxDiffHours := maxDays * 24
+func (r *Repo) HealthGetUsersActiveCounts(maxDiffHours int) (count int, err error) {
 	rows, err := r.db.Query(`
 		SELECT COUNT("difference") from (
 			SELECT DISTINCT EXTRACT(EPOCH FROM (NOW() - MAX(l."created"))) / 3600 AS difference
