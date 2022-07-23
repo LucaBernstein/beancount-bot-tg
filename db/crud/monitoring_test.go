@@ -163,7 +163,7 @@ func TestHealthGetUsersActiveCounts(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).
 			AddRow(4))
 
-	count, err := r.HealthGetUsersActiveCounts(3)
+	count, err := r.HealthGetUsersActiveCounts(3 * 24)
 	if err != nil {
 		t.Errorf("Should not fail for getting active user count: %s", err.Error())
 	}

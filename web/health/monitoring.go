@@ -18,8 +18,10 @@ type MonitoringResult struct {
 
 	users_count int
 
-	users_active_last_1d int
-	users_active_last_7d int
+	users_active_last_1h  int
+	users_active_last_12h int
+	users_active_last_1d  int
+	users_active_last_7d  int
 
 	cache_entries_accTo   int
 	cache_entries_accFrom int
@@ -50,6 +52,8 @@ bc_bot_users_count %d
 
 # HELP users_active_last Count of unique users by user ID active in the previous timeframe
 # TYPE users_active_last gauge
+bc_bot_users_active_last{timeframe="1h"} %d
+bc_bot_users_active_last{timeframe="12h"} %d
 bc_bot_users_active_last{timeframe="1d"} %d
 bc_bot_users_active_last{timeframe="7d"} %d
 
@@ -71,6 +75,8 @@ bc_bot_version_information{version="%s"} 1
 
 			m.users_count,
 
+			m.users_active_last_1h,
+			m.users_active_last_12h,
 			m.users_active_last_1d,
 			m.users_active_last_7d,
 
@@ -106,12 +112,22 @@ func gatherMetrics(bc *bot.BotController) (result *MonitoringResult) {
 	}
 	result.users_count = count
 
-	active_1d, err := bc.Repo.HealthGetUsersActiveCounts(1)
+	active_1h, err := bc.Repo.HealthGetUsersActiveCounts(1)
+	if err != nil {
+		bc.Logf(helpers.ERROR, nil, "Error getting health users: %s", err.Error())
+	}
+	result.users_active_last_1h = active_1h
+	active_12h, err := bc.Repo.HealthGetUsersActiveCounts(12)
+	if err != nil {
+		bc.Logf(helpers.ERROR, nil, "Error getting health users: %s", err.Error())
+	}
+	result.users_active_last_12h = active_12h
+	active_1d, err := bc.Repo.HealthGetUsersActiveCounts(24)
 	if err != nil {
 		bc.Logf(helpers.ERROR, nil, "Error getting health users: %s", err.Error())
 	}
 	result.users_active_last_1d = active_1d
-	active_7d, err := bc.Repo.HealthGetUsersActiveCounts(7)
+	active_7d, err := bc.Repo.HealthGetUsersActiveCounts(7 * 24)
 	if err != nil {
 		bc.Logf(helpers.ERROR, nil, "Error getting health users: %s", err.Error())
 	}
