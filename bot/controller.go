@@ -114,7 +114,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{CommandAlias: []string{CMD_HELP}, Handler: bc.commandHelp, Help: "List this command help"},
 		{CommandAlias: []string{CMD_START}, Handler: bc.commandStart, Help: "Give introduction into this bot"},
 		{CommandAlias: []string{CMD_CANCEL}, Handler: bc.commandCancel, Help: "Cancel any running commands or transactions"},
-		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be ommitted by sending amount directy", Optional: []string{"date"}},
+		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be omitted by sending amount directy", Optional: []string{"date"}},
 		{CommandAlias: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{CommandAlias: CMD_TEMPLATE, Handler: bc.commandTemplates, Help: "Create and use template transactions"},
 		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
