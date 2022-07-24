@@ -96,6 +96,36 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	}
 }
 
+func TestStartTransactionWithPlainAmountThousandsSeparated(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_CUR).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
+
+	bc.handleTextState(&tb.Message{Chat: chat, Text: "1,000,000"})
+
+	debugString := bc.State.txStates[12345].Debug()
+	expected := "data=[1000000.00"
+	helpers.TestStringContains(t, debugString, expected, "contain parsed amount")
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
 func TestTransactionDeletion(t *testing.T) {
 	// create test dependencies
 	chat := &tb.Chat{ID: 12345}

@@ -94,20 +94,21 @@ func HandleFloat(m *tb.Message) (string, error) {
 
 func handleThousandsSeparators(value string) (cleanValue string, err error) {
 	err = fmt.Errorf("invalid separators in value '%s'", value)
-	if !(strings.Contains(value, ".") && strings.Contains(value, ",")) {
+	if !(strings.Contains(value, ".") && strings.Contains(value, ",")) &&
+		!(strings.Count(value, ".") > 1 || strings.Count(value, ",") > 1) {
 		return strings.ReplaceAll(value, ",", "."), nil
 	}
 
 	thousandsSeparator := '.'
 	decimalSeparator := ','
-	if strings.IndexRune(value, ',') < strings.IndexRune(value, '.') {
+	if strings.ContainsRune(value, ',') && (strings.IndexRune(value, ',') < strings.IndexRune(value, '.') || !strings.ContainsRune(value, '.')) {
 		thousandsSeparator = ','
 		decimalSeparator = '.'
 	}
 	if strings.Count(value, string(decimalSeparator)) > 1 {
 		return
 	}
-	if strings.Contains(strings.SplitN(value, string(decimalSeparator), 2)[1], string(thousandsSeparator)) {
+	if strings.ContainsRune(value, decimalSeparator) && strings.Contains(strings.SplitN(value, string(decimalSeparator), 2)[1], string(thousandsSeparator)) {
 		return
 	}
 	const DIGITS_PER_BLOCK = 3
