@@ -120,6 +120,14 @@ func TestHandleFloatThousandsSeparator(t *testing.T) {
 	helpers.TestExpect(t, err, nil, "Should not throw an error for 24,123.7")
 	helpers.TestExpect(t, handledFloat, "24123.70", "")
 
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "1.000.000"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 1.000.000")
+	helpers.TestExpect(t, handledFloat, "1000000.00", "")
+
+	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "1,000,000"})
+	helpers.TestExpect(t, err, nil, "Should not throw an error for 1,000,000")
+	helpers.TestExpect(t, handledFloat, "1000000.00", "")
+
 	_, err = bot.HandleFloat(&tb.Message{Text: "24,24.7"})
 	if err == nil || !strings.Contains(err.Error(), "invalid separators in value '24,24.7'") {
 		t.Errorf("Error message should state that separators used were invalid: %e", err)
