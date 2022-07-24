@@ -27,6 +27,8 @@ type MonitoringResult struct {
 	cache_entries_accFrom int
 	cache_entries_txDesc  int
 
+	tx_states_count int
+
 	version string
 }
 
@@ -63,6 +65,10 @@ bc_bot_cache_entries{type="accTo"} %d
 bc_bot_cache_entries{type="accFrom"} %d
 bc_bot_cache_entries{type="txDesc"} %d
 
+# HELP bc_bot_tx_states_count Count of users with open transactions
+# TYPE bc_bot_tx_states_count gauge
+bc_bot_tx_states_count %d
+
 # HELP bc_bot_version_information
 # TYPE bc_bot_version_information gauge
 bc_bot_version_information{version="%s"} 1
@@ -83,6 +89,8 @@ bc_bot_version_information{version="%s"} 1
 			m.cache_entries_accTo,
 			m.cache_entries_accFrom,
 			m.cache_entries_txDesc,
+
+			m.tx_states_count,
 
 			m.version,
 		)
@@ -140,6 +148,8 @@ func gatherMetrics(bc *bot.BotController) (result *MonitoringResult) {
 	result.cache_entries_accTo = accTo
 	result.cache_entries_accFrom = accFrom
 	result.cache_entries_txDesc = txDesc
+
+	result.tx_states_count = bc.State.CountOpen()
 
 	result.version = os.Getenv("VERSION")
 

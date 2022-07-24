@@ -90,3 +90,7 @@ func (s *StateHandler) StartTpl(m *tb.Message, name string) {
 	s.states[(chatId)(m.Chat.ID)] = ST_TPL
 	s.tplStates[(chatId)(m.Chat.ID)] = TemplateName(name)
 }
+
+func (s *StateHandler) CountOpen() int {
+	return len(s.states)
+}
