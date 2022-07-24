@@ -154,6 +154,12 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 
 func (bc *BotController) configHandleNotification(m *tb.Message, params ...string) {
 	var tz, _ = time.Now().Zone()
+	userTzOffset := bc.Repo.UserGetTzOffset(m)
+	if userTzOffset < 0 {
+		tz += strconv.Itoa(userTzOffset)
+	} else {
+		tz += "+" + strconv.Itoa(userTzOffset)
+	}
 	if len(params) == 0 {
 		// GET schedule
 		daysDelay, hour, err := bc.Repo.UserGetNotificationSetting(m)
