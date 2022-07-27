@@ -33,7 +33,7 @@ func (bc *BotController) templatesHelp(m *tb.Message, err error) {
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
-	_, err = bc.Bot.Send(m.Sender, errorMsg+`Usage help for /template:
+	_, err = bc.Bot.Send(Recipient(m), errorMsg+`Usage help for /template:
 	/template list [name]
 	/template add <name>
 	/template rm <name>
@@ -57,19 +57,19 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 	templates, err := bc.Repo.GetTemplates(m, searchTemplate)
 	if err != nil {
 		bc.Logf(ERROR, m, "Error loading templates: %s", err.Error())
-		_, err = bc.Bot.Send(m.Sender, "There has been an error loading your templates.")
+		_, err = bc.Bot.Send(Recipient(m), "There has been an error loading your templates.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 	}
 	if len(templates) == 0 {
 		if searchTemplate == "" {
-			_, err = bc.Bot.Send(m.Sender, "You have not created any template yet. Please see /template")
+			_, err = bc.Bot.Send(Recipient(m), "You have not created any template yet. Please see /template")
 			if err != nil {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
 		} else {
-			_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("No template name matched your query '%s'", searchTemplate))
+			_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("No template name matched your query '%s'", searchTemplate))
 			if err != nil {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
@@ -81,7 +81,7 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 		}
 		messageSplits := bc.MergeMessagesHonorSendLimit(templateList, "\n\n")
 		for _, message := range messageSplits {
-			_, err = bc.Bot.Send(m.Sender, message, clearKeyboard())
+			_, err = bc.Bot.Send(Recipient(m), message, clearKeyboard())
 			if err != nil {
 				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 			}
@@ -92,7 +92,7 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 func (bc *BotController) templatesHandleAdd(m *tb.Message, params ...string) {
 	state := bc.State.GetType(m)
 	if state != ST_NONE {
-		_, err := bc.Bot.Send(m.Sender, "There is another operation currently running for you. Please complete it or /cancel it before proceeding.")
+		_, err := bc.Bot.Send(Recipient(m), "There is another operation currently running for you. Please complete it or /cancel it before proceeding.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -108,7 +108,7 @@ func (bc *BotController) templatesHandleAdd(m *tb.Message, params ...string) {
 		return
 	}
 	bc.State.StartTpl(m, name)
-	_, err := bc.Bot.Send(m.Sender, `Please provide a full transaction template. Variables are to be inserted as '${<variable>}'. The following variables can be used:
+	_, err := bc.Bot.Send(Recipient(m), `Please provide a full transaction template. Variables are to be inserted as '${<variable>}'. The following variables can be used:
 - ${amount}, ${-amount}, ${amount/i} (e.g. ${amount/2})
 - ${date}
 - ${description}
@@ -137,20 +137,20 @@ func (bc *BotController) templatesHandleRemove(m *tb.Message, params ...string) 
 	name := params[0]
 	wasRemoved, err := bc.Repo.RmTemplate(m.Chat.ID, string(name))
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, "Something went wrong while deleting your template.")
+		_, err := bc.Bot.Send(Recipient(m), "Something went wrong while deleting your template.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
 	}
 	if !wasRemoved {
-		_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("There was no template called '%s' to remove. Please check '/t list'.", name))
+		_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("There was no template called '%s' to remove. Please check '/t list'.", name))
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
 	}
-	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully removed your template '%s'.", name))
+	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Successfully removed your template '%s'.", name))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -160,13 +160,13 @@ func (bc *BotController) processNewTemplateResponse(m *tb.Message, name Template
 	template := m.Text
 	err := bc.Repo.AddTemplate(m.Chat.ID, string(name), template)
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, "Something went wrong while saving your template. Please check whether the name already exists.")
+		_, err := bc.Bot.Send(Recipient(m), "Something went wrong while saving your template. Please check whether the name already exists.")
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return false
 	}
-	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Successfully created your template. You can use it from now on by typing '/t %s' (/t is short for /template).", name))
+	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Successfully created your template. You can use it from now on by typing '/t %s' (/t is short for /template).", name))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -204,7 +204,7 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 		bc.Logf(ERROR, m, "Creating tx from template failed: %s", err.Error())
 		return fmt.Errorf("something went wrong creating a transaction from your template: %s", err.Error())
 	}
-	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("Creating a new transaction from your template '%s'.", tpl.Name))
+	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Creating a new transaction from your template '%s'.", tpl.Name))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -216,7 +216,7 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 	hint := tx.NextHint(bc.Repo, m)
 	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
 	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-	_, err = bc.Bot.Send(m.Sender, hint.Prompt, replyKeyboard)
+	_, err = bc.Bot.Send(Recipient(m), hint.Prompt, replyKeyboard)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}

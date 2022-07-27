@@ -10,6 +10,10 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+func IsGroupChat(m *tb.Message) bool {
+	return m.Chat.ID != m.Sender.ID
+}
+
 func (r *Repo) EnrichUserData(m *tb.Message) error {
 	if m == nil {
 		return fmt.Errorf("provided message was nil")
@@ -17,6 +21,11 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	tgChatId := m.Chat.ID
 	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
+
+	if IsGroupChat(m) {
+		tgUserId = tgChatId
+		tgUsername = m.Chat.Title
+	}
 
 	userCachePrune(0)
 	ce, err := r.getUser(m.Chat.ID)
@@ -30,8 +39,8 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 		return err
 	}
 	// Check whether some changeable attributes differ
-	if ce.TgUsername != m.Sender.Username {
-		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user' (%s, %s)", ce.TgUsername, m.Sender.Username)
+	if ce.TgUsername != tgUsername {
+		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user' (%s, %s)", ce.TgUsername, tgUsername)
 		_, err := r.db.Exec(`UPDATE "auth::user" SET "tgUserId" = $2, "tgUsername" = $3 WHERE "tgChatId" = $1`, tgChatId, tgUserId, tgUsername)
 		return err
 	}
