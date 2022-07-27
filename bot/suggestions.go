@@ -40,7 +40,7 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 		suggestionsMenu.Row(btnSuggListTxDesc),
 	)
 
-	_, err = bc.Bot.Send(m.Sender, errorMsg+fmt.Sprintf(`Usage help for /suggestions:
+	_, err = bc.Bot.Send(Recipient(m), errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
 /suggestions rm <type> [value]
@@ -67,20 +67,20 @@ func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) 
 	}
 	values, err := bc.Repo.GetCacheHints(m, p.T)
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.T, err.Error()))
+		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.T, err.Error()))
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
 	}
 	if len(values) == 0 {
-		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.T))
+		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.T))
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
 	}
-	_, err = bc.Bot.Send(m.Sender, fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.T)+
+	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.T)+
 		strings.Join(values, "\n"))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
@@ -103,13 +103,13 @@ func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
 	}
 	err = bc.Repo.PutCacheHints(m, map[string]string{p.T: p.Value})
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.Value, err.Error()))
+		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.Value, err.Error()))
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
 		return
 	}
-	_, err = bc.Bot.Send(m.Sender, "Successfully added suggestion(s).")
+	_, err = bc.Bot.Send(Recipient(m), "Successfully added suggestion(s).")
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -128,7 +128,7 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 	bc.Logf(TRACE, m, "About to remove suggestion of type '%s' and value '%s'", p.T, p.Value)
 	res, err := bc.Repo.DeleteCacheEntries(m, p.T, p.Value)
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, "Error encountered while removing suggestion: "+err.Error())
+		_, err := bc.Bot.Send(Recipient(m), "Error encountered while removing suggestion: "+err.Error())
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -136,7 +136,7 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 	}
 	rowCount, err := res.RowsAffected()
 	if err != nil {
-		_, err := bc.Bot.Send(m.Sender, "Error encountered while extracting affected entries: "+err.Error())
+		_, err := bc.Bot.Send(Recipient(m), "Error encountered while extracting affected entries: "+err.Error())
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
@@ -147,7 +147,7 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 			"If your value contains spaces, consider putting it in double quotes (\")"))
 		return
 	}
-	_, err = bc.Bot.Send(m.Sender, "Successfully removed suggestion(s)")
+	_, err = bc.Bot.Send(Recipient(m), "Successfully removed suggestion(s)")
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
