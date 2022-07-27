@@ -94,7 +94,7 @@ func SplitQuotedCommand(s string) (res []string) {
 			isEscaped = true
 			continue
 		}
-		if c == '"' {
+		if c == '"' || c == '“' {
 			isQuoted = !isQuoted
 			continue
 		}

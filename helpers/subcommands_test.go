@@ -60,6 +60,8 @@ func TestSplitQuotedCommand(t *testing.T) {
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command "is quoted" non-quoted and sep`), []string{"/command", "is quoted", "non-quoted", "and", "sep"}, "")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello"world"`), []string{"/command", "helloworld"}, "")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello "world"`), []string{"/command", "hello", "world"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command special “quotations“`), []string{"/command", "special", "quotations"}, "")
+	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command special “quotations 2"`), []string{"/command", "special", "quotations 2"}, "")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command hello" world"`), []string{"/command", "hello world"}, "")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command "wrongly quoted`), []string{}, "quotes opened but not closed")
 	helpers.TestExpectArrEq(t, helpers.SplitQuotedCommand(`/command \"correctly quoted`), []string{"/command", "\"correctly", "quoted"}, "quotes opened but not closed")
