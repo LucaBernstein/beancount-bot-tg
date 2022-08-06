@@ -10,5 +10,7 @@ import (
 
 func StartWebServer(bc *bot.BotController) {
 	http.HandleFunc("/health", health.MonitoringEndpoint(bc))
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	port := ":8081"
+	log.Printf("Web server started on %s", port)
+	log.Fatal(http.ListenAndServe(port, nil))
 }
