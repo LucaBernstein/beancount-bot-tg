@@ -66,3 +66,11 @@ func (r *Repo) DeleteTransactions(m *tb.Message) error {
 		WHERE "tgChatId" = $1`, m.Chat.ID)
 	return err
 }
+
+func (r *Repo) DeleteTemplates(m *tb.Message) error {
+	LogDbf(r, helpers.TRACE, m, "Permanently deleting templates")
+	_, err := r.db.Exec(`
+		DELETE FROM "bot::template"
+		WHERE "tgChatId" = $1`, m.Chat.ID)
+	return err
+}

@@ -59,8 +59,8 @@ jobs:
             dep ensure
         fi
         go run . > bot.log &
-        echo "Waiting for 5 seconds for bot to start..."
-        sleep 5
+        echo "Waiting for 6 seconds for bot to start..."
+        sleep 6
         echo "Printing logs so far..."
         cat bot.log
     - name: Run scenario tests
