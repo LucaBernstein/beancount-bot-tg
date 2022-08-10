@@ -19,11 +19,9 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 		return fmt.Errorf("provided message was nil")
 	}
 	tgChatId := m.Chat.ID
-	tgUserId := m.Sender.ID
 	tgUsername := m.Sender.Username
 
 	if IsGroupChat(m) {
-		tgUserId = tgChatId
 		tgUsername = m.Chat.Title
 	}
 
@@ -34,14 +32,14 @@ func (r *Repo) EnrichUserData(m *tb.Message) error {
 	}
 	if ce == nil {
 		LogDbf(r, helpers.TRACE, m, "Creating user for the first time in the 'auth::user' db table")
-		_, err := r.db.Exec(`INSERT INTO "auth::user" ("tgChatId", "tgUserId", "tgUsername")
-			VALUES ($1, $2, $3);`, tgChatId, tgUserId, tgUsername)
+		_, err := r.db.Exec(`INSERT INTO "auth::user" ("tgChatId", "tgUsername")
+			VALUES ($1, $2);`, tgChatId, tgUsername)
 		return err
 	}
 	// Check whether some changeable attributes differ
 	if ce.TgUsername != tgUsername {
 		LogDbf(r, helpers.TRACE, m, "Updating attributes of user in table 'auth::user' (%s, %s)", ce.TgUsername, tgUsername)
-		_, err := r.db.Exec(`UPDATE "auth::user" SET "tgUserId" = $2, "tgUsername" = $3 WHERE "tgChatId" = $1`, tgChatId, tgUserId, tgUsername)
+		_, err := r.db.Exec(`UPDATE "auth::user" SET "tgUsername" = $2 WHERE "tgChatId" = $1`, tgChatId, tgUsername)
 		return err
 	}
 	return nil
@@ -63,7 +61,6 @@ func (r *Repo) DeleteUser(m *tb.Message) error {
 
 type User struct {
 	TgChatId   int64
-	TgUserId   int
 	TgUsername string
 }
 
@@ -90,7 +87,7 @@ func (r *Repo) getUser(id int64) (*User, error) {
 		return value.Value, nil
 	}
 	rows, err := r.db.Query(`
-		SELECT "tgUserId", "tgUsername"
+		SELECT "tgUsername"
 		FROM "auth::user"
 		WHERE "tgChatId" = $1
 	`, id)
@@ -99,17 +96,16 @@ func (r *Repo) getUser(id int64) (*User, error) {
 	}
 	defer rows.Close()
 
-	var tgUserId int
 	var tgUsername sql.NullString
 	if rows.Next() {
-		err = rows.Scan(&tgUserId, &tgUsername)
+		err = rows.Scan(&tgUsername)
 		if err != nil {
 			return nil, err
 		}
 		if !tgUsername.Valid {
 			tgUsername.String = ""
 		}
-		user := &User{TgUserId: tgUserId, TgChatId: id, TgUsername: tgUsername.String}
+		user := &User{TgChatId: id, TgUsername: tgUsername.String}
 		USER_CACHE[id] = &UserCacheEntry{Value: user, Expiry: time.Now().Add(CACHE_VALIDITY)}
 		return user, nil
 	}
@@ -120,7 +116,6 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 	query := `
 		SELECT "tgChatId"
 		FROM "auth::user"
-		WHERE "tgUserId" = "tgChatId" -- is a private chat
 	`
 	params := []interface{}{}
 
@@ -129,7 +124,7 @@ func (r *Repo) IndividualsWithNotifications(chatId string) (recipients []string)
 		if err != nil {
 			LogDbf(r, helpers.ERROR, nil, "Error while parsing chatId to int64: %s", err.Error())
 		}
-		query += `AND "tgChatId" = $1`
+		query += `WHERE "tgChatId" = $1`
 		params = append(params, i)
 	}
 	rows, err := r.db.Query(query, params...)

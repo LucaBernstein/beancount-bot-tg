@@ -32,18 +32,18 @@ func TestEnrichUserData(t *testing.T) {
 	// User not already exists
 	mock.
 		ExpectQuery(`
-			SELECT "tgUserId", "tgUsername"
+			SELECT "tgUsername"
 			FROM "auth::user"
 			WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"tgUserId", "tgUsername"}))
+		WillReturnRows(sqlmock.NewRows([]string{"tgUsername"}))
 
 	mock.
 		ExpectExec(`INSERT INTO "auth::user"`).
-		WithArgs(chat.ID, chat.ID, "username").
+		WithArgs(chat.ID, "username").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: 12345, Username: "username"}})
+	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}
@@ -51,15 +51,15 @@ func TestEnrichUserData(t *testing.T) {
 	// User already exists, but username changed
 	mock.
 		ExpectQuery(`
-			SELECT "tgUserId", "tgUsername"
+			SELECT "tgUsername"
 			FROM "auth::user"
 			WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
-		WillReturnRows(sqlmock.NewRows([]string{"tgUserId", "tgUsername"}).AddRow(chat.ID, "old_username"))
+		WillReturnRows(sqlmock.NewRows([]string{"tgUsername"}).AddRow("old_username"))
 
 	mock.
 		ExpectExec(`UPDATE "auth::user"`).
-		WithArgs(chat.ID, chat.ID, "username").
+		WithArgs(chat.ID, "username").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "username"}})
@@ -123,13 +123,13 @@ func TestEnrichUserDataErrors(t *testing.T) {
 	// Error returned
 	mock.
 		ExpectQuery(`
-			SELECT "tgUserId", "tgUsername"
+			SELECT "tgUsername"
 			FROM "auth::user"
 			WHERE "tgChatId" = ?
 		`).
 		WithArgs(789).
 		WillReturnError(fmt.Errorf("testing error behavior for EnrichUserData"))
-	err = r.EnrichUserData(&tb.Message{Chat: &tb.Chat{ID: 789}, Sender: &tb.User{ID: 789, Username: "username2"}})
+	err = r.EnrichUserData(&tb.Message{Chat: &tb.Chat{ID: 789}, Sender: &tb.User{Username: "username2"}})
 	if err == nil {
 		t.Errorf("There should have been an error from the db query")
 	}

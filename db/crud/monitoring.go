@@ -72,7 +72,7 @@ func (r *Repo) HealthGetUsersActiveCounts(maxDiffHours int) (count int, err erro
 	rows, err := r.db.Query(`
 		SELECT COUNT("difference") from (
 			SELECT DISTINCT EXTRACT(EPOCH FROM (NOW() - MAX(l."created"))) / 3600 AS difference
-			FROM "app::log" l JOIN "auth::user" u ON CONCAT('C', u."tgChatId", '/U', u."tgUserId") = l.chat
+			FROM "app::log" l JOIN "auth::user" u ON l.chat LIKE CONCAT('C', u."tgChatId", '/%') 
 			GROUP BY l."chat"
 		) q
 		WHERE "difference" < $1`, maxDiffHours)
