@@ -3,6 +3,7 @@ from behave.api.async_step import async_run_until_complete
 from client import TestBot
 import os, asyncio
 import requests
+from datetime import datetime
 
 bot = None
 async def getBotSingletonLazy():
@@ -63,12 +64,22 @@ async def step_impl(context, count):
         print(len(context.responses), "!=", count)
         assert False
 
-@then('the response should include the message "{message}"')
+def replacePlaceholders(msg: str) -> str:
+    # date placeholder '$today'
+    msg = msg.replace("$today", datetime.today().strftime('%Y-%m-%d'))
+    return msg
+
+@then('the{same}response should include the message "{message}"')
 @async_run_until_complete
-async def step_impl(context, message):
-    assert len(context.responses) > 0
-    message = message.strip()
-    response = context.responses.pop(-1) # messages are sorted by creation date from newest to oldest. Take oldest first
+async def step_impl(context, same, message):
+    message = replacePlaceholders(message.strip())
+    assert same in [" ", " same "]
+    if same == " ":
+        assert len(context.responses) > 0
+        response = context.responses.pop(-1) # messages are sorted by creation date from newest to oldest. Take oldest first
+        context.lastResponse = response
+    else:
+        response = context.lastResponse
     try:
         assert message in response.text
     except AssertionError:
