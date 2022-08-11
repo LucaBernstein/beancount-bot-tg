@@ -25,6 +25,7 @@ async def getBotSingletonLazy():
 async def step_impl(context):
     context.chat = await getBotSingletonLazy()
     context.testChatId = context.chat.testChatId
+    await wait_seconds(0.1)
 
 async def bot_send_message(bot: TestBot, chat, message):
     message = await bot.client.send_message(chat, message)
