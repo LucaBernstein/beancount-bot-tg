@@ -165,19 +165,19 @@ func TestTransactionListMaxLength(t *testing.T) {
 		log.Fatal(err)
 	}
 	mock.
-		ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).
+		ExpectQuery(`SELECT "id", "value", "created" FROM "bot::transaction"`).
 		WithArgs(chat.ID, false).
-		WillReturnRows(sqlmock.NewRows([]string{"value", "created"}).AddRow(strings.Repeat("**********", 100), "").AddRow(strings.Repeat("**********", 100), "")) // 1000 + 1000
+		WillReturnRows(sqlmock.NewRows([]string{"id", "value", "created"}).AddRow(123, strings.Repeat("**********", 100), "").AddRow(124, strings.Repeat("**********", 100), "")) // 1000 + 1000
 	mock.
-		ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).
+		ExpectQuery(`SELECT "id", "value", "created" FROM "bot::transaction"`).
 		WithArgs(chat.ID, false).
-		WillReturnRows(sqlmock.NewRows([]string{"value", "created"}).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "value", "created"}).
 			// 5 * 1000
-			AddRow(strings.Repeat("**********", 100), "").
-			AddRow(strings.Repeat("**********", 100), "").
-			AddRow(strings.Repeat("**********", 100), "").
-			AddRow(strings.Repeat("**********", 100), "").
-			AddRow(strings.Repeat("**********", 100), ""),
+			AddRow(123, strings.Repeat("**********", 100), "").
+			AddRow(124, strings.Repeat("**********", 100), "").
+			AddRow(125, strings.Repeat("**********", 100), "").
+			AddRow(126, strings.Repeat("**********", 100), "").
+			AddRow(127, strings.Repeat("**********", 100), ""),
 		)
 
 	bc := NewBotController(db)
@@ -219,11 +219,11 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	// successful date enrichment
-	mock.ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
+	mock.ExpectQuery(`SELECT "id", "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"value", "created"}).
-				AddRow("tx1", "2022-03-30T14:24:50.390084Z").
-				AddRow("tx2", "2022-03-30T15:24:50.390084Z"),
+			sqlmock.NewRows([]string{"id", "value", "created"}).
+				AddRow(123, "tx1", "2022-03-30T14:24:50.390084Z").
+				AddRow(124, "tx2", "2022-03-30T15:24:50.390084Z"),
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 
@@ -234,11 +234,11 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 	}
 
 	// fall back to undated if date parsing fails
-	mock.ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
+	mock.ExpectQuery(`SELECT "id", "value", "created" FROM "bot::transaction"`).WithArgs(12345, true).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"value", "created"}).
-				AddRow("tx1", "123456789").
-				AddRow("tx2", "456789123"),
+			sqlmock.NewRows([]string{"id", "value", "created"}).
+				AddRow(123, "tx1", "123456789").
+				AddRow(124, "tx2", "456789123"),
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 

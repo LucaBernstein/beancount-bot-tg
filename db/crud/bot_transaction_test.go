@@ -25,11 +25,11 @@ func TestRecordGetTransaction(t *testing.T) {
 		t.Errorf("No error should have been returned")
 	}
 
-	mock.ExpectQuery(`SELECT "value", "created" FROM "bot::transaction"`).WithArgs(1122, true).
+	mock.ExpectQuery(`SELECT "id", "value", "created" FROM "bot::transaction"`).WithArgs(1122, true).
 		WillReturnRows(
-			sqlmock.NewRows([]string{"value", "created"}).
-				AddRow("tx1", "2022-03-30 14:24:50.390084").
-				AddRow("tx2", "2022-03-31 14:24:50.390084"),
+			sqlmock.NewRows([]string{"id", "value", "created"}).
+				AddRow(123, "tx1", "2022-03-30 14:24:50.390084").
+				AddRow(124, "tx2", "2022-03-31 14:24:50.390084"),
 		)
 	txs, err := r.GetTransactions(&tb.Message{Chat: &tb.Chat{ID: 1122}}, true)
 	if err != nil {

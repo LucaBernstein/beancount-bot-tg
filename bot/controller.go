@@ -2,6 +2,7 @@ package bot
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,7 +118,7 @@ func (bc *BotController) commandMappings() []*CMD {
 		{CommandAlias: []string{CMD_SIMPLE}, Handler: bc.commandCreateSimpleTx, Help: "Record a simple transaction, defaults to today; Can be omitted by sending amount directy", Optional: []string{"date"}},
 		{CommandAlias: CMD_COMMENT, Handler: bc.commandAddComment, Help: "Add arbitrary text to transaction list"},
 		{CommandAlias: CMD_TEMPLATE, Handler: bc.commandTemplates, Help: "Create and use template transactions"},
-		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions", Optional: []string{"archived", "dated"}},
+		{CommandAlias: []string{CMD_LIST}, Handler: bc.commandList, Help: "List your recorded transactions or remove entries", Optional: []string{"archived", "dated", "numbered", "rm <number>"}},
 		{CommandAlias: []string{CMD_SUGGEST}, Handler: bc.commandSuggestions, Help: "List, add or remove suggestions"},
 		{CommandAlias: []string{CMD_CONFIG}, Handler: bc.commandConfig, Help: "Bot configurations"},
 		{CommandAlias: []string{CMD_ARCHIVE_ALL}, Handler: bc.commandArchiveTransactions, Help: "Archive recorded transactions"},
@@ -292,6 +293,9 @@ func (bc *BotController) commandList(m *tb.Message) {
 	command := strings.Split(m.Text, " ")
 	isArchived := false
 	isDated := false
+	isNumbered := false
+	isDeleteCommand := false
+	elementNumber := -1
 	if len(command) > 1 {
 		for _, option := range command[1:] {
 			if option == "archived" {
@@ -300,14 +304,32 @@ func (bc *BotController) commandList(m *tb.Message) {
 			} else if option == "dated" {
 				isDated = true
 				continue
+			} else if option == "numbered" {
+				isNumbered = true
+				continue
+			} else if option == "rm" {
+				isDeleteCommand = true
+				continue
+			} else {
+				var err error
+				elementNumber, err = strconv.Atoi(option)
+				if err != nil {
+					_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
+					if err != nil {
+						bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+					}
+					return
+				}
+				continue
 			}
-
-			_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
-			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-			}
-			return
 		}
+	}
+	if isDeleteCommand && (isNumbered || isDated || elementNumber <= 0) {
+		_, err := bc.Bot.Send(Recipient(m), "For removing a single element from the list, determine it's number by sending the command '/list numbered' and then removing an entry by sending '/list rm <number>'.", clearKeyboard())
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
 	}
 	tx, err := bc.Repo.GetTransactions(m, isArchived)
 	if err != nil {
@@ -321,11 +343,33 @@ func (bc *BotController) commandList(m *tb.Message) {
 		bc.Logf(ERROR, m, "Tx unexpectedly was nil")
 		return
 	}
-
+	if isDeleteCommand {
+		var err error
+		if elementNumber <= len(tx) {
+			elementDbId := tx[elementNumber-1].Id
+			err = bc.Repo.DeleteTransaction(m, isArchived, elementDbId)
+		} else {
+			err = fmt.Errorf("the number you specified was too high. Please use a correct number as seen from '/list [archived] numbered'")
+		}
+		if err != nil {
+			_, errSending := bc.Bot.Send(Recipient(m), "Something went wrong while trying to delete a single transaction: "+err.Error(), clearKeyboard())
+			if errSending != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", errSending.Error())
+			}
+			return
+		}
+		_, errSending := bc.Bot.Send(Recipient(m), "Successfully deleted the list entry specified.", clearKeyboard())
+		if errSending != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", errSending.Error())
+		}
+		return
+	}
 	SEP := "\n"
 	txList := []string{}
+	txEntryNumber := 0
 	for _, t := range tx {
 		var dateComment string
+		txEntryNumber++
 		if isDated {
 			tzOffset := bc.Repo.UserGetTzOffset(m)
 			timezoneOff := time.Duration(tzOffset) * time.Hour
@@ -340,13 +384,21 @@ func (bc *BotController) commandList(m *tb.Message) {
 				dateComment = "; recorded on " + date + SEP
 			}
 		}
-		txMessage := dateComment + t.Tx
+		numberPrefix := ""
+		if isNumbered {
+			numberPrefix = fmt.Sprintf("%d) ", txEntryNumber)
+		}
+		txMessage := dateComment + numberPrefix + t.Tx
 		txList = append(txList, txMessage)
 	}
 	messageSplits := bc.MergeMessagesHonorSendLimit(txList, "\n")
 	if len(messageSplits) == 0 {
+		archivedSuggestion := ""
+		if !isArchived {
+			archivedSuggestion = " archived"
+		}
 		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
-			"\nYou might also be looking for archived transactions using '/list archived'.", CMD_HELP), clearKeyboard())
+			"\nYou might also be looking for%s transactions using '/list%s'.", CMD_HELP, archivedSuggestion, archivedSuggestion), clearKeyboard())
 		if err != nil {
 			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 		}
