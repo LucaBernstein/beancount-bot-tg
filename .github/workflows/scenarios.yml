@@ -2,6 +2,9 @@ name: Scenarios
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 concurrency: scenario
 

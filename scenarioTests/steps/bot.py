@@ -25,6 +25,7 @@ async def getBotSingletonLazy():
 async def step_impl(context):
     context.chat = await getBotSingletonLazy()
     context.testChatId = context.chat.testChatId
+    await wait_seconds(0.1)
 
 async def bot_send_message(bot: TestBot, chat, message):
     message = await bot.client.send_message(chat, message)
@@ -73,6 +74,22 @@ async def step_impl(context, message):
     except AssertionError:
         print("substring", message, "could not be found in", response.text)
         assert False
+
+@then('the response should have a keyboard with {position} entry being "{keyboardEntry}"')
+@async_run_until_complete
+async def step_impl(context, position, keyboardEntry):
+    positionMapping = {
+        'the first': 0,
+        'the second': 1,
+        'any': -1
+    }
+    assert position in positionMapping
+    assert len(context.responses) > 0
+    response = context.responses[-1]
+    replyKeyboard = response.reply_markup
+    # TODO: Add column support if needed
+    print("Asserting", replyKeyboard.rows[positionMapping[position]].buttons[0].text, "equals", keyboardEntry)
+    assert replyKeyboard.rows[positionMapping[position]].buttons[0].text == keyboardEntry
 
 @when('I get the server endpoint "{endpoint}"')
 @async_run_until_complete
@@ -126,3 +143,10 @@ async def step_impl(context, shouldShouldNot):
     except AssertionError:
         print("expected response", expectedResponse, "did not match actual response", response)
         assert False
+
+@when('I create a simple tx with amount {amount} and accFrom {accFrom} and accTo {accTo} and desc {desc}')
+@async_run_until_complete
+async def step_impl(context, amount, accFrom, accTo, desc):
+    for command in ["/cancel", amount, accFrom, accTo, desc]:
+        context.offsetId = (await bot_send_message(context.chat, context.testChatId, command)).id
+        await wait_seconds(0.1)
