@@ -47,3 +47,19 @@ jobs:
           docker push ${{ env.IMAGE_NAME }}:${GITHUB_REF##*/}
           # Only push 'release' if REF startsWith 'v'
           [[ ${GITHUB_REF##*/} = v* ]] && docker push ${{ env.IMAGE_NAME }}:release || echo "Not a release tag"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Deploy lb_bean_bot
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.DEPLOY_KEY_PRIV }}
+          # Key creation:
+          #  ssh-keygen -t ed25519 -C gh_docker_deploy_beancount_bot
+          # In authorized_keys:
+          #  command="/home/admin/docker-compose-recipes/_s2/beancount-tg/update.sh prod" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAxWEI6q0z1rb9xHGlHs6Bj1kFyRQXuhi+XdAfj0zRgA gh_docker_deploy_beancount_bot
