@@ -83,7 +83,7 @@ async def step_impl(context, same, message):
     try:
         assert message in response.text
     except AssertionError:
-        print("substring", message, "could not be found in", response.text)
+        print("substring '", message, "' could not be found in '", response.text, "'")
         assert False
 
 @then('the response should have a keyboard with {position} entry being "{keyboardEntry}"')

@@ -245,10 +245,7 @@ func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
 		return
 	}
 	hint := tx.NextHint(bc.Repo, m)
-	_, err = bc.Bot.Send(Recipient(m), hint.Prompt, ReplyKeyboard(hint.KeyboardOptions))
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
+	bc.sendNextTxHint(hint, m)
 }
 
 func (bc *BotController) commandAddComment(m *tb.Message) {
@@ -660,12 +657,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 			return
 		}
 		hint := tx.NextHint(bc.Repo, m)
-		replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
-		bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-		_, err = bc.Bot.Send(Recipient(m), hint.Prompt, replyKeyboard)
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		bc.sendNextTxHint(hint, m)
 		return
 	} else if state == ST_TPL {
 		if bc.processNewTemplateResponse(m, bc.State.tplStates[chatId(m.Chat.ID)]) {
@@ -675,6 +667,15 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 	}
 	bc.Logf(ERROR, m, "Something went wrong processing text input. Ran to end, though should have been caught by a branch. "+
 		"Are there new state types not maintained yet?")
+}
+
+func (bc *BotController) sendNextTxHint(hint *Hint, m *tb.Message) {
+	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
+	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
+	_, err := bc.Bot.Send(Recipient(m), escapeCharacters(hint.Prompt, "(", ")", "."), replyKeyboard, tb.ModeMarkdownV2)
+	if err != nil {
+		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
 }
 
 func clearKeyboard() *tb.ReplyMarkup {
