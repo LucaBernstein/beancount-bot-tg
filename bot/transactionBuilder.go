@@ -184,10 +184,10 @@ func CreateSimpleTx(suggestedCur, template string) (Tx, error) {
 		stepDetails: make(map[command]Input),
 		template:    template,
 	}).
-		addStep("amount", fmt.Sprintf("Please enter the amount of money (e.g. '12.34' or '12.34 %s')", suggestedCur), HandleFloat).
-		addStep("from", "Please enter the account the money came from (or select one from the list)", HandleRaw).
-		addStep("to", "Please enter the account the money went to (or select one from the list)", HandleRaw).
-		addStep("description", "Please enter a description (or select one from the list)", HandleRaw)
+		addStep("amount", fmt.Sprintf("Please enter the *amount* of money (e.g. '12.34' or '12.34 %s')", suggestedCur), HandleFloat).
+		addStep("from", "Please enter the *account* the money came *from* (or select one from the list)", HandleRaw).
+		addStep("to", "Please enter the *account* the money went *to* (or select one from the list)", HandleRaw).
+		addStep("description", "Please enter a *description* (or select one from the list)", HandleRaw)
 	return tx, nil
 }
 

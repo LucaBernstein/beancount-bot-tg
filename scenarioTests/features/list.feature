@@ -25,6 +25,7 @@ Feature: List transactions
       And I create a simple tx with amount 1.23 and accFrom someFromAccount and accTo someToAccount and desc Test Tx
       And I wait 0.1 seconds
     When I send the message "/list dated"
+      And I wait 0.1 seconds
     Then 1 messages should be sent back
       And the response should include the message "; recorded on $today "
 
