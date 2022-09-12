@@ -112,8 +112,9 @@ func (bc *BotController) templatesHandleAdd(m *tb.Message, params ...string) {
 - ${amount}, ${-amount}, ${amount/i} (e.g. ${amount/2})
 - ${date}
 - ${description}
-- ${from}
-- ${to}
+- ${account:from}
+- ${account:to}
+- ${account:<yourName>:<yourHint>}
 
 Example:
 
@@ -212,13 +213,7 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 		bc.finishTransaction(m, tx)
 		return nil
 	}
-	// TODO: Refactor
 	hint := tx.NextHint(bc.Repo, m)
-	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
-	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-	_, err = bc.Bot.Send(Recipient(m), hint.Prompt, replyKeyboard)
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
+	bc.sendNextTxHint(hint, m)
 	return nil
 }

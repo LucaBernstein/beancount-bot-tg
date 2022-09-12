@@ -411,11 +411,7 @@ func (bc *BotController) configHandleAccountDelete(m *tb.Message, params ...stri
 
 func (bc *BotController) deleteUserData(m *tb.Message) {
 	errors := errors{operation: "user deletion", bc: bc, m: m}
-	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_ACCT, ""))
-	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_ACCF, ""))
-	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_AMTF, ""))
-	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_DATE, ""))
-	errors.handle2(bc.Repo.DeleteCacheEntries(m, helpers.STX_DESC, ""))
+	errors.handle1(bc.Repo.DeleteAllCacheEntries(m))
 
 	errors.handle1(bc.Repo.UserSetNotificationSetting(m, -1, -1))
 
@@ -442,7 +438,4 @@ func (e *errors) handle1(err error) {
 	if err != nil {
 		e.bc.Logf(ERROR, e.m, "Handling error for operation '%s' (failing silently, proceeding): %s", e.operation, err.Error())
 	}
-}
-func (e *errors) handle2(_ interface{}, err error) {
-	e.handle1(err)
 }

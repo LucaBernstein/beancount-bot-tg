@@ -155,9 +155,9 @@ async def step_impl(context, shouldShouldNot):
         print("expected response", expectedResponse, "did not match actual response", response)
         assert False
 
-@when('I create a simple tx with amount {amount} and accFrom {accFrom} and accTo {accTo} and desc {desc}')
+@when('I create a simple tx with amount {amount} and desc {desc} and account:from {account_from} and account:to {account_to}')
 @async_run_until_complete
-async def step_impl(context, amount, accFrom, accTo, desc):
-    for command in ["/cancel", amount, accFrom, accTo, desc]:
+async def step_impl(context, amount, desc, account_from, account_to):
+    for command in ["/cancel", amount, desc, account_from, account_to]:
         context.offsetId = (await bot_send_message(context.chat, context.testChatId, command)).id
         await wait_seconds(0.1)

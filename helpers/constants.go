@@ -1,11 +1,16 @@
 package helpers
 
+import "strings"
+
 const (
-	STX_DESC = "txDesc"
-	STX_DATE = "txDate"
-	STX_ACCF = "accFrom"
-	STX_AMTF = "amountFrom"
-	STX_ACCT = "accTo"
+	FIELD_DATE        = "date"
+	FIELD_DESCRIPTION = "description"
+	FIELD_AMOUNT      = "amount"
+	FIELD_ACCOUNT     = "account"
+	FIELD_TAG         = "tag"
+
+	FIELD_ACCOUNT_FROM = "from"
+	FIELD_ACCOUNT_TO   = "to"
 
 	DOT_INDENT = 47
 
@@ -24,8 +29,19 @@ const (
 
 func AllowedSuggestionTypes() []string {
 	return []string{
-		STX_ACCF,
-		STX_ACCT,
-		STX_DESC,
+		FIELD_DESCRIPTION,
+		FIELD_ACCOUNT,
 	}
+}
+
+func TypeCacheKey(key string) string {
+	return strings.SplitN(key, ":", 2)[0]
+}
+
+func FqCacheKey(key string) string {
+	if !strings.Contains(key, ":") {
+		return key + ":"
+	}
+	splits := strings.SplitN(key, ":", 3)
+	return splits[0] + ":" + splits[1]
 }

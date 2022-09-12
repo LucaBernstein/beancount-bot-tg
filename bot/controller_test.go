@@ -78,10 +78,10 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
-	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "Buy something in the grocery store"}) // description (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                    // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})       // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                            // from
+	bc.handleTextState(&tb.Message{Chat: chat, Text: "Expenses:Groceries"}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
 	m := &tb.Message{Chat: chat}
@@ -118,7 +118,7 @@ func TestStartTransactionWithPlainAmountThousandsSeparated(t *testing.T) {
 	bc.handleTextState(&tb.Message{Chat: chat, Text: "1,000,000"})
 
 	debugString := bc.State.txStates[12345].Debug()
-	expected := "data=[1000000.00"
+	expected := "data=map[amount::${SPACE_FORMAT}1000000.00"
 	helpers.TestStringContains(t, debugString, expected, "contain parsed amount")
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -394,10 +394,10 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                                    // amount
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                            // from
-	tx.Input(&tb.Message{Text: "Expenses:Groceries"})                                       // to
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "Buy something in the grocery store"}) // description (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                    // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})       // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                            // from
+	bc.handleTextState(&tb.Message{Chat: chat, Text: "Expenses:Groceries"}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
 	m := &tb.Message{Chat: chat}

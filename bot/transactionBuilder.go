@@ -2,7 +2,9 @@ package bot
 
 import (
 	"fmt"
+	"log"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	c "github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/fatih/structs"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
@@ -18,13 +21,11 @@ type Hint struct {
 	KeyboardOptions []string
 }
 
-type command string
-type data string
-
 type Input struct {
 	key     string
 	hint    *Hint
 	handler func(m *tb.Message) (string, error)
+	field   TemplateField
 }
 
 func HandleFloat(m *tb.Message) (string, error) {
@@ -89,7 +90,7 @@ func HandleFloat(m *tb.Message) (string, error) {
 	} else {
 		finalAmount = values[0]
 	}
-	return ParseAmount(finalAmount) + currency, nil
+	return FORMATTER_PLACEHOLDER + ParseAmount(finalAmount) + currency, nil
 }
 
 func handleThousandsSeparators(value string) (cleanValue string, err error) {
@@ -153,42 +154,95 @@ func ParseDate(m string) (string, error) {
 }
 
 type Tx interface {
-	Input(*tb.Message) error
+	Prepare() Tx
+	Input(*tb.Message) (bool, error)
 	IsDone() bool
 	Debug() string
 	NextHint(*crud.Repo, *tb.Message) *Hint
 	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
 	FillTemplate(currency, tag string, tzOffset int) (string, error)
-	DataKeys() map[string]string
+	CacheData() map[string]string
 
-	addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx
 	SetDate(string) (Tx, error)
 	setTimeIfEmpty(tzOffset int) bool
 }
 
 type SimpleTx struct {
-	template    string
-	steps       []command
-	stepDetails map[command]Input
-	data        []data
-	date_upd    string
-	step        int
+	template               string
+	userCurrencySuggestion string
+
+	nextFields []*TemplateField
+	data       map[string]string
+}
+
+type TemplateHintData struct {
+	Raw string
+
+	FieldName      string
+	FieldSpecifier string
+	FieldHint      string
+	FieldDefault   string // This is not filled by field parsing logic yet. Instead values can be passed in.
+}
+
+type Type string
+type HintTemplate struct {
+	Text    string
+	Handler func(m *tb.Message) (string, error)
+}
+
+var TEMPLATE_TYPE_HINTS = map[Type]HintTemplate{
+	Type(c.FIELD_AMOUNT): {
+		Text:    "Please enter the *amount* of money {{.FieldHint}} (e.g. '12.34' or '12.34 {{.FieldDefault}}')",
+		Handler: HandleFloat,
+	},
+	Type(c.FIELD_ACCOUNT): {
+		Text:    "Please enter the *account* {{.FieldHint}} (or select one from the list)",
+		Handler: HandleRaw,
+	},
+	Type(c.FIELD_DESCRIPTION): {
+		Text:    "Please enter a *description* {{.FieldHint}} (or select one from the list)",
+		Handler: HandleRaw,
+	},
 }
 
 const TEMPLATE_SIMPLE_DEFAULT = `${date} * "${description}"${tag}
-  ${from} ${-amount}
-  ${to}`
+  ${account:from:the money came *from*} ${-amount}
+  ${account:to:the money went *to*}`
 
 func CreateSimpleTx(suggestedCur, template string) (Tx, error) {
 	tx := (&SimpleTx{
-		stepDetails: make(map[command]Input),
-		template:    template,
-	}).
-		addStep("amount", fmt.Sprintf("Please enter the *amount* of money (e.g. '12.34' or '12.34 %s')", suggestedCur), HandleFloat).
-		addStep("from", "Please enter the *account* the money came *from* (or select one from the list)", HandleRaw).
-		addStep("to", "Please enter the *account* the money went *to* (or select one from the list)", HandleRaw).
-		addStep("description", "Please enter a *description* (or select one from the list)", HandleRaw)
+		data:                   make(map[string]string),
+		template:               template,
+		userCurrencySuggestion: suggestedCur,
+	}).Prepare()
 	return tx, nil
+}
+
+func (tx *SimpleTx) CacheData() (data map[string]string) {
+	fieldOrder := []string{}
+	fields := ParseTemplateFields(tx.template, "")
+	for _, f := range fields {
+		if !c.ArrayContains(c.AllowedSuggestionTypes(), c.TypeCacheKey(f.FieldIdentifierForValue())) {
+			// Don't cache non-suggestible data
+			continue
+		}
+		fieldOrder = append(fieldOrder, f.FieldIdentifierForValue())
+	}
+	cleanedData := make(map[string]string)
+	for k, d := range tx.data {
+		if !c.ArrayContains(fieldOrder, k) {
+			continue
+		}
+		cleanedData[k] = strings.ReplaceAll(d, FORMATTER_PLACEHOLDER, "")
+	}
+	log.Print(cleanedData)
+	return cleanedData
+}
+
+func (tx *SimpleTx) Prepare() Tx {
+	tx.nextFields = ParseTemplateFields(tx.template, tx.userCurrencySuggestion)
+	tx.cleanNextFields()
+	return tx
 }
 
 func (tx *SimpleTx) SetDate(d string) (Tx, error) {
@@ -196,118 +250,200 @@ func (tx *SimpleTx) SetDate(d string) (Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	tx.date_upd = date
+	tx.data[c.FqCacheKey(c.FIELD_DATE)] = date
 	return tx, nil
 }
 
-func ParseTemplateFields(template string) (fields map[string]*TemplateField) {
-	fields = make(map[string]*TemplateField)
-	varBegins := strings.SplitAfter(template, "${")
-	for _, v := range varBegins {
-		field := ParseTemplateField(strings.Split(v, "}")[0])
-		fields[field.Raw] = field
+func (tx *SimpleTx) setTimeIfEmpty(tzOffset int) bool {
+	if tx.data[c.FqCacheKey(c.FIELD_DATE)] == "" {
+		// set today as fallback/default date
+		timezoneOff := time.Duration(tzOffset) * time.Hour
+		tx.data[c.FqCacheKey(c.FIELD_DATE)] = time.Now().UTC().Add(timezoneOff).Format(c.BEANCOUNT_DATE_FORMAT)
+		return true
 	}
-	return
+	return false
+}
+
+func (tx *SimpleTx) setTagIfEmpty(tag string) bool {
+	if tx.data[c.FqCacheKey(c.FIELD_TAG)] == "" {
+		tagS := ""
+		if tag != "" {
+			tagS += " #" + tag
+		}
+		tx.data[c.FqCacheKey(c.FIELD_TAG)] = tagS
+		return true
+	}
+	return false
+}
+
+func SortTemplateFields(unsortedFields []*TemplateField) []*TemplateField {
+	sortMapping := map[string]int{
+		c.FIELD_AMOUNT:      1,
+		c.FIELD_DESCRIPTION: 2,
+		c.FIELD_ACCOUNT:     3,
+	}
+	sort.Slice(unsortedFields, func(i, j int) bool {
+		if unsortedFields[i].FieldName == unsortedFields[j].FieldName {
+			sortedSpecifiers := []string{unsortedFields[i].FieldSpecifier, unsortedFields[j].FieldSpecifier}
+			sort.Strings(sortedSpecifiers)
+			return unsortedFields[i].FieldSpecifier == sortedSpecifiers[0]
+		}
+		a, exists := sortMapping[unsortedFields[i].FieldName]
+		if !exists {
+			a = len(sortMapping) + 1
+		}
+		b, exists := sortMapping[unsortedFields[j].FieldName]
+		if !exists {
+			b = len(sortMapping) + 1
+		}
+		return a < b
+	})
+	return unsortedFields
+}
+
+func ParseTemplateFields(template, currencySuggestion string) []*TemplateField {
+	varBegins := strings.Split(template, "${")
+	if len(varBegins) > 1 {
+		varBegins = varBegins[1:]
+	}
+	unsortedFields := []*TemplateField{}
+	for _, v := range varBegins {
+		field := ParseTemplateField(strings.Split(v, "}")[0], currencySuggestion)
+		unsortedFields = append(unsortedFields, field)
+	}
+	return SortTemplateFields(unsortedFields)
+}
+
+type NumberConfig struct {
+	Fraction   int
+	IsNegative bool
 }
 
 type TemplateField struct {
-	Name string
-
-	Fraction int
-
-	IsNegative bool
-
-	Raw string
+	TemplateHintData
+	NumberConfig
 }
 
-func ParseTemplateField(rawField string) *TemplateField {
+func (tf *TemplateField) FieldIdentifierForValue() string {
+	return tf.FieldName + ":" + tf.FieldSpecifier
+}
+
+func ParseTemplateField(rawField, currencySuggestion string) *TemplateField {
+	rawField = strings.TrimSpace(rawField)
 	field := &TemplateField{
-		Raw:      rawField,
-		Name:     rawField,
-		Fraction: 1,
+		TemplateHintData{
+			Raw: rawField,
+		},
+		NumberConfig{},
 	}
 
-	field.IsNegative = strings.HasPrefix(field.Name, "-")
-	field.Name = strings.TrimLeft(field.Name, "-")
+	splitFieldByColon := strings.Split(rawField, ":")
+	field.FieldName = strings.TrimSpace(splitFieldByColon[0])
+	if len(splitFieldByColon) >= 2 {
+		field.FieldSpecifier = strings.TrimSpace(splitFieldByColon[1])
+	}
+	if len(splitFieldByColon) >= 3 {
+		field.FieldHint = strings.TrimSpace(splitFieldByColon[2])
+	}
+	if field.FieldHint == "" && field.FieldSpecifier != "" {
+		field.FieldHint = fmt.Sprintf("*%s*", field.FieldSpecifier)
+	}
 
-	fractionSplits := strings.Split(field.Name, "/")
+	field.IsNegative = strings.HasPrefix(field.FieldName, "-")
+	field.FieldName = strings.TrimLeft(field.FieldName, "-")
+
+	fractionSplits := strings.Split(field.FieldName, "/")
+	field.FieldName = fractionSplits[0]
+	field.Fraction = 1
 	if len(fractionSplits) == 2 {
-		field.Name = fractionSplits[0]
+		field.FieldName = fractionSplits[0]
 		var err error
 		field.Fraction, err = strconv.Atoi(fractionSplits[1])
 		if err != nil {
-			c.LogLocalf(ERROR, nil, "converting fraction for template failed: '%s' -> %s", rawField, err.Error())
+			c.LogLocalf(WARN, nil, "converting fraction for template failed: '%s' -> %s", rawField, err.Error())
 			field.Fraction = 1
 		}
-	} else {
-		field.Name = fractionSplits[0]
+		if field.Fraction == 0 {
+			c.LogLocalf(WARN, nil, "fraction was 0. Setting to 1: '%s' -> %s", rawField, err.Error())
+			field.Fraction = 1
+		}
+	}
+	field.FieldName = fractionSplits[0]
+
+	if field.FieldName == c.FIELD_AMOUNT {
+		field.FieldDefault = currencySuggestion
 	}
 
 	return field
 }
 
-func (tx *SimpleTx) addStep(command command, hint string, handler func(m *tb.Message) (string, error)) Tx {
-	templateFields := ParseTemplateFields(tx.template)
-	exists := false
-	for _, f := range templateFields {
-		if f.Name == string(command) {
-			exists = true
-		}
+func (tx *SimpleTx) Input(m *tb.Message) (isDone bool, err error) {
+	nextField := tx.nextFields[0]
+	hint := TEMPLATE_TYPE_HINTS[Type(nextField.FieldName)]
+	res, err := hint.Handler(m)
+	if err != nil {
+		return tx.IsDone(), err
 	}
-	if !exists {
-		return tx
-	}
-	tx.steps = append(tx.steps, command)
-	tx.stepDetails[command] = Input{key: string(command), hint: &Hint{Prompt: hint}, handler: handler}
-	tx.data = make([]data, len(tx.steps))
-	return tx
+	tx.data[nextField.FieldIdentifierForValue()] = res
+	return tx.IsDone(), nil
 }
 
-func (tx *SimpleTx) Input(m *tb.Message) (err error) {
-	res, err := tx.stepDetails[tx.steps[tx.step]].handler(m)
-	if err != nil {
-		return err
+func (tx *SimpleTx) cleanNextFields() {
+	if len(tx.nextFields) > 0 {
+		nextField := tx.nextFields[0]
+		_, isDataFilled := tx.data[nextField.FieldIdentifierForValue()]
+		_, isFieldAutoFilled := TEMPLATE_TYPE_HINTS[Type(nextField.FieldName)]
+		if isDataFilled || !isFieldAutoFilled {
+			tx.nextFields = tx.nextFields[1:]
+			tx.cleanNextFields()
+			return
+		}
 	}
-	tx.data[tx.step] = (data)(res)
-	tx.step++
-	return
 }
 
 func (tx *SimpleTx) NextHint(r *crud.Repo, m *tb.Message) *Hint {
-	if tx.step > len(tx.steps)-1 {
+	if len(tx.nextFields) == 0 {
 		crud.LogDbf(r, TRACE, m, "During extraction of next hint an error ocurred: step exceeds max index.")
 		return nil
 	}
-	return tx.EnrichHint(r, m, tx.stepDetails[tx.steps[tx.step]])
+	nextField := tx.nextFields[0]
+	hint := TEMPLATE_TYPE_HINTS[Type(nextField.FieldName)]
+	message, err := c.Template(hint.Text, structs.Map(nextField.TemplateHintData))
+	if err != nil {
+		crud.LogDbf(r, TRACE, m, "During message building an error ocurred: "+err.Error())
+		return nil
+	}
+	return tx.EnrichHint(r, m, Input{
+		key: nextField.FieldName,
+		hint: &Hint{
+			Prompt: message,
+		},
+		handler: hint.Handler,
+		field:   *nextField,
+	})
 }
 
 func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
 	crud.LogDbf(r, TRACE, m, "Enriching hint (%s).", i.key)
-	if i.key == "description" {
+	if i.key == c.FIELD_DESCRIPTION {
 		return tx.hintDescription(r, m, i.hint)
 	}
-	if i.key == "date" {
-		return tx.hintDate(i.hint)
-	}
-	if c.ArrayContains([]string{"from", "to"}, i.key) {
+	if i.key == c.FIELD_ACCOUNT {
 		return tx.hintAccount(r, m, i)
 	}
 	return i.hint
 }
 
 func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
-	crud.LogDbf(r, TRACE, m, "Enriching hint: account (key=%s)", i.key)
+	accountFQSpecifier := i.field.FieldIdentifierForValue()
+	crud.LogDbf(r, TRACE, m, "Enriching hint: '%s'", accountFQSpecifier)
 	var (
 		res []string = nil
 		err error    = nil
 	)
-	if i.key == "from" {
-		res, err = r.GetCacheHints(m, c.STX_ACCF)
-	} else if i.key == "to" {
-		res, err = r.GetCacheHints(m, c.STX_ACCT)
-	}
+	res, err = r.GetCacheHints(m, accountFQSpecifier)
 	if err != nil {
-		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (hintAccount): %s", err.Error())
+		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (%s): %s", accountFQSpecifier, err.Error())
 		return i.hint
 	}
 	i.hint.KeyboardOptions = res
@@ -315,7 +451,7 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 }
 
 func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
-	res, err := r.GetCacheHints(m, c.STX_DESC)
+	res, err := r.GetCacheHints(m, c.FqCacheKey(c.FIELD_DESCRIPTION))
 	if err != nil {
 		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (hintDescription): %s", err.Error())
 	}
@@ -323,32 +459,45 @@ func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint 
 	return h
 }
 
-func (tx *SimpleTx) hintDate(h *Hint) *Hint {
-	h.KeyboardOptions = []string{"today"}
-	return h
-}
-
-func (tx *SimpleTx) DataKeys() map[string]string {
-	varMap := make(map[string]string)
-	varMap["date"] = tx.date_upd
-	for i, v := range tx.steps {
-		varMap[string(v)] = string(tx.data[i])
-	}
-	return varMap
-}
-
 func (tx *SimpleTx) IsDone() bool {
-	return tx.step >= len(tx.steps)
+	tx.cleanNextFields()
+	return len(tx.nextFields) == 0
 }
 
-func (tx *SimpleTx) setTimeIfEmpty(tzOffset int) bool {
-	if tx.date_upd == "" {
-		// set today as fallback/default date
-		timezoneOff := time.Duration(tzOffset) * time.Hour
-		tx.date_upd = time.Now().UTC().Add(timezoneOff).Format(c.BEANCOUNT_DATE_FORMAT)
-		return true
+const FORMATTER_PLACEHOLDER = "${SPACE_FORMAT}"
+
+func formatAllLinesWithFormatterPlaceholder(s string, dotIndentation int, currency string) string {
+	rebuiltString := ""
+	for _, line := range strings.Split(s, "\n") {
+		if strings.Contains(line, FORMATTER_PLACEHOLDER) {
+			splits := strings.SplitN(line, FORMATTER_PLACEHOLDER, 2)
+			firstPart, secondPart := strings.TrimSpace(splits[0]), strings.TrimSpace(splits[1])
+			// in case there are multiple occurrences in one line:
+			secondPart = strings.TrimSpace(strings.ReplaceAll(secondPart, FORMATTER_PLACEHOLDER, ""))
+			firstPart = fmt.Sprintf("  %s ", firstPart) // Two leading spaces and one trailing for separation
+			if !strings.Contains(secondPart, " ") {
+				secondPart += " " + currency
+			}
+			if strings.Contains(secondPart, ".") {
+				dotSplits := strings.SplitN(secondPart, ".", 2)
+				runeCount := 0
+				runeCount += utf8.RuneCountInString(firstPart)
+				runeCount += utf8.RuneCountInString(dotSplits[0])
+				spacesNeeded := dotIndentation - runeCount + 1 // one dot char
+				if spacesNeeded < 0 {
+					spacesNeeded = 0
+				}
+				rebuiltString += firstPart + " " + strings.Repeat(" ", spacesNeeded) + secondPart + "\n"
+			} else {
+				rebuiltString += firstPart + " " + secondPart + "\n"
+			}
+		} else if line == "" {
+			rebuiltString += line
+		} else {
+			rebuiltString += line + "\n"
+		}
 	}
-	return false
+	return rebuiltString
 }
 
 func (tx *SimpleTx) FillTemplate(currency, tag string, tzOffset int) (string, error) {
@@ -357,83 +506,52 @@ func (tx *SimpleTx) FillTemplate(currency, tag string, tzOffset int) (string, er
 	}
 	// If still empty, set time and correct for timezone
 	tx.setTimeIfEmpty(tzOffset)
-
-	varMap := tx.DataKeys()
+	tx.setTagIfEmpty(tag)
 
 	template := tx.template
-	fields := ParseTemplateFields(tx.template)
-	var amountFields []*TemplateField
+	fields := ParseTemplateFields(tx.template, "")
 	for _, f := range fields {
-		// TODO: Refactor!
-		value := f.Raw
-		if f.Name == "amount" {
-			amountFields = append(amountFields, f)
-			continue // Only replace last for formatting
-		} else if f.Name == "description" {
-			if v, exists := varMap["description"]; exists {
-				value = v
-			}
-		} else if f.Name == "tag" {
-			tagS := ""
-			if tag != "" {
-				tagS += " #" + tag
-			}
-			value = tagS
-		} else if f.Name == "date" {
-			if v, exists := varMap["date"]; exists {
-				value = v
-			}
-		} else if f.Name == "from" {
-			if v, exists := varMap["from"]; exists {
-				value = v
-			}
-		} else if f.Name == "to" {
-			if v, exists := varMap["to"]; exists {
-				value = v
-			}
-		} else {
-			continue
-		}
-		template = strings.ReplaceAll(template, fmt.Sprintf("${%s}", f.Raw), value)
-	}
-	for _, amountField := range amountFields {
-		if v, exists := varMap["amount"]; exists {
-			amount := strings.Split(v, " ")
-			if len(amount) >= 2 {
-				// amount input contains currency
-				currency = amount[1]
-			}
-			f, err := strconv.ParseFloat(amount[0], 64)
+		value, exists := tx.data[f.FieldIdentifierForValue()]
+		if exists {
+			value, err := applyFieldOptionsForNumbersIfApplicable(value, f)
 			if err != nil {
 				return "", err
 			}
-
-			oldTemplate := template
-			template = ""
-			for _, line := range strings.Split(oldTemplate, "\n") {
-				if strings.Contains(line, fmt.Sprintf("${%s}", amountField.Raw)) {
-					before := strings.Split(line, fmt.Sprintf("${%s}", amountField.Raw))[0]
-					spacesNeeded := c.DOT_INDENT - utf8.RuneCountInString(before)
-					fractionedAmount := f / float64(amountField.Fraction)
-					spacesNeeded -= CountLeadingDigits(fractionedAmount) // float length before point
-					spacesNeeded += 2                                    // indentation
-					negSign := ""
-					if amountField.IsNegative {
-						negSign = "-"
-						spacesNeeded -= 1
-					}
-					if spacesNeeded < 0 {
-						spacesNeeded = 0
-					}
-					addSpacesFrom := strings.Repeat(" ", spacesNeeded) // DOT_INDENT: 47 chars from account start to dot
-					template += strings.ReplaceAll(line, fmt.Sprintf("${%s}", amountField.Raw), addSpacesFrom+negSign+ParseAmount(fractionedAmount)+" "+currency) + "\n"
-				} else {
-					template += line + "\n"
-				}
-			}
+			template = strings.ReplaceAll(template, fmt.Sprintf("${%s}", f.Raw), value)
 		}
 	}
+	template = formatAllLinesWithFormatterPlaceholder(template, c.DOT_INDENT, currency)
 	return strings.TrimSpace(template) + "\n", nil
+}
+
+func applyFieldOptionsForNumbersIfApplicable(value string, f *TemplateField) (string, error) {
+	splits := strings.SplitN(value, FORMATTER_PLACEHOLDER, 2)
+	if len(splits) > 1 {
+		leftSide, rightSide := splits[0], splits[1]
+		if f.IsNegative {
+			if strings.HasPrefix(rightSide, "-") {
+				rightSide = rightSide[1:]
+			} else {
+				rightSide = "-" + rightSide
+			}
+		}
+		if f.Fraction > 1 {
+			amountSplits := strings.SplitN(rightSide, " ", 2)
+			amountLeft := amountSplits[0]
+			currency := ""
+			if len(amountSplits) > 1 {
+				currency = amountSplits[1]
+			}
+			amountParsed, err := strconv.ParseFloat(amountLeft, 64)
+			if err != nil {
+				return "", err
+			}
+			amountParsed /= float64(f.Fraction)
+			rightSide = ParseAmount(amountParsed) + " " + currency
+		}
+		return leftSide + FORMATTER_PLACEHOLDER + rightSide, nil
+	}
+	return value, nil
 }
 
 func ParseAmount(f float64) string {
@@ -449,14 +567,5 @@ func ParseAmount(f float64) string {
 }
 
 func (tx *SimpleTx) Debug() string {
-	return fmt.Sprintf("SimpleTx{step=%d, totalSteps=%d, data=%v}", tx.step, len(tx.steps), tx.data)
-}
-
-func CountLeadingDigits(f float64) int {
-	count := 1
-	for f >= 10 {
-		f /= 10
-		count++
-	}
-	return count
+	return fmt.Sprintf("SimpleTx{remainingFields=%v, data=%v}", len(tx.nextFields), tx.data)
 }
