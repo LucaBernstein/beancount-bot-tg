@@ -19,7 +19,6 @@ const (
 	USERSET_CUR        = "user.currency"
 	USERSET_ADM        = "user.isAdmin"
 	USERSET_TAG        = "user.vacationTag"
-	USERSET_LIM_PREFIX = "user.limitCache."
 	USERSET_TZOFF      = "user.tzOffset"
 
 	DEFAULT_CURRENCY = "EUR"

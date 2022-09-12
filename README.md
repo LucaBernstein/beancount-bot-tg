@@ -5,7 +5,7 @@ Supports you in keeping track of your beancount transactions also if you need to
 ## Features and advantages
 
 * [x] Quickly record beancount transactions while on-the-go. Start as simple as entering the amount - no boilerplate
-* [x] Suggestions for accounts and descriptions used in the past or configured manually (can be limited or turned off)
+* [x] Suggestions for accounts and descriptions used in the past or configured manually
 * [x] Templates with variables and advanced amount splitting for recurring or more complex transactions
 * [x] Reminder notifications of recorded transactions with flexible schedule
 * [x] Many optional commands, shorthands and parameters, leaving the full flexibility up to you
