@@ -83,14 +83,4 @@ func v11RemoveUserSettingTypesLimits(db *sql.Tx) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	sqlStatement = `
-	INSERT INTO "bot::userSettingTypes"
-		("setting", "description")
-	VALUES ('user.limitCache', 'limit cached value count for transactions. Array by type.');;
-	`
-	_, err = db.Exec(sqlStatement)
-	if err != nil {
-		log.Fatal(err)
-	}
 }

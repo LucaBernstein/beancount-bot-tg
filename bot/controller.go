@@ -687,11 +687,6 @@ func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
 		bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
 		// Don't return, instead continue flow (if recording was successful)
 	}
-	err = bc.Repo.PruneUserCachedSuggestions(m)
-	if err != nil {
-		bc.Logf(ERROR, m, "Something went wrong while pruning suggestions cache. Error: %s", err.Error())
-		// Don't return, instead continue flow (if recording was successful)
-	}
 
 	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Successfully recorded your transaction.\n"+
 		"You can get a list of all your transactions using /%s. "+

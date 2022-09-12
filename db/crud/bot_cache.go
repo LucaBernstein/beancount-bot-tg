@@ -2,9 +2,6 @@ package crud
 
 import (
 	"database/sql"
-	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -42,41 +39,6 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 	}
 
 	return r.FillCache(m)
-}
-
-func (r *Repo) PruneUserCachedSuggestions(m *tb.Message) error {
-	limits, err := r.CacheUserSettingGetLimits(m)
-	if err != nil {
-		return err
-	}
-	for key, limit := range limits {
-		if limit < 0 {
-			continue
-		}
-		// Cleanup automatically added values above cache limit
-		q := `DELETE FROM "bot::cache" WHERE "tgChatId" = $1 AND "type" = $2`
-		params := []interface{}{m.Chat.ID, key}
-		if limit != 0 {
-			q += ` AND ID NOT IN (SELECT "id" FROM "bot::cache" WHERE "tgChatId" = $1 AND "type" = $2 ORDER BY "lastUsed" DESC LIMIT $3)`
-			params = append(params, limit)
-		}
-		res, err := r.db.Exec(q, params...)
-		if err != nil {
-			return err
-		}
-		count, err := res.RowsAffected()
-		if err != nil {
-			LogDbf(r, helpers.WARN, m, "could not get affected rows count from pruning operation")
-		}
-		if count > 0 {
-			LogDbf(r, helpers.INFO, m, "Pruned %d '%s' suggestions", count, key)
-		}
-	}
-	err = r.FillCache(m)
-	if err != nil {
-		LogDbf(r, helpers.WARN, m, "could not get refill cache after pruning")
-	}
-	return nil
 }
 
 func (r *Repo) GetCacheHints(m *tb.Message, key string) ([]string, error) {
@@ -153,79 +115,4 @@ func (r *Repo) DeleteAllCacheEntries(m *tb.Message) error {
 		return err
 	}
 	return r.FillCache(m)
-}
-
-func (r *Repo) CacheUserSettingGetLimits(m *tb.Message) (limits map[string]int, err error) {
-	userSettingPrefix := helpers.USERSET_LIM_PREFIX
-
-	rows, err := r.db.Query(`SELECT "setting", "value" FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" LIKE $2`,
-		m.Chat.ID, userSettingPrefix+"%")
-	if err != nil {
-		return nil, fmt.Errorf("error selecting userSettingCacheLimits: %s", err.Error())
-	}
-
-	allCacheLimits := map[string]int{}
-
-	var setting string
-	var value string
-	for rows.Next() {
-		err = rows.Scan(&setting, &value)
-		if err != nil {
-			return nil, err
-		}
-		valueI, err := strconv.Atoi(value)
-		if err != nil {
-			return nil, fmt.Errorf("could not convert stored limit number to integer: %s", err.Error())
-		}
-		allCacheLimits[strings.TrimPrefix(setting, userSettingPrefix)] = valueI
-	}
-
-	// Fill with possible but not modified cache limits
-	for _, key := range helpers.AllowedSuggestionTypes() {
-		_, exists := allCacheLimits[key]
-		if !exists {
-			allCacheLimits[key] = -1
-		}
-	}
-
-	return allCacheLimits, nil
-}
-
-// CacheUserSettingSetLimit deletes probably existing and (re)creates caching limit in userSettings
-func (r *Repo) CacheUserSettingSetLimit(m *tb.Message, key string, limit int) (err error) {
-	if !helpers.ArrayContains(helpers.AllowedSuggestionTypes(), key) {
-		return fmt.Errorf("the key you provided is invalid. Should be one of the following: %s", helpers.AllowedSuggestionTypes())
-	}
-
-	tx, err := r.db.Begin()
-	defer tx.Rollback()
-	if err != nil {
-		return fmt.Errorf("caching userSettingLimit did not work as db tx could not be begun: %s", err.Error())
-	}
-
-	compositeKey := helpers.USERSET_LIM_PREFIX + key
-
-	q := `DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2;`
-	params := []interface{}{m.Chat.ID, compositeKey}
-
-	_, err = tx.Exec(q, params...)
-	if err != nil {
-		return fmt.Errorf("could not delete existing userSetting on set: %s", err.Error())
-	}
-
-	if limit >= 0 {
-		q := `INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3);`
-		params := []interface{}{m.Chat.ID, compositeKey, strconv.Itoa(limit)}
-		_, err = tx.Exec(q, params...)
-		if err != nil {
-			return fmt.Errorf("could not delete existing userSetting on set: %s", err.Error())
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("could not commit db tx for setting userSetting: %s", err.Error())
-	}
-
-	return nil
 }
