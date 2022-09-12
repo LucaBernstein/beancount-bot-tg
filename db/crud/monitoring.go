@@ -86,7 +86,7 @@ func (r *Repo) HealthGetUsersActiveCounts(maxDiffHours int) (count int, err erro
 	return
 }
 
-func (r *Repo) HealthGetCacheStats() (accTo int, accFrom int, txDesc int, err error) {
+func (r *Repo) HealthGetCacheStats() (accTo, accFrom, txDesc, other int, err error) {
 	rows, err := r.db.Query(`
 		SELECT "type", COUNT(*) "c"
 		FROM "bot::cache"
@@ -102,12 +102,15 @@ func (r *Repo) HealthGetCacheStats() (accTo int, accFrom int, txDesc int, err er
 	for rows.Next() {
 		rows.Scan(&t, &count)
 		switch t {
-		case helpers.STX_ACCT:
+		// TODO: Refactor: Unify all into account
+		case helpers.FqCacheKey(helpers.FIELD_ACCOUNT + ":" + helpers.FIELD_ACCOUNT_TO):
 			accTo = count
-		case helpers.STX_ACCF:
+		case helpers.FqCacheKey(helpers.FIELD_ACCOUNT + ":" + helpers.FIELD_ACCOUNT_FROM):
 			accFrom = count
-		case helpers.STX_DESC:
+		case helpers.FqCacheKey(helpers.FIELD_DESCRIPTION):
 			txDesc = count
+		default:
+			other += count
 		}
 	}
 	return

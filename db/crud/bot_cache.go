@@ -18,26 +18,14 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 		return err
 	}
 
-	keyMappings := map[string]string{
-		"description": helpers.STX_DESC,
-		"from":        helpers.STX_ACCF,
-		"to":          helpers.STX_ACCT,
-	}
-	for key, value := range values {
-		if keyMappings[key] != "" {
-			key = keyMappings[key]
-		}
-		if !helpers.ArrayContains(helpers.AllowedSuggestionTypes(), key) {
-			// Don't cache non-suggestible data
-			continue
-		}
-		if helpers.ArrayContains(CACHE_LOCAL[m.Chat.ID][key], value) {
+	for rawKey, value := range values {
+		if helpers.ArrayContains(CACHE_LOCAL[m.Chat.ID][helpers.FqCacheKey(rawKey)], value) {
 			// TODO: Update all as single statement
 			_, err = r.db.Exec(`
 				UPDATE "bot::cache"
 				SET "lastUsed" = NOW()
 				WHERE "tgChatId" = $1 AND "type" = $2 AND "value" = $3`,
-				m.Chat.ID, key, value)
+				m.Chat.ID, helpers.FqCacheKey(rawKey), value)
 			if err != nil {
 				return err
 			}
@@ -46,7 +34,7 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 			_, err = r.db.Exec(`
 				INSERT INTO "bot::cache" ("tgChatId", "type", "value")
 				VALUES ($1, $2, $3)`,
-				m.Chat.ID, key, value)
+				m.Chat.ID, helpers.FqCacheKey(rawKey), value)
 			if err != nil {
 				return err
 			}
@@ -154,6 +142,17 @@ func (r *Repo) DeleteCacheEntries(m *tb.Message, t string, value string) (sql.Re
 		return nil, err
 	}
 	return res, r.FillCache(m)
+}
+
+func (r *Repo) DeleteAllCacheEntries(m *tb.Message) error {
+	_, err := r.db.Exec(`
+		DELETE FROM "bot::cache"
+		WHERE "tgChatId" = $1
+	`, m.Chat.ID)
+	if err != nil {
+		return err
+	}
+	return r.FillCache(m)
 }
 
 func (r *Repo) CacheUserSettingGetLimits(m *tb.Message) (limits map[string]int, err error) {

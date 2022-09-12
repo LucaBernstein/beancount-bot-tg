@@ -176,11 +176,14 @@ func TestTemplateUse(t *testing.T) {
   fromFix ${-amount}
   toFix1 ${amount/2}
   toFix2 ${amount/2}`))
-
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
+	bc.commandTemplates(&tb.Message{Chat: chat, Text: "/t test 2022-04-11"})
+	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.AllLastSentWhat[len(bot.AllLastSentWhat)-2]), "Creating a new transaction from your template 'test'", "template tx starting msg")
+	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "amount", "asking for amount")
+
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_CUR).
@@ -193,7 +196,6 @@ func TestTemplateUse(t *testing.T) {
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_TZOFF).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
-
 	mock.
 		ExpectExec(regexp.QuoteMeta(`INSERT INTO "bot::transaction" ("tgChatId", "value")
 		VALUES ($1, $2);`)).
@@ -203,11 +205,6 @@ func TestTemplateUse(t *testing.T) {
   toFix2                                        5.255 EUR_TEST
 `).
 		WillReturnResult(sqlmock.NewResult(1, 1))
-
-	bc.commandTemplates(&tb.Message{Chat: chat, Text: "/t test 2022-04-11"})
-	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.AllLastSentWhat[len(bot.AllLastSentWhat)-2]), "Creating a new transaction from your template 'test'", "template tx starting msg")
-	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "amount", "asking for amount")
-
 	tx := bc.State.txStates[chatId(chat.ID)]
 	tx.Input(&tb.Message{Text: "10.51 EUR_TEST"})                      // amount
 	bc.handleTextState(&tb.Message{Chat: chat, Text: "Buy something"}) // description (via handleTextState)

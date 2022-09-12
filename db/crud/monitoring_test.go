@@ -130,16 +130,18 @@ func TestHealthGetCacheStats(t *testing.T) {
 	mock.ExpectQuery("").
 		WithArgs().
 		WillReturnRows(sqlmock.NewRows([]string{"type", "c"}).
-			AddRow(helpers.STX_ACCT, 7).
-			AddRow(helpers.STX_ACCF, 9).
-			AddRow(helpers.STX_DESC, 15))
+			AddRow("account:to", 7).
+			AddRow("account:from", 9).
+			AddRow("description:", 15).
+			AddRow("blahbla1:", 21).
+			AddRow("blahbla2:", 3))
 
-	to, from, desc, err := r.HealthGetCacheStats()
+	to, from, desc, other, err := r.HealthGetCacheStats()
 	if err != nil {
 		t.Errorf("Should not fail for getting health transactions count: %s", err.Error())
 	}
-	if to != 7 || from != 9 || desc != 15 {
-		t.Errorf("Unexpected cache stats: %d != %d || %d != %d || %d != %d", to, 7, from, 9, desc, 15)
+	if to != 7 || from != 9 || desc != 15 || other != 24 {
+		t.Errorf("Unexpected cache stats: %d != %d || %d != %d || %d != %d || %d != %d", to, 7, from, 9, desc, 15, other, 24)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

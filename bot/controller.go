@@ -55,31 +55,6 @@ func (bc *BotController) AddBotAndStart(b IBot) {
 
 	b.Handle(tb.OnText, bc.handleTextState)
 
-	// Todo: Add generic callback handler
-	// Route callback by ID splits
-	bc.Bot.Handle(&btnSuggListAccFrom, func(c *tb.Callback) {
-		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
-		c.Message.Text = "/suggestions list accFrom"
-		// TODO: What happens in group chats?
-		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID} // hack to send chat user a message (in private chats userId = chatId)
-		bc.suggestionsHandler(c.Message)
-		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
-	})
-	bc.Bot.Handle(&btnSuggListAccTo, func(c *tb.Callback) {
-		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
-		c.Message.Text = "/suggestions list accTo"
-		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID}
-		bc.suggestionsHandler(c.Message)
-		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
-	})
-	bc.Bot.Handle(&btnSuggListTxDesc, func(c *tb.Callback) {
-		bc.Logf(DEBUG, nil, "Handling callback on button. Chat: %d", c.Message.Chat.ID)
-		c.Message.Text = "/suggestions list txDesc"
-		c.Message.Sender = &tb.User{ID: c.Message.Chat.ID}
-		bc.suggestionsHandler(c.Message)
-		bc.Bot.Respond(c, &tb.CallbackResponse{}) // Always respond
-	})
-
 	bc.Logf(TRACE, nil, "Starting bot '%s'", b.Me().Username)
 
 	if bc.CronScheduler != nil {
@@ -640,7 +615,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 		return
 	} else if state == ST_TX {
 		tx := bc.State.GetTx(m)
-		err := tx.Input(m)
+		_, err := tx.Input(m)
 		if err != nil {
 			bc.Logf(WARN, m, "Invalid text state input: '%s'. Err: %s", m.Text, err.Error())
 			_, err := bc.Bot.Send(Recipient(m), "Your last input seems to have not worked.\n"+
@@ -672,7 +647,7 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 func (bc *BotController) sendNextTxHint(hint *Hint, m *tb.Message) {
 	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
 	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-	_, err := bc.Bot.Send(Recipient(m), escapeCharacters(hint.Prompt, "(", ")", "."), replyKeyboard, tb.ModeMarkdownV2)
+	_, err := bc.Bot.Send(Recipient(m), escapeCharacters(hint.Prompt, "(", ")", ".", "!"), replyKeyboard, tb.ModeMarkdownV2)
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -707,7 +682,7 @@ func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
 	}
 
 	// TODO: Goroutine
-	err = bc.Repo.PutCacheHints(m, tx.DataKeys())
+	err = bc.Repo.PutCacheHints(m, tx.CacheData())
 	if err != nil {
 		bc.Logf(ERROR, m, "Something went wrong while caching transaction. Error: %s", err.Error())
 		// Don't return, instead continue flow (if recording was successful)

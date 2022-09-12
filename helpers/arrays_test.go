@@ -22,6 +22,4 @@ func TestArrayMatching(t *testing.T) {
 	if helpers.ArraysEqual([]string{"a"}, []string{"b"}) {
 		t.Error("ArraysEqual should fail for different arrays")
 	}
-
-	// TODO: ArraysEqual 83.3%
 }

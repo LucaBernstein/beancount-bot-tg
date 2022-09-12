@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -27,10 +28,9 @@ func TestCacheOnlySuggestible(t *testing.T) {
 			WHERE "tgChatId" = ?`).
 		WithArgs(chat.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
-	// Should only insert description suggestion into db cache
 	mock.
 		ExpectExec(`INSERT INTO "bot::cache"`).
-		WithArgs(chat.ID, helpers.STX_DESC, "description_value").
+		WithArgs(chat.ID, "description:", "description_value").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.
 		ExpectQuery(`
@@ -42,7 +42,14 @@ func TestCacheOnlySuggestible(t *testing.T) {
 
 	bc := crud.NewRepo(db)
 	message := &tb.Message{Chat: chat}
-	err = bc.PutCacheHints(message, map[string]string{helpers.STX_DATE: "2021-01-01", helpers.STX_AMTF: "1234", helpers.STX_DESC: "description_value"})
+	tx, err := bot.CreateSimpleTx("", "${date} ${amount} ${description}")
+	if err != nil {
+		t.Errorf("PutCacheHints unexpectedly threw an error: %s", err.Error())
+	}
+	tx.Input(&tb.Message{Text: "12.34"})
+	tx.Input(&tb.Message{Text: "description_value"})
+	cacheData := tx.CacheData()
+	err = bc.PutCacheHints(message, cacheData)
 	if err != nil {
 		t.Errorf("PutCacheHints unexpectedly threw an error: %s", err.Error())
 	}
@@ -68,15 +75,15 @@ func TestSetCacheLimit(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(`DELETE FROM "bot::userSetting"`).
-		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC).
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+"description").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.
 		ExpectExec(`INSERT INTO "bot::userSetting"`).
-		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC, "23").
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+"description", "23").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err = bc.CacheUserSettingSetLimit(message, "txDesc", 23)
+	err = bc.CacheUserSettingSetLimit(message, "description", 23)
 	if err != nil {
 		t.Errorf("CacheUserSettingSetLimit unexpectedly threw an error: %s", err.Error())
 	}
@@ -84,11 +91,11 @@ func TestSetCacheLimit(t *testing.T) {
 	mock.ExpectBegin()
 	mock.
 		ExpectExec(`DELETE FROM "bot::userSetting"`).
-		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+helpers.STX_DESC).
+		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+"description").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 
-	err = bc.CacheUserSettingSetLimit(message, "txDesc", -1)
+	err = bc.CacheUserSettingSetLimit(message, "description", -1)
 	if err != nil {
 		t.Errorf("CacheUserSettingSetLimit (with delete only) unexpectedly threw an error: %s", err.Error())
 	}
@@ -122,16 +129,16 @@ func TestGetCacheLimit(t *testing.T) {
 	mock.
 		ExpectQuery(`SELECT "setting", "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_LIM_PREFIX+"%").
-		WillReturnRows(sqlmock.NewRows([]string{"setting", "value"}).AddRow(helpers.USERSET_LIM_PREFIX+helpers.STX_DESC, "79"))
+		WillReturnRows(sqlmock.NewRows([]string{"setting", "value"}).AddRow(helpers.USERSET_LIM_PREFIX+"description", "79"))
 
 	limits, err := bc.CacheUserSettingGetLimits(message)
 	if err != nil {
 		t.Errorf("TestSetCacheLimitGet unexpectedly threw an error: %s", err.Error())
 	}
-	if len(limits) != 3 {
-		t.Errorf("TestSetCacheLimitGet unexpectedly threw an error")
+	if len(limits) != 2 {
+		t.Errorf("TestSetCacheLimitGet limit result was unexpected")
 	}
-	if limits["txDesc"] != 79 {
+	if limits["description"] != 79 {
 		t.Errorf("TestSetCacheLimitGet should return values correctly: %d", limits["txDesc"])
 	}
 

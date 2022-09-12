@@ -26,6 +26,7 @@ type MonitoringResult struct {
 	cache_entries_accTo   int
 	cache_entries_accFrom int
 	cache_entries_txDesc  int
+	cache_entries_other   int
 
 	tx_states_count int
 
@@ -64,6 +65,7 @@ bc_bot_users_active_last{timeframe="7d"} %d
 bc_bot_cache_entries{type="accTo"} %d
 bc_bot_cache_entries{type="accFrom"} %d
 bc_bot_cache_entries{type="txDesc"} %d
+bc_bot_cache_entries{type="other"} %d
 
 # HELP bc_bot_tx_states_count Count of users with open transactions
 # TYPE bc_bot_tx_states_count gauge
@@ -89,6 +91,7 @@ bc_bot_version_information{version="%s"} 1
 			m.cache_entries_accTo,
 			m.cache_entries_accFrom,
 			m.cache_entries_txDesc,
+			m.cache_entries_other,
 
 			m.tx_states_count,
 
@@ -141,13 +144,14 @@ func gatherMetrics(bc *bot.BotController) (result *MonitoringResult) {
 	}
 	result.users_active_last_7d = active_7d
 
-	accTo, accFrom, txDesc, err := bc.Repo.HealthGetCacheStats()
+	accTo, accFrom, txDesc, other, err := bc.Repo.HealthGetCacheStats()
 	if err != nil {
 		bc.Logf(helpers.ERROR, nil, "Error getting health transactions: %s", err.Error())
 	}
 	result.cache_entries_accTo = accTo
 	result.cache_entries_accFrom = accFrom
 	result.cache_entries_txDesc = txDesc
+	result.cache_entries_other = other
 
 	result.tx_states_count = bc.State.CountOpen()
 

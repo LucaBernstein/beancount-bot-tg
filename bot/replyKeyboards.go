@@ -5,6 +5,9 @@ import (
 )
 
 func ReplyKeyboard(buttons []string) *tb.ReplyMarkup {
+	if len(buttons) == 0 {
+		return clearKeyboard()
+	}
 	kb := &tb.ReplyMarkup{ResizeReplyKeyboard: true, OneTimeKeyboard: true}
 	buttonsCreated := []tb.Row{}
 	for _, label := range buttons {

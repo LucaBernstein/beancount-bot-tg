@@ -39,6 +39,11 @@ Errors.
 https://github.com/pkg/errors.
 Copyright (c) 2015, Dave Cheney <dave@cheney.net>.
 BSD-2-Clause "Simplified" License (https://github.com/pkg/errors/blob/master/LICENSE).
+
+Structs.
+https://github.com/fatih/structs.
+Copyright (c) 2014 Fatih Arslan.
+MIT license (https://github.com/fatih/structs/blob/master/LICENSE).
 ```
 
 ---

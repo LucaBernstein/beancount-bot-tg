@@ -8,12 +8,11 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-var (
-	suggestionsMenu    = &tb.ReplyMarkup{}
-	btnSuggListAccFrom = suggestionsMenu.Data("/suggestions list accFrom", "btnSuggestionsListAccFrom")
-	btnSuggListAccTo   = suggestionsMenu.Data("/suggestions list accTo", "btnSuggestionsListAccTo")
-	btnSuggListTxDesc  = suggestionsMenu.Data("/suggestions list txDesc", "btnSuggestionsListTxDesc")
-)
+func isAllowedSuggestionType(s string) bool {
+	splits := strings.SplitN(s, ":", 2)
+	_, exists := TEMPLATE_TYPE_HINTS[Type(splits[0])]
+	return exists
+}
 
 func (bc *BotController) suggestionsHandler(m *tb.Message) {
 	sc := h.MakeSubcommandHandler("/"+CMD_SUGGEST, true)
@@ -28,24 +27,24 @@ func (bc *BotController) suggestionsHandler(m *tb.Message) {
 }
 
 func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
-	suggestionTypes := strings.Join(h.AllowedSuggestionTypes(), ", ")
+	suggestionTypes := []string{}
+	for _, suggType := range h.AllowedSuggestionTypes() {
+		if suggType == h.FIELD_ACCOUNT {
+			suggType += ":[from,to,...]"
+		}
+		suggestionTypes = append(suggestionTypes, suggType)
+	}
 	errorMsg := ""
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
-
-	suggestionsMenu.Inline(
-		suggestionsMenu.Row(btnSuggListAccFrom),
-		suggestionsMenu.Row(btnSuggListAccTo),
-		suggestionsMenu.Row(btnSuggListTxDesc),
-	)
 
 	_, err = bc.Bot.Send(Recipient(m), errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value>
 /suggestions rm <type> [value]
 
-Parameter <type> is one from: [%s]`, suggestionTypes), suggestionsMenu)
+Parameter <type> is one from: [%s]`, strings.Join(suggestionTypes, ", ")))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -57,7 +56,8 @@ func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) 
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
+	p.T = h.FqCacheKey(p.T)
+	if !isAllowedSuggestionType(p.T) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
@@ -93,7 +93,8 @@ func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
+	p.T = h.FqCacheKey(p.T)
+	if !isAllowedSuggestionType(p.T) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
@@ -121,7 +122,8 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
 		return
 	}
-	if !h.ArrayContainsC(h.AllowedSuggestionTypes(), p.T, false) {
+	p.T = h.FqCacheKey(p.T)
+	if !isAllowedSuggestionType(p.T) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
