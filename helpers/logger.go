@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type Level int

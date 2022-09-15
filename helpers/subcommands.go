@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type handlerFunc func(m *tb.Message, params ...string)

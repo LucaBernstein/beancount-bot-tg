@@ -7,34 +7,14 @@ import (
 	"testing"
 	"time"
 
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 )
 
-type MockBot struct {
-	LastSentWhat    interface{}
-	AllLastSentWhat []interface{}
-}
 
-func (b *MockBot) Start()                                           {}
-func (b *MockBot) Handle(endpoint interface{}, handler interface{}) {}
-func (b *MockBot) Send(to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
-	b.LastSentWhat = what
-	b.AllLastSentWhat = append(b.AllLastSentWhat, what)
-	return nil, nil
-}
-func (b *MockBot) Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error {
-	return nil
-}
-func (b *MockBot) Me() *tb.User {
-	return &tb.User{Username: "Test bot"}
-}
-func (b *MockBot) reset() {
-	b.AllLastSentWhat = nil
-}
 
 // GitHub-Issue #16: Panic if plain message without state arrives
 func TestTextHandlingWithoutPriorState(t *testing.T) {
@@ -76,15 +56,15 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	// Create simple tx and fill it completely
-	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
+	bc.commandCreateSimpleTx(&MockContext{M: &tb.Message{Chat: chat}})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                    // amount
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})       // description
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                            // from
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "Expenses:Groceries"}) // to (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                     // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                        // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                             // from
+	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
-	m := &tb.Message{Chat: chat}
+	m := &MockContext{M: &tb.Message{Chat: chat}}
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail
@@ -115,7 +95,7 @@ func TestStartTransactionWithPlainAmountThousandsSeparated(t *testing.T) {
 		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "1,000,000"})
+	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "1,000,000"}})
 
 	debugString := bc.State.txStates[12345].Debug()
 	expected := "data=map[amount::${SPACE_FORMAT}1000000.00"
@@ -142,12 +122,12 @@ func TestTransactionDeletion(t *testing.T) {
 	bot := &MockBot{}
 	bc.AddBotAndStart(bot)
 
-	bc.commandDeleteTransactions(&tb.Message{Chat: chat, Text: "/deleteAll"})
+	bc.commandDeleteTransactions(&MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "to confirm the deletion of your transactions") {
 		t.Errorf("Deletion should require 'yes' confirmation. Got: %s", bot.LastSentWhat)
 	}
 
-	bc.commandDeleteTransactions(&tb.Message{Chat: chat, Text: "/deleteAll YeS"})
+	bc.commandDeleteTransactions(&MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll YeS"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Permanently deleted all your transactions") {
 		t.Errorf("Deletion should work with confirmation. Got: %s", bot.LastSentWhat)
 	}
@@ -185,7 +165,7 @@ func TestTransactionListMaxLength(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	// < 4096 chars tx
-	bc.commandList(&tb.Message{Chat: chat})
+	bc.commandList(&MockContext{M: &tb.Message{Chat: chat}})
 	if len(bot.AllLastSentWhat) != 1 {
 		t.Errorf("Expected exactly one message to be sent out: %v", bot.AllLastSentWhat)
 	}
@@ -193,7 +173,7 @@ func TestTransactionListMaxLength(t *testing.T) {
 	bot.reset()
 
 	// > 4096 chars tx
-	bc.commandList(&tb.Message{Chat: chat})
+	bc.commandList(&MockContext{M: &tb.Message{Chat: chat}})
 	if len(bot.AllLastSentWhat) != 2 {
 		t.Errorf("Expected exactly two messages to be sent out: %v", strings.Join(stringArr(bot.AllLastSentWhat), ", "))
 	}
@@ -227,7 +207,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 
-	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
+	bc.commandList(&MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
 
 	if bot.LastSentWhat != "; recorded on 2022-03-30 14:24\ntx1\n; recorded on 2022-03-30 15:24\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
@@ -242,7 +222,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 
-	bc.commandList(&tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"})
+	bc.commandList(&MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
 
 	if bot.LastSentWhat != "tx1\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
@@ -270,7 +250,7 @@ func TestWritingComment(t *testing.T) {
 	bot := &MockBot{}
 	bc.AddBotAndStart(bot)
 
-	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/comment \"; This is a comment\""})
+	bc.commandAddComment(&MockContext{M: &tb.Message{Chat: chat, Text: "/comment \"; This is a comment\""}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
@@ -281,7 +261,7 @@ func TestWritingComment(t *testing.T) {
 		WithArgs(chat.ID, "This is another comment without \" (quotes)"+"\n").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	bc.commandAddComment(&tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"})
+	bc.commandAddComment(&MockContext{M: &tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
@@ -315,7 +295,7 @@ func TestCommandStartHelp(t *testing.T) {
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(false))
-	bc.commandStart(&tb.Message{Chat: chat})
+	bc.commandStart(&MockContext{M: &tb.Message{Chat: chat}})
 
 	if !strings.Contains(fmt.Sprintf("%v", bot.AllLastSentWhat[0]), "Welcome") {
 		t.Errorf("Bot should welcome user first")
@@ -332,7 +312,7 @@ func TestCommandStartHelp(t *testing.T) {
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
-	bc.commandHelp(&tb.Message{Chat: chat})
+	bc.commandHelp(&MockContext{M: &tb.Message{Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {
 		t.Errorf("Bot should send admin commands in help message for admin user")
 	}
@@ -347,7 +327,7 @@ func TestCommandCancel(t *testing.T) {
 	bc := NewBotController(nil)
 	bot := &MockBot{}
 	bc.AddBotAndStart(bot)
-	bc.commandCancel(&tb.Message{Chat: chat})
+	bc.commandCancel(&MockContext{M: &tb.Message{Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "did not currently have any state or transaction open that could be cancelled") {
 		t.Errorf("Unexpectedly there were open tx before")
 	}
@@ -392,15 +372,15 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	// Create simple tx and fill it completely
-	bc.commandCreateSimpleTx(&tb.Message{Chat: chat})
+	bc.commandCreateSimpleTx(&MockContext{M: &tb.Message{Chat: chat}})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                    // amount
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})       // description
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                            // from
-	bc.handleTextState(&tb.Message{Chat: chat, Text: "Expenses:Groceries"}) // to (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                  // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                     // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                          // from
+	bc.handleTextState(&MockContext{&tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
-	m := &tb.Message{Chat: chat}
+	m := &MockContext{M: &tb.Message{Chat: chat}}
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail

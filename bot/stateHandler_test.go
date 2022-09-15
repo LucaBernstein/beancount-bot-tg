@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func TestStateClearing(t *testing.T) {

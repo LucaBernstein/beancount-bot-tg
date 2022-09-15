@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func TestSuggestionsHandlingWithSpaces(t *testing.T) {
@@ -32,35 +32,35 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 	bc.AddBotAndStart(bot)
 
 	// missing subcommand
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("MissingType: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 	log.Print(1)
 
 	// missing type
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions rm", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("MissingType: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions rm description Too Many arguments with spaces", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description Too Many arguments with spaces", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("TooManyArgs: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions rm description \"Some description with spaces\"", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description \"Some description with spaces\"", Chat: chat}})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("Spaced: Bot unexpectedly sent usage help instead of performing command: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions rm description \"SomeDescriptionWithoutSpaces\"", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description \"SomeDescriptionWithoutSpaces\"", Chat: chat}})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("NotSpaced: Bot unexpectedly sent usage help instead of performing command: %s", bot.LastSentWhat)
 	}
 
 	// Add is missing required value
-	bc.commandSuggestions(&tb.Message{Text: "/suggestions add description ", Chat: chat})
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add description ", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("AddMissingValue: Bot did not send error: %s", bot.LastSentWhat)
 	}

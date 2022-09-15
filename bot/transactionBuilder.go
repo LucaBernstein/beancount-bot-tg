@@ -13,7 +13,7 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	c "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/fatih/structs"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type Hint struct {

@@ -3,7 +3,7 @@ package bot
 import (
 	"strings"
 
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type chatId int64

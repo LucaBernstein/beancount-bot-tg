@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func CreateBot(bc *BotController) IBot {
@@ -31,9 +31,9 @@ func CreateBot(bc *BotController) IBot {
 	})
 
 	b, err := tb.NewBot(tb.Settings{
-		Token:    botToken,
-		Poller:   userGuardPoller,
-		Reporter: func(e error) { bc.Logf(WARN, nil, "%s", e.Error()) },
+		Token:   botToken,
+		Poller:  userGuardPoller,
+		OnError: func(e error, context tb.Context) { bc.Logf(WARN, nil, "%s - context: %v", e.Error(), context) },
 	})
 	if err != nil {
 		log.Fatal(err)

@@ -10,13 +10,13 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/go-co-op/gocron"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type CMD struct {
 	CommandAlias []string
 	Optional     []string
-	Handler      func(m *tb.Message)
+	Handler      tb.HandlerFunc
 	Help         string
 }
 
@@ -104,21 +104,22 @@ func (bc *BotController) commandMappings() []*CMD {
 	}
 }
 
-func (bc *BotController) commandStart(m *tb.Message) {
-	bc.Logf(TRACE, m, "Start command")
-	_, err := bc.Bot.Send(Recipient(m), "Welcome to this beancount bot!\n"+
+func (bc *BotController) commandStart(c tb.Context) error {
+	bc.Logf(TRACE, c.Message(), "Start command")
+	_, err := bc.Bot.Send(Recipient(c.Message()), "Welcome to this beancount bot!\n"+
 		"You can find more information in the repository under "+
 		"https://github.com/LucaBernstein/beancount-bot-tg\n\n"+
 		"Please check the commands I will send to you next that are available to you. "+
 		"You can always reach the command help by typing /"+CMD_HELP, clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
-	bc.commandHelp(m)
+	bc.commandHelp(c)
+	return nil
 }
 
-func (bc *BotController) commandHelp(m *tb.Message) {
-	bc.Logf(TRACE, m, "Sending help")
+func (bc *BotController) commandHelp(c tb.Context) error {
+	bc.Logf(TRACE, c.Message(), "Sending help")
 	helpMsg := ""
 	adminCommands := []*CMD{}
 	for i, cmd := range bc.commandMappings() {
@@ -140,24 +141,25 @@ func (bc *BotController) commandHelp(m *tb.Message) {
 		}
 		helpMsg += fmt.Sprintf("/%s%s - %s", cmd.CommandAlias[0], optional, cmd.Help)
 	}
-	if len(adminCommands) > 0 && bc.Repo.UserIsAdmin(m) {
+	if len(adminCommands) > 0 && bc.Repo.UserIsAdmin(c.Message()) {
 		helpMsg += "\n\n** ADMIN COMMANDS **"
 		for _, cmd := range adminCommands {
 			helpMsg += fmt.Sprintf("\n/%s - %s", cmd.CommandAlias[0], cmd.Help)
 		}
 	}
-	_, err := bc.Bot.Send(Recipient(m), helpMsg, clearKeyboard())
+	_, err := bc.Bot.Send(Recipient(c.Message()), helpMsg, clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
-func (bc *BotController) commandCancel(m *tb.Message) {
-	tx := bc.State.GetType(m)
+func (bc *BotController) commandCancel(c tb.Context) error {
+	tx := bc.State.GetType(c.Message())
 	hasState := tx != ST_NONE
-	bc.Logf(TRACE, m, "Clearing state. Had state? %t > '%s'", hasState, tx)
+	bc.Logf(TRACE, c.Message(), "Clearing state. Had state? %t > '%s'", hasState, tx)
 
-	bc.State.Clear(m)
+	bc.State.Clear(c.Message())
 
 	msg := "You did not currently have any state or transaction open that could be cancelled."
 	if hasState {
@@ -167,10 +169,11 @@ func (bc *BotController) commandCancel(m *tb.Message) {
 			msg = "Your currently running transaction has been cancelled."
 		}
 	}
-	_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("%s\nType /%s to get available commands.", msg, CMD_HELP), clearKeyboard())
+	_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("%s\nType /%s to get available commands.", msg, CMD_HELP), clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
 const MSG_UNFINISHED_STATE = "You have an unfinished operation running. Please finish it or /cancel it before starting a new one."
@@ -187,56 +190,57 @@ func Recipient(m *tb.Message) tb.Recipient {
 	return &Sender{recipient: fmt.Sprintf("%d", m.Chat.ID)}
 }
 
-func (bc *BotController) commandCreateSimpleTx(m *tb.Message) {
-	state := bc.State.GetType(m)
+func (bc *BotController) commandCreateSimpleTx(c tb.Context) error {
+	state := bc.State.GetType(c.Message())
 	if state != ST_NONE {
-		_, err := bc.Bot.Send(Recipient(m), MSG_UNFINISHED_STATE)
+		_, err := bc.Bot.Send(Recipient(c.Message()), MSG_UNFINISHED_STATE)
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	bc.Logf(TRACE, m, "Creating simple transaction")
-	_, err := bc.Bot.Send(Recipient(m), "In the following steps we will create a simple transaction. "+
+	bc.Logf(TRACE, c.Message(), "Creating simple transaction")
+	_, err := bc.Bot.Send(Recipient(c.Message()), "In the following steps we will create a simple transaction. "+
 		"I will guide you through.\n\n",
 		clearKeyboard(),
 	)
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
-	tx, err := bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
+	tx, err := bc.State.SimpleTx(c.Message(), bc.Repo.UserGetCurrency(c.Message())) // create new tx
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
 			"\n\nYou can create a simple transaction using this command: /simple [date]\ne.g. /simple 2021-01-24\n"+
 			"The date parameter is non-mandatory, if not specified, today's date will be taken."+
 			"Alternatively it is also possible to send an amount directly to start a new simple transaction.", clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 	if tx.IsDone() {
-		bc.finishTransaction(m, tx)
-		return
+		bc.finishTransaction(c.Message(), tx)
+		return nil
 	}
-	hint := tx.NextHint(bc.Repo, m)
-	bc.sendNextTxHint(hint, m)
+	hint := tx.NextHint(bc.Repo, c.Message())
+	bc.sendNextTxHint(hint, c.Message())
+	return nil
 }
 
-func (bc *BotController) commandAddComment(m *tb.Message) {
-	if bc.State.GetType(m) != ST_NONE {
-		bc.Logf(INFO, m, "commandAddComment while in another transaction")
-		_, err := bc.Bot.Send(Recipient(m), MSG_UNFINISHED_STATE)
+func (bc *BotController) commandAddComment(c tb.Context) error {
+	if bc.State.GetType(c.Message()) != ST_NONE {
+		bc.Logf(INFO, c.Message(), "commandAddComment while in another transaction")
+		_, err := bc.Bot.Send(Recipient(c.Message()), MSG_UNFINISHED_STATE)
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 	base := CMD_COMMENT[0]
-	if !strings.HasPrefix(m.Text, "/"+base) {
+	if !strings.HasPrefix(c.Message().Text, "/"+base) {
 		base = CMD_COMMENT[1]
 	}
-	remainingCommand := strings.TrimPrefix(strings.TrimLeft(m.Text, ""), "/"+base)
+	remainingCommand := strings.TrimPrefix(strings.TrimLeft(c.Message().Text, ""), "/"+base)
 
 	// Issue #91: Support unquoted comments
 	comment := strings.TrimSpace(remainingCommand)
@@ -245,24 +249,25 @@ func (bc *BotController) commandAddComment(m *tb.Message) {
 	}
 	comment = strings.ReplaceAll(comment, "\\\"", "\"")
 
-	err := bc.Repo.RecordTransaction(m.Chat.ID, comment+"\n")
+	err := bc.Repo.RecordTransaction(c.Message().Chat.ID, comment+"\n")
 	if err != nil {
-		bc.Logf(ERROR, m, "Something went wrong while recording the comment: "+err.Error())
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
+		bc.Logf(ERROR, c.Message(), "Something went wrong while recording the comment: "+err.Error())
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	_, err = bc.Bot.Send(Recipient(m), "Successfully added the comment to your transaction /list", clearKeyboard())
+	_, err = bc.Bot.Send(Recipient(c.Message()), "Successfully added the comment to your transaction /list", clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
-func (bc *BotController) commandList(m *tb.Message) {
-	bc.Logf(TRACE, m, "Listing transactions")
-	command := strings.Split(m.Text, " ")
+func (bc *BotController) commandList(c tb.Context) error {
+	bc.Logf(TRACE, c.Message(), "Listing transactions")
+	command := strings.Split(c.Message().Text, " ")
 	isArchived := false
 	isDated := false
 	isNumbered := false
@@ -286,55 +291,55 @@ func (bc *BotController) commandList(m *tb.Message) {
 				var err error
 				elementNumber, err = strconv.Atoi(option)
 				if err != nil {
-					_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
+					_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
 					if err != nil {
-						bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+						bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 					}
-					return
+					return nil
 				}
 				continue
 			}
 		}
 	}
 	if isDeleteCommand && (isNumbered || isDated || elementNumber <= 0) {
-		_, err := bc.Bot.Send(Recipient(m), "For removing a single element from the list, determine it's number by sending the command '/list numbered' and then removing an entry by sending '/list rm <number>'.", clearKeyboard())
+		_, err := bc.Bot.Send(Recipient(c.Message()), "For removing a single element from the list, determine it's number by sending the command '/list numbered' and then removing an entry by sending '/list rm <number>'.", clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	tx, err := bc.Repo.GetTransactions(m, isArchived)
+	tx, err := bc.Repo.GetTransactions(c.Message(), isArchived)
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 	if tx == nil {
-		bc.Logf(ERROR, m, "Tx unexpectedly was nil")
-		return
+		bc.Logf(ERROR, c.Message(), "Tx unexpectedly was nil")
+		return nil
 	}
 	if isDeleteCommand {
 		var err error
 		if elementNumber <= len(tx) {
 			elementDbId := tx[elementNumber-1].Id
-			err = bc.Repo.DeleteTransaction(m, isArchived, elementDbId)
+			err = bc.Repo.DeleteTransaction(c.Message(), isArchived, elementDbId)
 		} else {
 			err = fmt.Errorf("the number you specified was too high. Please use a correct number as seen from '/list [archived] numbered'")
 		}
 		if err != nil {
-			_, errSending := bc.Bot.Send(Recipient(m), "Something went wrong while trying to delete a single transaction: "+err.Error(), clearKeyboard())
+			_, errSending := bc.Bot.Send(Recipient(c.Message()), "Something went wrong while trying to delete a single transaction: "+err.Error(), clearKeyboard())
 			if errSending != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", errSending.Error())
+				bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", errSending.Error())
 			}
-			return
+			return nil
 		}
-		_, errSending := bc.Bot.Send(Recipient(m), "Successfully deleted the list entry specified.", clearKeyboard())
+		_, errSending := bc.Bot.Send(Recipient(c.Message()), "Successfully deleted the list entry specified.", clearKeyboard())
 		if errSending != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", errSending.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", errSending.Error())
 		}
-		return
+		return nil
 	}
 	SEP := "\n"
 	txList := []string{}
@@ -343,13 +348,13 @@ func (bc *BotController) commandList(m *tb.Message) {
 		var dateComment string
 		txEntryNumber++
 		if isDated {
-			tzOffset := bc.Repo.UserGetTzOffset(m)
+			tzOffset := bc.Repo.UserGetTzOffset(c.Message())
 			timezoneOff := time.Duration(tzOffset) * time.Hour
 			// 2022-03-30T14:24:50.390084Z
 			dateParsed, err := time.Parse("2006-01-02T15:04:05Z", t.Date)
 			if err != nil {
-				bc.Logf(ERROR, m, "Parsing time failed: %s", err.Error())
-				bc.Logf(WARN, m, "Turning off dated option!")
+				bc.Logf(ERROR, c.Message(), "Parsing time failed: %s", err.Error())
+				bc.Logf(WARN, c.Message(), "Turning off dated option!")
 				isDated = false
 			} else {
 				date := dateParsed.Add(timezoneOff).Format(helpers.BEANCOUNT_DATE_FORMAT + " 15:04")
@@ -369,19 +374,20 @@ func (bc *BotController) commandList(m *tb.Message) {
 		if !isArchived {
 			archivedSuggestion = " archived"
 		}
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
+		_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
 			"\nYou might also be looking for%s transactions using '/list%s'.", CMD_HELP, archivedSuggestion, archivedSuggestion), clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 	for _, message := range messageSplits {
-		_, err = bc.Bot.Send(Recipient(m), message, clearKeyboard())
+		_, err = bc.Bot.Send(Recipient(c.Message()), message, clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
 	}
+	return nil
 }
 
 func (bc *BotController) MergeMessagesHonorSendLimit(m []string, sep string) []string {
@@ -404,55 +410,60 @@ func (bc *BotController) MergeMessagesHonorSendLimit(m []string, sep string) []s
 	return messages
 }
 
-func (bc *BotController) commandArchiveTransactions(m *tb.Message) {
-	bc.Logf(TRACE, m, "Archiving transactions")
-	err := bc.Repo.ArchiveTransactions(m)
+func (bc *BotController) commandArchiveTransactions(c tb.Context) error {
+	bc.Logf(TRACE, c.Message(), "Archiving transactions")
+	err := bc.Repo.ArchiveTransactions(c.Message())
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong archiving your transactions: "+err.Error())
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong archiving your transactions: "+err.Error())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+	_, err = bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
-func (bc *BotController) commandDeleteTransactions(m *tb.Message) {
-	if !(strings.TrimSpace(strings.ToLower(m.Text)) == strings.ToLower("/"+CMD_DELETE_ALL+" YES")) {
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
+func (bc *BotController) commandDeleteTransactions(c tb.Context) error {
+	if !(strings.TrimSpace(strings.ToLower(c.Message().Text)) == strings.ToLower("/"+CMD_DELETE_ALL+" YES")) {
+		_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	bc.Logf(TRACE, m, "Deleting transactions")
-	err := bc.Repo.DeleteTransactions(m)
+	bc.Logf(TRACE, c.Message(), "Deleting transactions")
+	err := bc.Repo.DeleteTransactions(c.Message())
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong deleting your transactions: "+err.Error())
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong deleting your transactions: "+err.Error())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
-	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+	_, err = bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
-func (bc *BotController) commandTemplates(m *tb.Message) {
-	bc.templatesHandler(m)
+func (bc *BotController) commandTemplates(c tb.Context) error {
+	bc.templatesHandler(c.Message())
+	return nil
 }
 
-func (bc *BotController) commandSuggestions(m *tb.Message) {
-	bc.suggestionsHandler(m)
+func (bc *BotController) commandSuggestions(c tb.Context) error {
+	bc.suggestionsHandler(c.Message())
+	return nil
 }
 
-func (bc *BotController) commandConfig(m *tb.Message) {
-	bc.configHandler(m)
+func (bc *BotController) commandConfig(c tb.Context) error {
+	bc.configHandler(c.Message())
+	return nil
 }
 
 func (bc *BotController) cronInfo() string {
@@ -512,48 +523,48 @@ func (r ReceiverImpl) Recipient() string {
 	return r.chatId
 }
 
-func (bc *BotController) commandAdminCronInfo(m *tb.Message) {
-	isAdmin := bc.Repo.UserIsAdmin(m)
+func (bc *BotController) commandAdminCronInfo(c tb.Context) error {
+	isAdmin := bc.Repo.UserIsAdmin(c.Message())
 	if !isAdmin {
-		bc.Logf(WARN, m, "Received admin command from non-admin user. Ignoring (treating as normal text input).")
-		bc.handleTextState(m)
-		return
+		bc.Logf(WARN, c.Message(), "Received admin command from non-admin user. Ignoring (treating as normal text input).")
+		bc.handleTextState(c)
+		return nil
 	}
-	_, err := bc.Bot.Send(Recipient(m), bc.cronInfo())
+	_, err := bc.Bot.Send(Recipient(c.Message()), bc.cronInfo())
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 	}
+	return nil
 }
 
-func (bc *BotController) commandAdminNofify(m *tb.Message) {
-	isAdmin := bc.Repo.UserIsAdmin(m)
+func (bc *BotController) commandAdminNofify(c tb.Context) error {
+	isAdmin := bc.Repo.UserIsAdmin(c.Message())
 	if !isAdmin {
-		bc.Logf(WARN, m, "Received admin command from non-admin user. Ignoring (treating as normal text input).")
-		bc.handleTextState(m)
-		return
+		bc.Logf(WARN, c.Message(), "Received admin command from non-admin user. Ignoring (treating as normal text input).")
+		return bc.handleTextState(c)
 	}
-	text := strings.Split(m.Text, "\"")
+	text := strings.Split(c.Message().Text, "\"")
 	var notificationMessage string
 	if len(text) >= 2 {
 		notificationMessage = text[1]
 	}
 	if len(text) == 0 || len(notificationMessage) == 0 {
-		_, err := bc.Bot.Send(Recipient(m), "Something went wrong splitting your command parameters. Did you specify a text in double quotes (\")?")
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong splitting your command parameters. Did you specify a text in double quotes (\")?")
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 	// text[0] = /command [chatId]
 	command := strings.Split(strings.TrimRight(text[0], " "), " ")
 
 	if len(command) == 0 || len(command) >= 3 {
 		// invalid argument count
-		_, err := bc.Bot.Send(Recipient(m), "Please check the command syntax")
+		_, err := bc.Bot.Send(Recipient(c.Message()), "Please check the command syntax")
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 
 	var target string
@@ -563,43 +574,44 @@ func (bc *BotController) commandAdminNofify(m *tb.Message) {
 
 	receivers := bc.Repo.IndividualsWithNotifications(target)
 	if len(receivers) == 0 {
-		_, err := bc.Bot.Send(Recipient(m), "No receivers found to send notification to (you being excluded).")
+		_, err := bc.Bot.Send(Recipient(c.Message()), "No receivers found to send notification to (you being excluded).")
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	}
 
 	for _, recipient := range receivers {
 		_, err := bc.Bot.Send(ReceiverImpl{chatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		bc.Logf(TRACE, m, "Sent notification to %s", recipient)
+		bc.Logf(TRACE, c.Message(), "Sent notification to %s", recipient)
 		// TODO: Add message like 'If you don't want to receive further service notifications, you can turn them off in the /settings with '/settings notif off'.'
 		//  GitHub-issue: #28
 	}
+	return nil
 }
 
-func (bc *BotController) handleTextState(m *tb.Message) {
-	state := bc.State.GetType(m)
+func (bc *BotController) handleTextState(c tb.Context) error {
+	state := bc.State.GetType(c.Message())
 	if state == ST_NONE {
-		if _, err := HandleFloat(m); err == nil { // Not in tx, but input would suffice for correct parsing of amount field of new tx
-			bc.Logf(DEBUG, m, "Creating new simple transaction as amount has been entered though not in tx")
-			_, err = bc.State.SimpleTx(m, bc.Repo.UserGetCurrency(m)) // create new tx
+		if _, err := HandleFloat(c.Message()); err == nil { // Not in tx, but input would suffice for correct parsing of amount field of new tx
+			bc.Logf(DEBUG, c.Message(), "Creating new simple transaction as amount has been entered though not in tx")
+			_, err = bc.State.SimpleTx(c.Message(), bc.Repo.UserGetCurrency(c.Message())) // create new tx
 			if err != nil {
-				_, err := bc.Bot.Send(Recipient(m), "Something went wrong creating a new transaction: "+err.Error(), clearKeyboard())
+				_, err := bc.Bot.Send(Recipient(c.Message()), "Something went wrong creating a new transaction: "+err.Error(), clearKeyboard())
 				if err != nil {
-					bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+					bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 				}
-				return
+				return nil
 			}
-			_, err := bc.Bot.Send(Recipient(m), "Automatically created a new transaction for you. If you think this was a mistake you can /cancel it.", clearKeyboard())
+			_, err := bc.Bot.Send(Recipient(c.Message()), "Automatically created a new transaction for you. If you think this was a mistake you can /cancel it.", clearKeyboard())
 			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+				bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 			}
-			bc.handleTextState(m)
-			return
+			bc.handleTextState(c)
+			return nil
 		}
 
 		// If number has been entered
@@ -607,41 +619,42 @@ func (bc *BotController) handleTextState(m *tb.Message) {
 		// return
 		// else: warn
 
-		bc.Logf(WARN, m, "Received text without having any prior state")
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
+		bc.Logf(WARN, c.Message(), "Received text without having any prior state")
+		_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 		}
-		return
+		return nil
 	} else if state == ST_TX {
-		tx := bc.State.GetTx(m)
-		_, err := tx.Input(m)
+		tx := bc.State.GetTx(c.Message())
+		_, err := tx.Input(c.Message())
 		if err != nil {
-			bc.Logf(WARN, m, "Invalid text state input: '%s'. Err: %s", m.Text, err.Error())
-			_, err := bc.Bot.Send(Recipient(m), "Your last input seems to have not worked.\n"+
+			bc.Logf(WARN, c.Message(), "Invalid text state input: '%s'. Err: %s", c.Message().Text, err.Error())
+			_, err := bc.Bot.Send(Recipient(c.Message()), "Your last input seems to have not worked.\n"+
 				fmt.Sprintf("(Error: %s)\n", err.Error())+
 				"Please try again.",
 			)
 			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+				bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 			}
 		}
-		bc.Logf(TRACE, m, "New data state is %v. (Last input was '%s')", tx.Debug(), m.Text)
+		bc.Logf(TRACE, c.Message(), "New data state is %v. (Last input was '%s')", tx.Debug(), c.Message().Text)
 		if tx.IsDone() {
-			bc.finishTransaction(m, tx)
-			return
+			bc.finishTransaction(c.Message(), tx)
+			return nil
 		}
-		hint := tx.NextHint(bc.Repo, m)
-		bc.sendNextTxHint(hint, m)
-		return
+		hint := tx.NextHint(bc.Repo, c.Message())
+		bc.sendNextTxHint(hint, c.Message())
+		return nil
 	} else if state == ST_TPL {
-		if bc.processNewTemplateResponse(m, bc.State.tplStates[chatId(m.Chat.ID)]) {
-			bc.State.Clear(m)
+		if bc.processNewTemplateResponse(c.Message(), bc.State.tplStates[chatId(c.Message().Chat.ID)]) {
+			bc.State.Clear(c.Message())
 		}
-		return
+		return nil
 	}
-	bc.Logf(ERROR, m, "Something went wrong processing text input. Ran to end, though should have been caught by a branch. "+
+	bc.Logf(ERROR, c.Message(), "Something went wrong processing text input. Ran to end, though should have been caught by a branch. "+
 		"Are there new state types not maintained yet?")
+	return nil
 }
 
 func (bc *BotController) sendNextTxHint(hint *Hint, m *tb.Message) {
@@ -654,7 +667,7 @@ func (bc *BotController) sendNextTxHint(hint *Hint, m *tb.Message) {
 }
 
 func clearKeyboard() *tb.ReplyMarkup {
-	return &tb.ReplyMarkup{ReplyKeyboardRemove: true}
+	return &tb.ReplyMarkup{RemoveKeyboard: true}
 }
 
 func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {

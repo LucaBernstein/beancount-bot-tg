@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 var TEST_MODE = false

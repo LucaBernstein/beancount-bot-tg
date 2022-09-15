@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 var CACHE_LOCAL = make(map[int64]map[string][]string)
