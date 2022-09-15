@@ -12,7 +12,7 @@ MIT license (https://github.com/go-co-op/gocron/blob/main/LICENSE).
 Telebot.
 https://github.com/tucnak/telebot
 Copyright (c) 2015 llya Kowalewski.
-MIT license (https://github.com/tucnak/telebot/blob/v2/LICENSE).
+MIT license (https://github.com/tucnak/telebot/blob/v3/LICENSE).
 
 Cron.
 https://github.com/robfig/cron.

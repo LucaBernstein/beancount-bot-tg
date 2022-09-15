@@ -9,7 +9,7 @@ import (
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func TestTypesTemplateHintsOnlyContainsAllowed(t *testing.T) {

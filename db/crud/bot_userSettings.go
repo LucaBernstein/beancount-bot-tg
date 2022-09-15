@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func (r *Repo) GetUserSetting(setting string, tgChatId int64) (exists bool, val string, err error) {

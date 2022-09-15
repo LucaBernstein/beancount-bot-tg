@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func isAllowedSuggestionType(s string) bool {

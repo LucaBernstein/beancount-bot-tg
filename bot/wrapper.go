@@ -1,13 +1,13 @@
 package bot
 
 import (
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 type IBot interface {
 	// Using from base package:
 	Start()
-	Handle(endpoint interface{}, handler interface{})
+	Handle(endpoint interface{}, h tb.HandlerFunc, m ...tb.MiddlewareFunc)
 	Send(to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error)
 	Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error
 	// custom by me:
@@ -22,7 +22,7 @@ func (b *Bot) Start() {
 	b.bot.Start()
 }
 
-func (b *Bot) Handle(endpoint interface{}, handler interface{}) {
+func (b *Bot) Handle(endpoint interface{}, handler tb.HandlerFunc, m ...tb.MiddlewareFunc) {
 	b.bot.Handle(endpoint, handler)
 }
 

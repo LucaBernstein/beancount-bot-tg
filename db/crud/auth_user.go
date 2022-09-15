@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/tucnak/telebot.v2"
+	tb "gopkg.in/telebot.v3"
 )
 
 func IsGroupChat(m *tb.Message) bool {
@@ -167,7 +167,8 @@ func (r *Repo) UserGetNotificationSetting(m *tb.Message) (daysDelay, hour int, e
 	return -1, -1, nil
 }
 
-/**
+/*
+*
 UserSetNotificationSetting sets user's notification settings.
 If daysDelay is < 0, schedule will be disabled.
 */
