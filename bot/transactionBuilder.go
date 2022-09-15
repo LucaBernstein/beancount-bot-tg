@@ -159,7 +159,7 @@ type Tx interface {
 	IsDone() bool
 	Debug() string
 	NextHint(*crud.Repo, *tb.Message) *Hint
-	EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint
+	EnrichHint(r *crud.Repo, m *tb.Message, i *Input) *Hint
 	FillTemplate(currency, tag string, tzOffset int) (string, error)
 	CacheData() map[string]string
 
@@ -413,7 +413,7 @@ func (tx *SimpleTx) NextHint(r *crud.Repo, m *tb.Message) *Hint {
 		crud.LogDbf(r, TRACE, m, "During message building an error ocurred: "+err.Error())
 		return nil
 	}
-	return tx.EnrichHint(r, m, Input{
+	return tx.EnrichHint(r, m, &Input{
 		key: nextField.FieldName,
 		hint: &Hint{
 			Prompt: message,
@@ -423,10 +423,10 @@ func (tx *SimpleTx) NextHint(r *crud.Repo, m *tb.Message) *Hint {
 	})
 }
 
-func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
+func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i *Input) *Hint {
 	crud.LogDbf(r, TRACE, m, "Enriching hint (%s).", i.key)
 	if i.key == c.FIELD_DESCRIPTION {
-		return tx.hintDescription(r, m, i.hint)
+		return tx.hintDescription(r, m, i)
 	}
 	if i.key == c.FIELD_ACCOUNT {
 		return tx.hintAccount(r, m, i)
@@ -434,7 +434,7 @@ func (tx *SimpleTx) EnrichHint(r *crud.Repo, m *tb.Message, i Input) *Hint {
 	return i.hint
 }
 
-func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
+func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i *Input) *Hint {
 	accountFQSpecifier := i.field.FieldIdentifierForValue()
 	crud.LogDbf(r, TRACE, m, "Enriching hint: '%s'", accountFQSpecifier)
 	var (
@@ -450,13 +450,14 @@ func (tx *SimpleTx) hintAccount(r *crud.Repo, m *tb.Message, i Input) *Hint {
 	return i.hint
 }
 
-func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, h *Hint) *Hint {
-	res, err := r.GetCacheHints(m, c.FqCacheKey(c.FIELD_DESCRIPTION))
+func (tx *SimpleTx) hintDescription(r *crud.Repo, m *tb.Message, i *Input) *Hint {
+	accountFQSpecifier := i.field.FieldIdentifierForValue()
+	res, err := r.GetCacheHints(m, accountFQSpecifier)
 	if err != nil {
 		crud.LogDbf(r, ERROR, m, "Error occurred getting cached hint (hintDescription): %s", err.Error())
 	}
-	h.KeyboardOptions = res
-	return h
+	i.hint.KeyboardOptions = res
+	return i.hint
 }
 
 func (tx *SimpleTx) IsDone() bool {
