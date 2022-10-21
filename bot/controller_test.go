@@ -14,8 +14,6 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 )
 
-
-
 // GitHub-Issue #16: Panic if plain message without state arrives
 func TestTextHandlingWithoutPriorState(t *testing.T) {
 	// create test dependencies
@@ -64,7 +62,7 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
-	m := &MockContext{M: &tb.Message{Chat: chat}}
+	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}} // same ID: not group chat
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail
@@ -380,7 +378,7 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 	bc.handleTextState(&MockContext{&tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
-	m := &MockContext{M: &tb.Message{Chat: chat}}
+	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}}
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail
