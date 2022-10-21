@@ -614,12 +614,12 @@ func (bc *BotController) handleTextState(c tb.Context) error {
 			return nil
 		}
 
-		// If number has been entered
-		// Create new tx, inform user that tx has automatically been started, call handleTextState with same message again (infininite loop protection?)
-		// return
-		// else: warn
+		if crud.IsGroupChat(c.Message()) && !strings.HasPrefix(c.Message().Text, "/") {
+			bc.Logf(DEBUG, c.Message(), "Received text without having any prior state but am in a group chat. Ignoring and not sending error to user")
+			return nil
+		}
 
-		bc.Logf(WARN, c.Message(), "Received text without having any prior state")
+		bc.Logf(WARN, c.Message(), "Received text without having any prior state and not in group chat or message starts with '/'")
 		_, err := bc.Bot.Send(Recipient(c.Message()), fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		if err != nil {
 			bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
