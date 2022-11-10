@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -36,7 +37,6 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("MissingType: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
-	log.Print(1)
 
 	// missing type
 	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm", Chat: chat}})
@@ -63,6 +63,71 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add description ", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("AddMissingValue: Bot did not send error: %s", bot.LastSentWhat)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestAddMultipleSuggestionsAtOnce(t *testing.T) {
+	// Test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(12345, "account:from", "First Suggestion").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(12345, "account:from", "Second Suggestion").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add account:from\nFirst Suggestion\nSecond Suggestion", Chat: chat}})
+
+	// Add single suggestion
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(12345, "account:to", "One lonely suggestion").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(12345).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+
+	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add account:to \"One lonely suggestion\"", Chat: chat}})
+
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Successfully added") {
+		t.Errorf("Unexpected bot response: %v", bot.AllLastSentWhat...)
 	}
 
 	if err := mock.ExpectationsWereMet(); err != nil {

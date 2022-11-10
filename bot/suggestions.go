@@ -41,10 +41,12 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 
 	_, err = bc.Bot.Send(Recipient(m), errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
-/suggestions add <type> <value>
+/suggestions add <type> <value> [<value>...]
 /suggestions rm <type> [value]
 
-Parameter <type> is one from: [%s]`, strings.Join(suggestionTypes, ", ")))
+Parameter <type> is one of: [%s]
+
+Adding multiple suggestions at once is supported either by space separation (with quotation marks) or using newlines.`, strings.Join(suggestionTypes, ", ")))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
@@ -88,29 +90,39 @@ func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) 
 }
 
 func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
-	p, err := h.ExtractTypeValue(params...)
-	if err != nil {
-		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: %s", err.Error()))
-		return
+	if len(params) < 2 {
+		bc.suggestionsHelp(m, fmt.Errorf("error encountered while retrieving suggestions list: Insufficient parameters count"))
 	}
-	p.T = h.FqCacheKey(p.T)
-	if !isAllowedSuggestionType(p.T) {
+	suggestionTypeSplit := strings.SplitN(params[0], "\n", 2)
+	suggestionType := suggestionTypeSplit[0]
+	remainder := ""
+	if len(suggestionTypeSplit) > 1 {
+		remainder = suggestionTypeSplit[1]
+	}
+	// Undo splitting by spaces: concat and then split by newlines for bulk suggestions adding support
+	restoredValue := remainder + " " + strings.Join(params[1:], " ")
+	singleValues := strings.Split(strings.TrimSpace(restoredValue), "\n")
+
+	suggestionType = h.FqCacheKey(suggestionType)
+	if !isAllowedSuggestionType(suggestionType) {
 		bc.suggestionsHelp(m, fmt.Errorf("unexpected subcommand"))
 		return
 	}
-	if p.Value == "" {
+	if len(singleValues) == 0 || (len(singleValues) == 1 && singleValues[0] == "") {
 		bc.suggestionsHelp(m, fmt.Errorf("no value to add provided"))
 		return
 	}
-	err = bc.Repo.PutCacheHints(m, map[string]string{p.T: p.Value})
-	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while adding suggestion (%s): %s", p.Value, err.Error()))
+	for _, value := range singleValues {
+		err := bc.Repo.PutCacheHints(m, map[string]string{suggestionType: value})
 		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while adding suggestion (%s): %s", value, err.Error()))
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+			return
 		}
-		return
 	}
-	_, err = bc.Bot.Send(Recipient(m), "Successfully added suggestion(s).")
+	_, err := bc.Bot.Send(Recipient(m), "Successfully added suggestion(s).")
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
