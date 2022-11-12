@@ -250,6 +250,61 @@ func TestConfigHandleNotification(t *testing.T) {
 	}
 }
 
+func TestConfigLeadingSlash(t *testing.T) {
+	// Test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	// no value set
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_OMITCMDSLASH).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}))
+	bc.commandConfig(&MockContext{M: &tb.Message{Text: "/config omit_slash", Chat: chat}})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "currently turned off") {
+		t.Errorf("message did not yield current disabled state: %s", bot.LastSentWhat)
+	}
+	// not true-ish value
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_OMITCMDSLASH).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("fAlSe"))
+	bc.commandConfig(&MockContext{M: &tb.Message{Text: "/config omit_slash", Chat: chat}})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "currently turned off") {
+		t.Errorf("message did not yield current disabled state: %s", bot.LastSentWhat)
+	}
+
+	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_OMITCMDSLASH).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("tRuE"))
+	bc.commandConfig(&MockContext{M: &tb.Message{Text: "/config omit_slash", Chat: chat}})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "currently turned on") {
+		t.Errorf("message did not yield current enabled state: %s", bot.LastSentWhat)
+	}
+
+	// SET setting
+	mock.ExpectBegin()
+	mock.ExpectExec(`DELETE FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_OMITCMDSLASH).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`INSERT INTO "bot::userSetting"`).
+		WithArgs(12345, helpers.USERSET_OMITCMDSLASH, "true").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	bc.commandConfig(&MockContext{M: &tb.Message{Text: "/config omit_slash on", Chat: chat}})
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "successfully") {
+		t.Errorf("/config omit_slash on: %s", bot.LastSentWhat)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
 func TestConfigAbout(t *testing.T) {
 	// Test dependencies
 	crud.TEST_MODE = true

@@ -593,6 +593,32 @@ func (bc *BotController) commandAdminNofify(c tb.Context) error {
 	return nil
 }
 
+func (bc *BotController) matchesCommandWithoutLeadingSlash(m tb.Context) tb.HandlerFunc {
+	// Check if feature has been enabled by user
+	exists, value, err := bc.Repo.GetUserSetting(helpers.USERSET_OMITCMDSLASH, m.Message().Chat.ID)
+	if err != nil || !exists || strings.ToUpper(value) != "TRUE" {
+		bc.Logf(INFO, m.Message(), "Not trying to match command without leading slash as user has not enabled this feature. - Exists: %t - Value: %s - Err?: %v", exists, value, err)
+		return nil
+	}
+
+	potentialCommandSplits := strings.Split(m.Message().Text, " ")
+	potentialCommandSplit := ""
+	if len(potentialCommandSplits) >= 1 {
+		potentialCommandSplit = strings.TrimSpace(potentialCommandSplits[0])
+	}
+	if potentialCommandSplit == "" {
+		return nil
+	}
+	for _, mapping := range bc.commandMappings() {
+		for _, command := range mapping.CommandAlias {
+			if command == potentialCommandSplit {
+				return mapping.Handler
+			}
+		}
+	}
+	return nil
+}
+
 func (bc *BotController) handleTextState(c tb.Context) error {
 	state := bc.State.GetType(c.Message())
 	if state == ST_NONE {
@@ -611,6 +637,11 @@ func (bc *BotController) handleTextState(c tb.Context) error {
 				bc.Logf(ERROR, c.Message(), "Sending bot message failed: %s", err.Error())
 			}
 			bc.handleTextState(c)
+			return nil
+		} else if handlerFunc := bc.matchesCommandWithoutLeadingSlash(c); handlerFunc != nil {
+			bc.Logf(TRACE, c.Message(), "matched command handler without leading slash for message: %s", c.Message().Text)
+			c.Message().Text = "/" + c.Message().Text
+			handlerFunc(c)
 			return nil
 		}
 

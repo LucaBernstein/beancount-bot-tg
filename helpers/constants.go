@@ -16,10 +16,11 @@ const (
 
 	BEANCOUNT_DATE_FORMAT = "2006-01-02"
 
-	USERSET_CUR        = "user.currency"
-	USERSET_ADM        = "user.isAdmin"
-	USERSET_TAG        = "user.vacationTag"
-	USERSET_TZOFF      = "user.tzOffset"
+	USERSET_CUR          = "user.currency"
+	USERSET_ADM          = "user.isAdmin"
+	USERSET_TAG          = "user.vacationTag"
+	USERSET_TZOFF        = "user.tzOffset"
+	USERSET_OMITCMDSLASH = "user.omitCommandSlash"
 
 	DEFAULT_CURRENCY = "EUR"
 
