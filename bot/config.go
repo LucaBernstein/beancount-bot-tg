@@ -19,7 +19,8 @@ func (bc *BotController) configHandler(m *tb.Message) {
 		Add("notify", bc.configHandleNotification).
 		Add("about", bc.configHandleAbout).
 		Add("tz_offset", bc.configHandleTimezoneOffset).
-		Add("delete_account", bc.configHandleAccountDelete)
+		Add("delete_account", bc.configHandleAccountDelete).
+		Add("omit_slash", bc.configHandleOmitLeadingSlash)
 	_, err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
@@ -36,7 +37,6 @@ func (bc *BotController) configHelp(m *tb.Message, err error) {
 	filledTemplate, err := helpers.Template(`Usage help for /{{.CONFIG_COMMAND}}:
 
 /{{.CONFIG_COMMAND}} currency <c> - Change default currency
-/{{.CONFIG_COMMAND}} about - Display the version this bot is running on
 
 Tags will be added to each new transaction with a '#':
 
@@ -54,6 +54,15 @@ Timezone offset from {{.TZ}} to honor for notifications and current date (if set
 
 /{{.CONFIG_COMMAND}} tz_offset - Get current timezone offset from {{.TZ}} (default 0)
 /{{.CONFIG_COMMAND}} tz_offset <hours> - Set timezone offset from {{.TZ}}
+
+Feature toggle: Also activate commands without leading slash if not in transaction
+
+/{{.CONFIG_COMMAND}} omit_slash - Get current setting value
+/{{.CONFIG_COMMAND}} omit_slash on|off - Enable or disable omitted leading slash support
+
+Additional information about this bot
+
+/{{.CONFIG_COMMAND}} about - Display the version this bot is running on
 
 Reset your data stored by the bot. WARNING: This action is permanent!
 
@@ -283,6 +292,62 @@ func (bc *BotController) configHandleTimezoneOffset(m *tb.Message, params ...str
 	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("Changed timezone offset for default dates for all future transactions from 'UTC%s' to 'UTC%s'.", prettyTzOffset(tz_offset), prettyTzOffset(newTzParsed)))
 	if err != nil {
 		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+	}
+}
+
+func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...string) {
+	var err error
+	if len(params) == 0 { // 0 params: GET
+		exists, value, err := bc.Repo.GetUserSetting(helpers.USERSET_OMITCMDSLASH, m.Chat.ID)
+		if err != nil {
+			bc.Bot.Send(Recipient(m), "There has been an error internally while retrieving the value currently set for the queried user setting. Please try again later.")
+			return
+		}
+		if !exists || strings.ToUpper(value) != "TRUE" {
+			_, err = bc.Bot.Send(Recipient(m), "Omitting leading slash support is currently turned off. Please check the help on how to turn it on.")
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+			return
+		} else {
+			_, err = bc.Bot.Send(Recipient(m), "Omitting leading slash support is currently turned on.")
+			if err != nil {
+				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+			}
+			return
+		}
+	} else if len(params) > 1 { // 2 or more params: too many
+		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
+		return
+	}
+	// Set user setting
+	newUserSettingValue := params[0]
+	switch strings.ToUpper(newUserSettingValue) {
+	case "ON":
+		err = bc.Repo.SetUserSetting(helpers.USERSET_OMITCMDSLASH, "true", m.Chat.ID)
+		if err != nil {
+			bc.Bot.Send(Recipient(m), "There has been an error internally while setting your value. Please try again later.")
+			return
+		}
+		_, err = bc.Bot.Send(Recipient(m), "Omitting leading slashes has successfully been turned on.")
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	case "OFF":
+		err = bc.Repo.SetUserSetting(helpers.USERSET_OMITCMDSLASH, "false", m.Chat.ID)
+		if err != nil {
+			bc.Bot.Send(Recipient(m), "There has been an error internally while setting your value. Please try again later.")
+			return
+		}
+		_, err = bc.Bot.Send(Recipient(m), "Omitting leading slashes has successfully been turned off.")
+		if err != nil {
+			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		}
+		return
+	default:
+		bc.configHelp(m, fmt.Errorf("invalid setting value: '%s'. Not in ['ON', 'OFF']", newUserSettingValue))
+		return
 	}
 }
 

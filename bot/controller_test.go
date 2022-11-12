@@ -24,10 +24,12 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	// Create
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
+	// Finish
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_CUR).
@@ -48,6 +50,27 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
   Expenses:Groceries
 `).
 		WillReturnResult(sqlmock.NewResult(1, 1))
+	// Cache handling on saving tx
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(chat.ID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(chat.ID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectExec(`INSERT INTO "bot::cache"`).
+		WithArgs(chat.ID, sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.
+		ExpectQuery(`SELECT "type", "value" FROM "bot::cache"`).
+		WithArgs(chat.ID).
+		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 
 	bc := NewBotController(db)
 	bot := &MockBot{}
@@ -60,6 +83,11 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                        // description
 	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                             // from
 	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
+
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_OMITCMDSLASH).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("false"))
 
 	// After the first tx is done, send some command
 	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}} // same ID: not group chat
@@ -384,6 +412,38 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 	// should catch and send help instead of fail
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "you might need to start a transaction first") {
 		t.Errorf("String did not contain substring as expected (was: '%s')", bot.LastSentWhat)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func TestCommandWithoutLeadingSlash(t *testing.T) {
+	// create test dependencies
+	crud.TEST_MODE = true
+	chat := &tb.Chat{ID: 12345}
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	bc := NewBotController(db)
+	bot := &MockBot{}
+	bc.AddBotAndStart(bot)
+
+	mock.
+		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
+		WithArgs(chat.ID, helpers.USERSET_OMITCMDSLASH).
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("true"))
+
+	// After the first tx is done, send some command
+	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}, Text: "config about"}} // same ID: not group chat
+	bc.handleTextState(m)
+
+	// should catch and send help instead of fail
+	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Version information about") {
+		t.Errorf("String did not contain version information as expected (was: '%s')", bot.LastSentWhat)
 	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
