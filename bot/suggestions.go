@@ -39,7 +39,7 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
 
-	_, err = bc.Bot.Send(Recipient(m), errorMsg+fmt.Sprintf(`Usage help for /suggestions:
+	bc.Bot.SendSilent(bc, Recipient(m), errorMsg+fmt.Sprintf(`Usage help for /suggestions:
 /suggestions list <type>
 /suggestions add <type> <value> [<value>...]
 /suggestions rm <type> [value]
@@ -47,9 +47,6 @@ func (bc *BotController) suggestionsHelp(m *tb.Message, err error) {
 Parameter <type> is one of: [%s]
 
 Adding multiple suggestions at once is supported either by space separation (with quotation marks) or using newlines.`, strings.Join(suggestionTypes, ", ")))
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
 }
 
 func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) {
@@ -69,24 +66,15 @@ func (bc *BotController) suggestionsHandleList(m *tb.Message, params ...string) 
 	}
 	values, err := bc.Repo.GetCacheHints(m, p.T)
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.T, err.Error()))
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Error encountered while retrieving suggestions list for type '%s': %s", p.T, err.Error()))
 		return
 	}
 	if len(values) == 0 {
-		_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.T))
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your suggestions list for type '%s' is currently empty.", p.T))
 		return
 	}
-	_, err = bc.Bot.Send(Recipient(m), fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.T)+
+	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("These suggestions are currently saved for type '%s':\n\n", p.T)+
 		strings.Join(values, "\n"))
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
 }
 
 func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
@@ -115,17 +103,11 @@ func (bc *BotController) suggestionsHandleAdd(m *tb.Message, params ...string) {
 	for _, value := range singleValues {
 		err := bc.Repo.PutCacheHints(m, map[string]string{suggestionType: value})
 		if err != nil {
-			_, err := bc.Bot.Send(Recipient(m), fmt.Sprintf("Error encountered while adding suggestion (%s): %s", value, err.Error()))
-			if err != nil {
-				bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-			}
+			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Error encountered while adding suggestion (%s): %s", value, err.Error()))
 			return
 		}
 	}
-	_, err := bc.Bot.Send(Recipient(m), "Successfully added suggestion(s).")
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
+	bc.Bot.SendSilent(bc, Recipient(m), "Successfully added suggestion(s).")
 }
 
 func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string) {
@@ -142,18 +124,12 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 	bc.Logf(TRACE, m, "About to remove suggestion of type '%s' and value '%s'", p.T, p.Value)
 	res, err := bc.Repo.DeleteCacheEntries(m, p.T, p.Value)
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Error encountered while removing suggestion: "+err.Error())
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		bc.Bot.SendSilent(bc, Recipient(m), "Error encountered while removing suggestion: "+err.Error())
 		return
 	}
 	rowCount, err := res.RowsAffected()
 	if err != nil {
-		_, err := bc.Bot.Send(Recipient(m), "Error encountered while extracting affected entries: "+err.Error())
-		if err != nil {
-			bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-		}
+		bc.Bot.SendSilent(bc, Recipient(m), "Error encountered while extracting affected entries: "+err.Error())
 		return
 	}
 	if rowCount == 0 {
@@ -161,8 +137,5 @@ func (bc *BotController) suggestionsHandleRemove(m *tb.Message, params ...string
 			"If your value contains spaces, consider putting it in double quotes (\")"))
 		return
 	}
-	_, err = bc.Bot.Send(Recipient(m), "Successfully removed suggestion(s)")
-	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
-	}
+	bc.Bot.SendSilent(bc, Recipient(m), "Successfully removed suggestion(s)")
 }
