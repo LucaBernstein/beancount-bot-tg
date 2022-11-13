@@ -47,7 +47,10 @@ func LogMessagePrefix(m *tb.Message) string {
 	if m != nil {
 		// Account for historical test cases without sender
 		if m.Sender == nil {
-			m.Sender = &tb.User{ID: -1}
+			m.Sender = &tb.User{ID: 0}
+		}
+		if m.Chat == nil {
+			m.Chat = &tb.Chat{ID: 0}
 		}
 		prefix = fmt.Sprintf("C%d/U%d", m.Chat.ID, m.Sender.ID)
 	}

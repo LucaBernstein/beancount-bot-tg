@@ -20,4 +20,6 @@ func TestLogLocal(t *testing.T) {
 
 	helpers.LogLocalf(helpers.TRACE, &tb.Message{Chat: &tb.Chat{ID: 12345}, Sender: &tb.User{ID: 12345}}, "This is a test log")
 	helpers.LogLocalf(helpers.TRACE, &tb.Message{Chat: &tb.Chat{ID: 12345}}, "This is a test log without sender (historical tests)")
+	helpers.LogLocalf(helpers.TRACE, &tb.Message{}, "No chat")
+	helpers.LogLocalf(helpers.TRACE, nil, "No message at all")
 }
