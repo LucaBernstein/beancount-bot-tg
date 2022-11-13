@@ -3,7 +3,7 @@ Feature: List transactions
   Scenario: List
     Given I have a bot
     When I send the message "/deleteAll yes"
-      And I wait 0.1 seconds
+      And I wait 0.2 seconds
     When I send the message "/list"
       And I wait 0.1 seconds
     Then 1 messages should be sent back
@@ -35,7 +35,7 @@ Feature: List transactions
   Scenario: List archived
     Given I have a bot
     When I send the message "/deleteAll yes"
-      And I wait 0.1 seconds
+      And I wait 0.2 seconds
     When I send the message "/list archived"
       And I wait 0.1 seconds
     Then 1 messages should be sent back
