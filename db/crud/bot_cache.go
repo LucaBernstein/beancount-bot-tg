@@ -2,6 +2,7 @@ package crud
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
@@ -79,7 +80,12 @@ func (r *Repo) FillCache(m *tb.Message) error {
 		cache[key] = append(cache[key], value)
 	}
 	CACHE_LOCAL[m.Chat.ID] = cache
-	LogDbf(r, helpers.TRACE, m, "Filled cache for chat: %v", cache)
+	LogDbf(r, helpers.TRACE, m, "Filled cache for chat with %d keys. One example: %v", len(cache), func() string {
+		for sampleKey, sampleValue := range cache {
+			return fmt.Sprintf("%s => %v", sampleKey, sampleValue)
+		}
+		return ""
+	}())
 	return nil
 }
 
