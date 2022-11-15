@@ -11,6 +11,7 @@ Feature: Transactions
     When I send the message "12.34"
     Then 2 messages should be sent back
     When I send the message "/cancel"
+      And I wait 0.1 seconds
     Then 1 messages should be sent back
       And the response should include the message "currently running transaction has been cancelled"
 
