@@ -1,11 +1,11 @@
-package migrations
+package postgres
 
 import (
 	"database/sql"
 	"log"
 )
 
-func v7(db *sql.Tx) {
+func (c *Controller) V7(db *sql.Tx) {
 	v7AddLoggingTable(db)
 }
 

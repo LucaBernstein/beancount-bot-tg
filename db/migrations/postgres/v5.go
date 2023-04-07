@@ -1,18 +1,18 @@
-package migrations
+package postgres
 
 import (
 	"database/sql"
 	"log"
 )
 
-func v5(db *sql.Tx) {
+func (c *Controller) V5(db *sql.Tx) {
 	v5TxTags(db)
 }
 
 func v5TxTags(db *sql.Tx) {
 	sqlStatement := `
 	ALTER TABLE "auth::user"
-	ADD "tag" TEXT NULL DEFAULT NULL;
+		ADD "tag" TEXT NULL DEFAULT NULL;
 
 	CREATE TABLE "bot::notificationSchedule" (
 		"tgChatId" NUMERIC REFERENCES "auth::user" ("tgChatId") NOT NULL,

@@ -1,11 +1,11 @@
-package migrations
+package postgres
 
 import (
 	"database/sql"
 	"log"
 )
 
-func v9(db *sql.Tx) {
+func (c *Controller) V9(db *sql.Tx) {
 	v9AddTable(db)
 }
 

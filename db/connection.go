@@ -4,13 +4,45 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/LucaBernstein/beancount-bot-tg/db/migrations"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
-func PostgresConnection() *sql.DB {
+var dbConnection *sql.DB
+
+func AutoIncValue() string {
+	switch strings.ToUpper(helpers.Env("DB_TYPE")) {
+	case "SQLITE":
+		return "NULL"
+	case "POSTGRES":
+		return "DEFAULT"
+	}
+	return ""
+}
+
+func Connection() *sql.DB {
+	if dbConnection != nil && dbConnection.Ping() == nil {
+		return dbConnection
+	}
+	switch strings.ToUpper(helpers.Env("DB_TYPE")) {
+	case "SQLITE":
+		log.Print("Using: sqlite...")
+		dbConnection = sqliteConnection()
+		return dbConnection
+	case "POSTGRES":
+		log.Print("Using: postgres...")
+		dbConnection = postgresConnection()
+		return dbConnection
+	}
+	log.Fatal("Please provide the ENV var DB_TYPE with database type specified")
+	return nil
+}
+
+func postgresConnection() *sql.DB {
 	host := helpers.EnvOrFb("POSTGRES_HOST", "database")
 	port := 5432
 	user := helpers.EnvOrFb("POSTGRES_USER", "postgres")
@@ -21,20 +53,38 @@ func PostgresConnection() *sql.DB {
 		"password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 
-	helpers.LogLocalf(helpers.TRACE, nil, "Opening db (postgres) connection...")
+	log.Print("Opening postgres db connection...")
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	helpers.LogLocalf(helpers.TRACE, nil, "Pinging database (postgres)...")
+	log.Print("Pinging postgres database...")
 	err = db.Ping()
 	if err != nil {
 		log.Fatal(err)
 	}
-	helpers.LogLocalf(helpers.TRACE, nil, "Successfully connected to database (postgres)")
+	log.Print("Successfully connected to postgres database.")
 
-	migrations.Migrate(db)
+	migrations.MigratePostgres(db)
+
+	return db
+}
+
+func sqliteConnection() *sql.DB {
+	filename := helpers.EnvOrFb("SQLITE_FILE", "lyst_local.sqlite")
+	connection := fmt.Sprintf("file:%s?cache=shared", filename)
+	db, err := sql.Open("sqlite", connection)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = db.Exec(`PRAGMA foreign_keys=ON`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+
+	migrations.MigrateSqlite(db)
 
 	return db
 }

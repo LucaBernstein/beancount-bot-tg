@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	db := db.PostgresConnection()
+	db := db.Connection()
 	defer db.Close()
 
 	bc := bot.NewBotController(db)

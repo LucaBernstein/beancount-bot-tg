@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	dbpkg "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
@@ -197,8 +198,8 @@ func TestTemplateUse(t *testing.T) {
 		WithArgs(chat.ID, helpers.USERSET_TZOFF).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
 	mock.
-		ExpectExec(regexp.QuoteMeta(`INSERT INTO "bot::transaction" ("tgChatId", "value")
-		VALUES ($1, $2);`)).
+		ExpectExec(regexp.QuoteMeta(`INSERT INTO "bot::transaction" ("id", "tgChatId", "value")
+		VALUES (`+dbpkg.AutoIncValue()+`,$1, $2);`)).
 		WithArgs(chat.ID, `2022-04-11 * "Test" "Buy something"
   fromFix                                     -10.51 EUR_TEST
   toFix1                                        5.255 EUR_TEST

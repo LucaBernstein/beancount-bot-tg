@@ -1,11 +1,11 @@
-package migrations
+package postgres
 
 import (
 	"database/sql"
 	"log"
 )
 
-func v12(db *sql.Tx) {
+func (c *Controller) V12(db *sql.Tx) {
 	v12AddLeadingSlashSetting(db)
 }
 
