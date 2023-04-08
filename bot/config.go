@@ -20,7 +20,8 @@ func (bc *BotController) configHandler(m *tb.Message) {
 		Add("about", bc.configHandleAbout).
 		Add("tz_offset", bc.configHandleTimezoneOffset).
 		Add("delete_account", bc.configHandleAccountDelete).
-		Add("omit_slash", bc.configHandleOmitLeadingSlash)
+		Add("omit_slash", bc.configHandleOmitLeadingSlash).
+		Add("enable_api", bc.configHandleEnableApi)
 	_, err := sc.Handle(m)
 	if err != nil {
 		bc.configHelp(m, nil)
@@ -59,6 +60,11 @@ Feature toggle: Also activate commands without leading slash if not in transacti
 
 /{{.CONFIG_COMMAND}} omit_slash - Get current setting value
 /{{.CONFIG_COMMAND}} omit_slash on|off - Enable or disable omitted leading slash support
+
+Feature toggle: Activate API / UI usage
+
+/{{.CONFIG_COMMAND}} enable_api - Get current setting value
+/{{.CONFIG_COMMAND}} enable_api on|off
 
 Additional information about this bot
 
@@ -245,18 +251,26 @@ func (bc *BotController) configHandleTimezoneOffset(m *tb.Message, params ...str
 }
 
 func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...string) {
+	bc.configHandleBooleanFeature(m, helpers.USERSET_OMITCMDSLASH, "Omitting leading slash support", params...)
+}
+
+func (bc *BotController) configHandleEnableApi(m *tb.Message, params ...string) {
+	bc.configHandleBooleanFeature(m, helpers.USERSET_ENABLEAPI, "API support", params...)
+}
+
+func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, name string, params ...string) {
 	var err error
 	if len(params) == 0 { // 0 params: GET
-		exists, value, err := bc.Repo.GetUserSetting(helpers.USERSET_OMITCMDSLASH, m.Chat.ID)
+		exists, value, err := bc.Repo.GetUserSetting(key, m.Chat.ID)
 		if err != nil {
 			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while retrieving the value currently set for the queried user setting. Please try again later.")
 			return
 		}
 		if !exists || strings.ToUpper(value) != "TRUE" {
-			bc.Bot.SendSilent(bc, Recipient(m), "Omitting leading slash support is currently turned off. Please check the help on how to turn it on.")
+			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s is currently turned off. Please check the help on how to turn it on.", name))
 			return
 		} else {
-			bc.Bot.SendSilent(bc, Recipient(m), "Omitting leading slash support is currently turned on.")
+			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s is currently turned on.", name))
 			return
 		}
 	} else if len(params) > 1 { // 2 or more params: too many
@@ -267,20 +281,20 @@ func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...s
 	newUserSettingValue := params[0]
 	switch strings.ToUpper(newUserSettingValue) {
 	case "ON":
-		err = bc.Repo.SetUserSetting(helpers.USERSET_OMITCMDSLASH, "true", m.Chat.ID)
+		err = bc.Repo.SetUserSetting(key, "true", m.Chat.ID)
 		if err != nil {
 			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
 			return
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), "Omitting leading slashes has successfully been turned on.")
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s has successfully been turned on.", name))
 		return
 	case "OFF":
-		err = bc.Repo.SetUserSetting(helpers.USERSET_OMITCMDSLASH, "false", m.Chat.ID)
+		err = bc.Repo.SetUserSetting(key, "false", m.Chat.ID)
 		if err != nil {
 			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
 			return
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), "Omitting leading slashes has successfully been turned off.")
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s has successfully been turned off.", name))
 		return
 	default:
 		bc.configHelp(m, fmt.Errorf("invalid setting value: '%s'. Not in ['ON', 'OFF']", newUserSettingValue))

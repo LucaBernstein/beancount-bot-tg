@@ -57,6 +57,14 @@ func (r *Repo) SetUserSetting(setting string, value string, tgChatId int64) (err
 	return
 }
 
+func (r *Repo) DeleteAllUserSettings(tgChatId int64) error {
+	_, err := r.db.Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1`, tgChatId)
+	if err != nil {
+		return fmt.Errorf("could not delete settings: %s", err.Error())
+	}
+	return nil
+}
+
 // Currency
 
 func (r *Repo) UserGetCurrency(m *tb.Message) string {
