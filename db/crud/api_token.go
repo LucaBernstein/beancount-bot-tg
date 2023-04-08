@@ -75,6 +75,12 @@ func (r *Repo) RevokeApiToken(token string) (count int64, err error) {
 	return
 }
 
+func (r *Repo) GetTokenChatId(token string) (chatId int64, err error) {
+	res := r.db.QueryRow(`SELECT "tgChatId" FROM "app::apiToken" WHERE "token" = $1`, token)
+	err = res.Scan(&chatId)
+	return
+}
+
 func EnsureApiEnabled(r *Repo, userId int64) error {
 	if _, val, err := r.GetUserSetting(helpers.USERSET_ENABLEAPI, userId); err != nil || strings.ToUpper(val) != "TRUE" {
 		return helpers.ErrApiDisabled
