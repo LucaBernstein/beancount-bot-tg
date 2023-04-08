@@ -36,32 +36,32 @@ jobs:
       POSTGRES_PASSWORD: postgres
       SQLITE_FILE: gh_actions.sqlite
     steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: ^1.17
-      id: go
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ^1.17
+        id: go
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
 
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
 
-    - name: Test
-      run: |
-        for run in 1 2; do # run test twice to ensure that also test state clearing runs properly
-          echo "Test run $run"
-          # count param in following commands makes Go not cache the runs.
-          go test -count=1 -p 1 ./... -coverprofile coverage.${{ matrix.database }}.out -coverpkg=./...
-        done
-    
-    - uses: actions/upload-artifact@v3
-      with:
-        name: coverage-reports
-        path: ./*.out
-        if-no-files-found: error
+      - name: Test
+        run: |
+          for run in 1 2; do # run test twice to ensure that also test state clearing runs properly
+            echo "Test run $run"
+            # count param in following commands makes Go not cache the runs.
+            go test -count=1 -p 1 ./... -coverprofile coverage.${{ matrix.database }}.out -coverpkg=./...
+          done
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: ./*.out
+          if-no-files-found: error
 
   coverage_report:
     name: Coverage report

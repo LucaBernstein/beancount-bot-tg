@@ -14,16 +14,6 @@ import (
 
 var dbConnection *sql.DB
 
-func AutoIncValue() string {
-	switch strings.ToUpper(helpers.Env("DB_TYPE")) {
-	case "SQLITE":
-		return "NULL"
-	case "POSTGRES":
-		return "DEFAULT"
-	}
-	return ""
-}
-
 func Connection() *sql.DB {
 	if dbConnection != nil && dbConnection.Ping() == nil {
 		return dbConnection
@@ -72,7 +62,7 @@ func postgresConnection() *sql.DB {
 }
 
 func sqliteConnection() *sql.DB {
-	filename := helpers.EnvOrFb("SQLITE_FILE", "lyst_local.sqlite")
+	filename := helpers.EnvOrFb("SQLITE_FILE", "beancount-bot-tg.sqlite")
 	connection := fmt.Sprintf("file:%s?cache=shared", filename)
 	db, err := sql.Open("sqlite", connection)
 	if err != nil {

@@ -3,6 +3,7 @@ package bot_test
 import (
 	"testing"
 
+	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"gopkg.in/telebot.v3"
@@ -10,13 +11,18 @@ import (
 
 func TestAccountDeletion(t *testing.T) {
 	// Create a user, fill some content: comment, setting, cache, state
-	repo := crud.NewRepo(db.Connection())
+	conn := db.Connection()
+	repo := crud.NewRepo(conn)
 	var chatId int64 = -17
 	var err error
 	msg := &telebot.Message{Chat: &telebot.Chat{ID: chatId}, Sender: &telebot.User{ID: chatId}}
 	err = repo.EnrichUserData(msg)
 	if err != nil {
 		t.Errorf("Error encountered while issuing command: %e", err)
+	}
+	_, err = conn.Exec(`DELETE FROM "bot::template" WHERE "name" = $1`, "awesome_template")
+	if err != nil {
+		t.Errorf("Deleting possibly existing template failed: %e", err)
 	}
 	err = repo.AddTemplate(chatId, "awesome_template", "some template values")
 	if err != nil {
@@ -47,8 +53,9 @@ func TestAccountDeletion(t *testing.T) {
 		t.Errorf("Unexpected tx count of 0. Expected at least 1.")
 	}
 
+	ctrl := bot.NewBotController(conn)
 	// Delete account
-	err = repo.DeleteUser(msg)
+	ctrl.DeleteUserData(msg)
 	if err != nil {
 		t.Errorf("User deletion should not error: %e", err)
 	}

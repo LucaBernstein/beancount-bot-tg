@@ -1,15 +1,32 @@
 package crud
 
-import "github.com/LucaBernstein/beancount-bot-tg/helpers"
+import (
+	"strings"
+	"time"
+
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+)
 
 func (r *Repo) HealthGetLogs(lastHours int) (errors int, warnings int, err error) {
-	rows, err := r.db.Query(`
-		SELECT "level", COUNT(*) "c"
-		FROM "app::log"
-		WHERE "level" IN ($1, $2)
-			AND "created" + INTERVAL '1 hour' * $3 > NOW()
-		GROUP BY "level"`,
-		helpers.ERROR, helpers.WARN, lastHours)
+	var query string
+	if strings.ToUpper(helpers.Env("DB_TYPE")) == "POSTGRES" {
+		query = `
+			SELECT "level", COUNT(*) "c"
+			FROM "app::log"
+			WHERE "level" IN ($1, $2)
+				AND "created" + INTERVAL '1 hour' * $3 > NOW()
+			GROUP BY "level"
+		`
+	} else {
+		query = `
+			SELECT "level", COUNT(*) "c"
+			FROM "app::log"
+			WHERE "level" IN ($1, $2)
+				AND datetime("created", '+'||$3||' hour') > datetime()
+			GROUP BY "level"
+		`
+	}
+	rows, err := r.db.Query(query, helpers.ERROR, helpers.WARN, lastHours)
 	if err != nil {
 		return
 	}
@@ -69,13 +86,27 @@ func (r *Repo) HealthGetUserCount() (count int, err error) {
 }
 
 func (r *Repo) HealthGetUsersActiveCounts(maxDiffHours int) (count int, err error) {
-	rows, err := r.db.Query(`
-		SELECT COUNT("difference") from (
-			SELECT DISTINCT EXTRACT(EPOCH FROM (NOW() - MAX(l."created"))) / 3600 AS difference
-			FROM "app::log" l JOIN "auth::user" u ON l.chat LIKE CONCAT('C', u."tgChatId", '/%') 
+	offsetTimestamp := time.Now().UTC().Add(-time.Duration(maxDiffHours) * time.Hour)
+	var query string
+	if strings.ToUpper(helpers.Env("DB_TYPE")) == "POSTGRES" {
+		query = `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT SPLIT_PART(l."chat", '/', 1) AS "chat", MAX("created") as "last" 
+			FROM "app::log" l
+			WHERE "chat" IS NOT NULL
 			GROUP BY l."chat"
-		) q
-		WHERE "difference" < $1`, maxDiffHours)
+		) AS "logs" WHERE "last" >= $1
+		`
+	} else {
+		query = `
+		SELECT COUNT(*) FROM (
+			SELECT DISTINCT SUBSTR(l."chat", 1, INSTR(l."chat", '/')-1) AS "chat", MAX("created") as "last" 
+			FROM "app::log" l
+			WHERE "chat" IS NOT NULL
+		) WHERE "last" >= $1
+		`
+	}
+	rows, err := r.db.Query(query, offsetTimestamp)
 	if err != nil {
 		return
 	}

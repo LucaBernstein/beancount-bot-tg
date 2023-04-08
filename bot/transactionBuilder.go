@@ -130,7 +130,7 @@ func HandleRaw(m *tb.Message) (string, error) {
 
 func ParseDate(m string) (string, error) {
 	// TODO: Handle tz offset
-	today := time.Now()
+	today := time.Now().UTC()
 	patterns := []string{
 		"2006-01-02",
 		"20060102",
