@@ -21,6 +21,7 @@ const (
 	USERSET_TAG          = "user.vacationTag"
 	USERSET_TZOFF        = "user.tzOffset"
 	USERSET_OMITCMDSLASH = "user.omitCommandSlash"
+	USERSET_ENABLEAPI    = "user.enableApi"
 
 	DEFAULT_CURRENCY = "EUR"
 

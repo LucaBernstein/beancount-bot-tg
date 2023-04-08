@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -29,10 +28,7 @@ func (bc *BotController) DeleteUserData(m *tb.Message) {
 	errors.handle1(bc.Repo.DeleteTransactions(m))
 	errors.handle1(bc.Repo.DeleteTemplates(m))
 
-	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_ADM, "", m.Chat.ID))
-	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_CUR, "", m.Chat.ID))
-	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_TAG, "", m.Chat.ID))
-	errors.handle1(bc.Repo.SetUserSetting(helpers.USERSET_TZOFF, "", m.Chat.ID))
+	errors.handle1(bc.Repo.DeleteAllUserSettings(m.Chat.ID))
 
 	bc.State.Clear(m)
 	errors.handle1(bc.Repo.DeleteUser(m))
