@@ -22,7 +22,7 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 			// TODO: Update all as single statement
 			_, err = r.db.Exec(`
 				UPDATE "bot::cache"
-				SET "lastUsed" = NOW()
+				SET "lastUsed" = `+db.Now()+`
 				WHERE "tgChatId" = $1 AND "type" = $2 AND "value" = $3`,
 				m.Chat.ID, helpers.FqCacheKey(rawKey), value)
 			if err != nil {

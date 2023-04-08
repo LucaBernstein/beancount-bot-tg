@@ -19,3 +19,13 @@ func AutoIncValue() string {
 	}
 	return ""
 }
+
+func Now() string {
+	switch DbType() {
+	case "SQLITE":
+		return "CURRENT_TIMESTAMP"
+	case "POSTGRES":
+		return "NOW()"
+	}
+	return ""
+}
