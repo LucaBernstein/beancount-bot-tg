@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
@@ -257,7 +258,13 @@ func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...s
 func (bc *BotController) configHandleEnableApi(m *tb.Message, params ...string) {
 	state := bc.configHandleBooleanFeature(m, helpers.USERSET_ENABLEAPI, "API support", params...)
 	if state {
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your user ID to use for token verification: %d", m.Sender.ID))
+		var chatInformation string
+		if crud.IsGroupChat(m) {
+			chatInformation = "group chat"
+		} else {
+			chatInformation = "direct chat"
+		}
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your chat ID to use for token verification: %d (%s with bot, make one request at a time, multiple tokens can be generated sequentially)", m.Chat.ID, chatInformation))
 	}
 }
 

@@ -4,6 +4,7 @@ Supports you in keeping track of your beancount transactions also if you need to
 
 ## Features and advantages
 
+* [x] REST API for additional interaction with the bot. E.g. read created transactions from bot automatically.
 * [x] Quickly record beancount transactions while on-the-go. Start as simple as entering the amount - no boilerplate
 * [x] Suggestions for accounts and descriptions used in the past or configured manually
 * [x] Templates with variables and advanced amount splitting for recurring or more complex transactions
