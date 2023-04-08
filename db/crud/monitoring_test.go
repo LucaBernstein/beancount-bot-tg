@@ -1,12 +1,15 @@
 package crud_test
 
 import (
+	"database/sql"
 	"log"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"gopkg.in/telebot.v3"
 )
 
 func TestHealthGetLogs(t *testing.T) {
@@ -22,7 +25,7 @@ func TestHealthGetLogs(t *testing.T) {
 
 	// TODO: Don't get query in here to parse (regex issues)
 	mock.ExpectQuery("").
-		WithArgs(helpers.ERROR, helpers.WARN, 24).
+		WithArgs(helpers.ERROR, helpers.WARN, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"level", "c"}).
 			AddRow(helpers.ERROR, 17))
 
@@ -36,7 +39,7 @@ func TestHealthGetLogs(t *testing.T) {
 
 	// TODO: Don't get query in here to parse (regex issues)
 	mock.ExpectQuery("").
-		WithArgs(helpers.ERROR, helpers.WARN, 2).
+		WithArgs(helpers.ERROR, helpers.WARN, sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"level", "c"}).
 			AddRow(helpers.ERROR, 17).
 			AddRow(helpers.WARN, 35))
@@ -161,7 +164,7 @@ func TestHealthGetUsersActiveCounts(t *testing.T) {
 	r := crud.NewRepo(db)
 
 	mock.ExpectQuery("").
-		WithArgs(72).
+		WithArgs(sqlmock.AnyArg()).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).
 			AddRow(4))
 
@@ -175,5 +178,71 @@ func TestHealthGetUsersActiveCounts(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+	}
+}
+
+func deleteAllLogs(conn *sql.DB) error {
+	_, err := conn.Exec(`DELETE FROM "app::log"`)
+	return err
+}
+
+func addLogEntry(conn *sql.DB, m *telebot.Message, level helpers.Level) error {
+	_, err := conn.Exec(`INSERT INTO "app::log" ("chat", "level", "message") VALUES ($1, $2, $3)`,
+		m.Chat.ID, level, "this is a test log entry...")
+	return err
+}
+
+func TestHealthGetUsersActiveCountsDb(t *testing.T) {
+	m := &telebot.Message{Chat: &telebot.Chat{ID: -19}, Sender: &telebot.User{ID: -19}}
+	conn := db.Connection()
+	repo := crud.NewRepo(conn)
+	repo.EnrichUserData(m)
+
+	pastHours := 12
+
+	err := deleteAllLogs(conn)
+	if err != nil {
+		t.Errorf("Deleting all logs should not fail: %e", err)
+	}
+	countA, err := repo.HealthGetUsersActiveCounts(pastHours)
+	if err != nil {
+		t.Errorf("No error should occur when getting active users: %e", err)
+	}
+
+	err = addLogEntry(conn, m, helpers.DEBUG)
+	if err != nil {
+		t.Errorf("Adding a log entry should not fail.")
+	}
+	countB, err := repo.HealthGetUsersActiveCounts(pastHours)
+	if err != nil {
+		t.Errorf("No error should occur when counting recently active users: %e", err)
+	}
+	log.Printf("Comparing active user counts %d <> %d", countA, countB)
+	if countB <= 0 || countB < countA {
+		t.Errorf("counts should be positive and second measurement not smaller than first measurement")
+	}
+}
+
+func TestHealthGetLogsDb(t *testing.T) {
+	m := &telebot.Message{Chat: &telebot.Chat{ID: -19}, Sender: &telebot.User{ID: -19}}
+	conn := db.Connection()
+	repo := crud.NewRepo(conn)
+	repo.EnrichUserData(m)
+
+	var err error
+	_ = addLogEntry(conn, m, helpers.ERROR)
+	_ = addLogEntry(conn, m, helpers.ERROR)
+	_ = addLogEntry(conn, m, helpers.WARN)
+
+	e, w, err := repo.HealthGetLogs(12)
+	if err != nil {
+		t.Errorf("Getting log counts should not fail: %e", err)
+	}
+	log.Printf("Log counts: W(%d), E(%d).", w, e)
+	if e < 2 {
+		t.Errorf("Expecting at least 2 error logs: %d", e)
+	}
+	if w < 1 {
+		t.Errorf("Expecting at least 1 warn log: %d", w)
 	}
 }

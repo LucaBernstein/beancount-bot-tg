@@ -1,31 +1,17 @@
-package migrations
+package postgres
 
 import (
 	"database/sql"
 	"log"
+
+	"github.com/LucaBernstein/beancount-bot-tg/db/migrations/generic"
 )
 
-func v1(db *sql.Tx) {
-	v1CreateSettingsTable(db)
+func (c *Controller) V1(db *sql.Tx) {
+	generic.V1CreateSettingsTable(db)
 	v1CreateUserTable(db)
 	v1CreateTransactionsTable(db)
 	v1CreateValueCache(db)
-}
-
-func v1CreateSettingsTable(db *sql.Tx) {
-	sqlStatement := `
-	CREATE TABLE "app::setting" (
-		"key" TEXT PRIMARY KEY,
-		"value" TEXT
-	);
-
-	INSERT INTO "app::setting" ("key", "value")
-		VALUES ('schemaVersion', '0');
-	`
-	_, err := db.Exec(sqlStatement)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func v1CreateUserTable(db *sql.Tx) {

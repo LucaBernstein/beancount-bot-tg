@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
@@ -30,8 +31,8 @@ func (r *Repo) PutCacheHints(m *tb.Message, values map[string]string) error {
 		} else {
 			// TODO: Insert all as single statement
 			_, err = r.db.Exec(`
-				INSERT INTO "bot::cache" ("tgChatId", "type", "value")
-				VALUES ($1, $2, $3)`,
+				INSERT INTO "bot::cache" ("id", "tgChatId", "type", "value")
+				VALUES (`+db.AutoIncValue()+`, $1, $2, $3)`,
 				m.Chat.ID, helpers.FqCacheKey(rawKey), value)
 			if err != nil {
 				return err

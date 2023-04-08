@@ -6,3 +6,6 @@ beancount-bot-tg
 coverage.out
 
 *.log
+
+# SQLite database files
+**/*.sqlite

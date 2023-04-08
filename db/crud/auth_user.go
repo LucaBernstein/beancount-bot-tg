@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -185,36 +186,63 @@ func (r *Repo) UserSetNotificationSetting(m *tb.Message, daysDelay, hour int) er
 }
 
 func (r *Repo) GetUsersToNotify() (*sql.Rows, error) {
-	return r.db.Query(`
-	SELECT
-		overdue."tgChatId",
-		overdue."count" overdue,
-		COUNT(tx2.*) "allTx"
-	FROM
-		(
-			SELECT DISTINCT
-				u."tgChatId",
-				COUNT(tx.id)
-			FROM
-				"auth::user" u,
-				"bot::notificationSchedule" s,
-				"bot::transaction" tx,
-				"bot::userSetting" userset
+	var query string
+	if strings.ToUpper(helpers.Env("DB_TYPE")) == "POSTGRES" {
+		query = `
+		SELECT
+			overdue."tgChatId",
+			overdue."count" overdue,
+			COUNT(tx2.*) "allTx"
+		FROM
+			(
+				SELECT DISTINCT
+					u."tgChatId",
+					COUNT(tx.id)
+				FROM
+					"auth::user" u
+						LEFT OUTER JOIN "bot::userSetting" userset
+							ON u."tgChatId" = userset."tgChatId"
+								AND userset."setting" = 'user.tzOffset',
+					"bot::notificationSchedule" s,
+					"bot::transaction" tx
+				WHERE
+					u."tgChatId" = s."tgChatId" AND
+					u."tgChatId" = tx."tgChatId" AND
+					
+					tx.archived = FALSE AND
+					MOD(s."notificationHour" + 24 - CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value"::DECIMAL END, 24) = $1 AND
+					tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
+				GROUP BY u."tgChatId"
+			) AS overdue,
+			"bot::transaction" tx2
+		WHERE
+			tx2."tgChatId" = overdue."tgChatId" AND
+			tx2.archived = FALSE
+		GROUP BY overdue."tgChatId", overdue."count"
+		`
+	} else {
+		query = `
+		WITH tx2 AS (SELECT "tgChatId", COUNT(*) AS "allTx" FROM "bot::transaction" GROUP BY "tgChatId")
+		SELECT
+			overdue."tgChatId",
+			overdue."count" overdue,
+			tx2."allTx"
+		FROM (
+			SELECT u."tgChatId", COUNT(*) AS "count"
+			FROM "auth::user" u
+				LEFT OUTER JOIN "bot::transaction" tx ON u."tgChatId" = tx."tgChatId" AND tx.archived = FALSE
+				JOIN "bot::notificationSchedule" s ON u."tgChatId" = s."tgChatId"
+				LEFT OUTER JOIN "bot::userSetting" userset ON u."tgChatId" = userset."tgChatId" AND userset."setting" = 'user.tzOffset'
 			WHERE
-				u."tgChatId" = s."tgChatId" AND
-				u."tgChatId" = tx."tgChatId" AND
-				u."tgChatId" = userset."tgChatId" AND
-				userset."setting" = 'user.tzOffset' AND
-				
-				tx.archived = FALSE AND
-				MOD(s."notificationHour" + 24 - CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value"::DECIMAL END, 24) = $1 AND
-				tx.created + INTERVAL '1 hour' * s."delayHours" <= NOW()
+				datetime(tx.created,'+1 hour', '+' || s."delayHours" || ' hour') <= datetime()
+				AND (s."notificationHour" + 24 - CASE WHEN userset."value" IS NULL THEN 0 ELSE userset."value" END)%24 = $1
 			GROUP BY u."tgChatId"
-		) AS overdue,
-	  	"bot::transaction" tx2
-	WHERE
-		tx2."tgChatId" = overdue."tgChatId" AND
-		tx2.archived = FALSE
-	GROUP BY overdue."tgChatId", overdue."count"
-	`, time.Now().Hour())
+		) AS "overdue"
+		JOIN "tx2" "tx2" ON overdue."tgChatId" = tx2."tgChatId"
+		WHERE
+			overdue."tgChatId" IS NOT NULL
+		GROUP BY overdue."tgChatId"
+		`
+	}
+	return r.db.Query(query, time.Now().UTC().Hour())
 }

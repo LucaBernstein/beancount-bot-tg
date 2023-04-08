@@ -44,6 +44,11 @@ Structs.
 https://github.com/fatih/structs.
 Copyright (c) 2014 Fatih Arslan.
 MIT license (https://github.com/fatih/structs/blob/master/LICENSE).
+
+Modernc SQLite driver.
+https://gitlab.com/cznic/sqlite.
+Copyright (c) 2017 The Sqlite Authors.
+BSD-3-Clause (https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE)
 ```
 
 ---

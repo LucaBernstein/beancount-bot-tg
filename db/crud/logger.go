@@ -3,6 +3,7 @@ package crud
 import (
 	"log"
 
+	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
@@ -22,7 +23,7 @@ func logToDb(r *Repo, chat string, level helpers.Level, message string) {
 		values = append(values, nil)
 	}
 	if !TEST_MODE {
-		_, err := r.db.Exec(`INSERT INTO "app::log" ("level", "message", "chat") VALUES ($1, $2, $3)`, values...)
+		_, err := r.db.Exec(`INSERT INTO "app::log" ("id", "level", "message", "chat") VALUES (`+db.AutoIncValue()+`, $1, $2, $3)`, values...)
 		if err != nil {
 			helpers.LogLocalf(helpers.ERROR, nil, "Error inserting log statement into db: %s", err.Error())
 			log.Fatal("Logging to database was not possible.")

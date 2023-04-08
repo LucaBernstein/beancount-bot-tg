@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
-	tb "gopkg.in/telebot.v3"
+	"gopkg.in/telebot.v3"
 )
 
 func TestEnrichUserData(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
-	chat := &tb.Chat{ID: 12345}
+	chat := &telebot.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -43,7 +45,7 @@ func TestEnrichUserData(t *testing.T) {
 		WithArgs(chat.ID, "username").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "username"}})
+	err = r.EnrichUserData(&telebot.Message{Chat: chat, Sender: &telebot.User{ID: chat.ID, Username: "username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}
@@ -62,13 +64,13 @@ func TestEnrichUserData(t *testing.T) {
 		WithArgs(chat.ID, "username").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "username"}})
+	err = r.EnrichUserData(&telebot.Message{Chat: chat, Sender: &telebot.User{ID: chat.ID, Username: "username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}
 
 	// User already exists, everything is fine
-	err = r.EnrichUserData(&tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID, Username: "old_username"}})
+	err = r.EnrichUserData(&telebot.Message{Chat: chat, Sender: &telebot.User{ID: chat.ID, Username: "old_username"}})
 	if err != nil {
 		t.Errorf("No error should be returned: %s", err.Error())
 	}
@@ -81,7 +83,7 @@ func TestEnrichUserData(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
-	chat := &tb.Chat{ID: 12345}
+	chat := &telebot.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -97,7 +99,7 @@ func TestDeleteUser(t *testing.T) {
 		WithArgs(chat.ID).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
-	err = r.DeleteUser(&tb.Message{Chat: chat})
+	err = r.DeleteUser(&telebot.Message{Chat: chat})
 	if err != nil {
 		t.Errorf("Expected no error for user deletion")
 	}
@@ -129,7 +131,7 @@ func TestEnrichUserDataErrors(t *testing.T) {
 		`).
 		WithArgs(789).
 		WillReturnError(fmt.Errorf("testing error behavior for EnrichUserData"))
-	err = r.EnrichUserData(&tb.Message{Chat: &tb.Chat{ID: 789}, Sender: &tb.User{Username: "username2"}})
+	err = r.EnrichUserData(&telebot.Message{Chat: &telebot.Chat{ID: 789}, Sender: &telebot.User{Username: "username2"}})
 	if err == nil {
 		t.Errorf("There should have been an error from the db query")
 	}
@@ -142,7 +144,7 @@ func TestEnrichUserDataErrors(t *testing.T) {
 func TestUserGetCurrency(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
-	chat := &tb.Chat{ID: 12345}
+	chat := &telebot.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -153,14 +155,14 @@ func TestUserGetCurrency(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
-	cur := r.UserGetCurrency(&tb.Message{Chat: chat})
+	cur := r.UserGetCurrency(&telebot.Message{Chat: chat})
 	if cur != helpers.DEFAULT_CURRENCY {
 		t.Errorf("If no currency is given for user in db, use default currency")
 	}
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CUR"))
-	cur = r.UserGetCurrency(&tb.Message{Chat: chat})
+	cur = r.UserGetCurrency(&telebot.Message{Chat: chat})
 	if cur != "TEST_CUR" {
 		t.Errorf("If currency is given for user in db, that one should be used")
 	}
@@ -173,7 +175,7 @@ func TestUserGetCurrency(t *testing.T) {
 func TestUserIsAdmin(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
-	chat := &tb.Chat{ID: 12345}
+	chat := &telebot.Chat{ID: 12345}
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -184,21 +186,21 @@ func TestUserIsAdmin(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}))
-	res := r.UserIsAdmin(&tb.Message{Chat: chat})
+	res := r.UserIsAdmin(&telebot.Message{Chat: chat})
 	if res {
 		t.Errorf("User should not be admin")
 	}
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("false"))
-	res = r.UserIsAdmin(&tb.Message{Chat: chat})
+	res = r.UserIsAdmin(&telebot.Message{Chat: chat})
 	if res {
 		t.Errorf("User should not be admin")
 	}
 
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
-	res = r.UserIsAdmin(&tb.Message{Chat: chat})
+	res = r.UserIsAdmin(&telebot.Message{Chat: chat})
 	if !res {
 		t.Errorf("User should be admin")
 	}
@@ -268,7 +270,7 @@ func TestUserNotificationSetting(t *testing.T) {
 		WithArgs(12345, 3*24, 17).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	err = r.UserSetNotificationSetting(&tb.Message{Chat: &tb.Chat{ID: 12345}}, 3, 17)
+	err = r.UserSetNotificationSetting(&telebot.Message{Chat: &telebot.Chat{ID: 12345}}, 3, 17)
 	if err != nil {
 		t.Errorf("Should not fail for setting notification setting")
 	}
@@ -276,7 +278,7 @@ func TestUserNotificationSetting(t *testing.T) {
 	mock.ExpectQuery(`SELECT "delayHours", "notificationHour" FROM "bot::notificationSchedule"`).
 		WithArgs(12345).
 		WillReturnRows(sqlmock.NewRows([]string{"delayHours", "notificationHour"}).AddRow(24*4, 18))
-	daysDelay, hour, err := r.UserGetNotificationSetting(&tb.Message{Chat: &tb.Chat{ID: 12345}})
+	daysDelay, hour, err := r.UserGetNotificationSetting(&telebot.Message{Chat: &telebot.Chat{ID: 12345}})
 	if err != nil {
 		t.Errorf("Should not fail for getting notification setting")
 	}
@@ -292,7 +294,7 @@ func TestUserNotificationSetting(t *testing.T) {
 func TestUserSetTag(t *testing.T) {
 	// create test dependencies
 	crud.TEST_MODE = true
-	message := &tb.Message{Chat: &tb.Chat{ID: 12345}}
+	message := &telebot.Message{Chat: &telebot.Chat{ID: 12345}}
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatal(err)
@@ -339,7 +341,7 @@ func TestUserGetTag(t *testing.T) {
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(9123, helpers.USERSET_TAG).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_TAG"))
-	tag := r.UserGetTag(&tb.Message{Chat: &tb.Chat{ID: 9123}})
+	tag := r.UserGetTag(&telebot.Message{Chat: &telebot.Chat{ID: 9123}})
 	if tag != "TEST_TAG" {
 		t.Errorf("TEST_TAG should have been returned as tag: %s", tag)
 	}
@@ -366,7 +368,7 @@ func TestUserSetCurrency(t *testing.T) {
 		WithArgs(9123, helpers.USERSET_CUR, "TEST_CUR_SPECIAL").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
-	err = r.UserSetCurrency(&tb.Message{Chat: &tb.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
+	err = r.UserSetCurrency(&telebot.Message{Chat: &telebot.Chat{ID: 9123}}, "TEST_CUR_SPECIAL")
 	if err != nil {
 		t.Errorf("No error should have been thrown: %s", err.Error())
 	}
@@ -374,4 +376,50 @@ func TestUserSetCurrency(t *testing.T) {
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
+}
+
+func addTransaction(tgChatId int64, created time.Time) error {
+	_, err := db.Connection().Exec(`INSERT INTO "bot::transaction"
+		("tgChatId", "created", "value")
+		VALUES($1, $2, 'some test tx');
+	`, tgChatId, created.Format(time.DateTime))
+	return err
+}
+
+func TestGetUsersToNotifyDb(t *testing.T) {
+	m := &telebot.Message{Chat: &telebot.Chat{ID: -255}, Sender: &telebot.User{ID: -255}}
+	repo := crud.NewRepo(db.Connection())
+	repo.EnrichUserData(m)
+	err := addTransaction(m.Chat.ID, time.Now().UTC().Add(-30*24*time.Hour)) // overdue
+	if err != nil {
+		t.Errorf("adding test transaction failed: %e", err)
+	}
+	_ = addTransaction(m.Chat.ID, time.Now().UTC()) // current
+	err = repo.UserSetNotificationSetting(m, 1, time.Now().UTC().Hour())
+	if err != nil {
+		t.Errorf("Setting notification time failed: %e", err)
+	}
+
+	rows, err := repo.GetUsersToNotify()
+	if err != nil {
+		t.Errorf("Getting users to notify from db should not error: %e", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var chatId int64
+		var overdue int
+		var allTx int
+		err := rows.Scan(&chatId, &overdue, &allTx)
+		if err != nil {
+			t.Errorf("Scanning overdue transactions from db should not error: %e", err)
+		}
+		log.Printf("Scanned chatId %d with overdue %d / %d.", chatId, overdue, allTx)
+		if chatId == -255 {
+			if allTx < 2 || overdue < 1 {
+				t.Errorf("allTx (%d) or overdue (%d) not as expected.", allTx, overdue)
+			}
+			return
+		}
+	}
+	t.Errorf("Required data seems to have not been found (no return so far)")
 }

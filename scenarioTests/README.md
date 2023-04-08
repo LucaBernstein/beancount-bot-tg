@@ -12,7 +12,7 @@ A few prerequisites are required for the scenario tests to run effectively.
 # Installing dependencies
 pip install -r requirements.txt
 # Creating authentication session: Fill in all details queried from you.
-python authenticate.py
+env $(cat .env | xargs) python3 authenticate.py
 # Store the output of the following command as Actions secret 'SCENARIO_TG_ANON_SESSION'
 cat anon.session | base64
 # The reverse is easiest if encoded string is pasted into file and decoded from there:

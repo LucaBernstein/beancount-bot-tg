@@ -12,7 +12,8 @@ Supports you in keeping track of your beancount transactions also if you need to
 * [x] Automatically apply tags to transactions, e.g. when on vacation
 * [x] Auto-format amount decimal point alignment to match [VSCode Beancount plugin](https://marketplace.visualstudio.com/items?itemName=Lencerf.beancount)
 * [x] Bot works in group chat (required to disable [privacy mode](https://core.telegram.org/bots#privacy-mode) with BotFather)
-* [x] Code Quality: Unit and scenario test covered
+* [x] Code Quality: Unit test covered
+* [x] Supported database drivers: `PostgreSQL`, `SQLite`
 
 Check out `/help` in the bot for all available commands and don't forget to configure your bot with `/config`. Just give it a try.
 
