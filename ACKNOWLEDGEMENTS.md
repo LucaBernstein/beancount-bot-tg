@@ -48,7 +48,21 @@ MIT license (https://github.com/fatih/structs/blob/master/LICENSE).
 Modernc SQLite driver.
 https://gitlab.com/cznic/sqlite.
 Copyright (c) 2017 The Sqlite Authors.
-BSD-3-Clause (https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE)
+BSD-3-Clause (https://gitlab.com/cznic/sqlite/-/blob/master/LICENSE).
+
+UUID.
+https://github.com/google/uuid.
+Copyright (c) 2009,2014 Google Inc.
+BSD-3-Clause (https://github.com/google/uuid/blob/master/LICENSE).
+
+Gin-Gonic.
+https://github.com/gin-gonic/gin.
+Copyright (c) 2014 Manuel Martínez-Almeida.
+MIT License (https://github.com/gin-gonic/gin/blob/master/LICENSE).
+
+https://github.com/gin-contrib/cors.
+Copyright (c) 2016 Gin-Gonic.
+MIT License (https://github.com/gin-contrib/cors/blob/master/LICENSE).
 ```
 
 ---

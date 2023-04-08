@@ -255,10 +255,13 @@ func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...s
 }
 
 func (bc *BotController) configHandleEnableApi(m *tb.Message, params ...string) {
-	bc.configHandleBooleanFeature(m, helpers.USERSET_ENABLEAPI, "API support", params...)
+	state := bc.configHandleBooleanFeature(m, helpers.USERSET_ENABLEAPI, "API support", params...)
+	if state {
+		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your user ID to use for token verification: %d", m.Sender.ID))
+	}
 }
 
-func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, name string, params ...string) {
+func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, name string, params ...string) (state bool) {
 	var err error
 	if len(params) == 0 { // 0 params: GET
 		exists, value, err := bc.Repo.GetUserSetting(key, m.Chat.ID)
@@ -271,7 +274,7 @@ func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, n
 			return
 		} else {
 			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s is currently turned on.", name))
-			return
+			return true
 		}
 	} else if len(params) > 1 { // 2 or more params: too many
 		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
@@ -287,7 +290,7 @@ func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, n
 			return
 		}
 		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s has successfully been turned on.", name))
-		return
+		return true
 	case "OFF":
 		err = bc.Repo.SetUserSetting(key, "false", m.Chat.ID)
 		if err != nil {

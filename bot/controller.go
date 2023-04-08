@@ -440,7 +440,7 @@ func (bc *BotController) cronNotifications() {
 		if openCount == 1 {
 			s = ""
 		}
-		bc.Bot.SendSilent(bc, ReceiverImpl{chatId: tgChatId}, fmt.Sprintf(
+		bc.Bot.SendSilent(bc, ReceiverImpl{ChatId: tgChatId}, fmt.Sprintf(
 			// TODO: Replace hard-coded command directives:
 			" This is your reminder to inform you that you currently have %d open transaction%s (%d triggering this notification). Check '/list' to see your open transactions. If you don't need them anymore you can /archiveAll or /delete them."+
 				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s, overdue))
@@ -450,11 +450,11 @@ func (bc *BotController) cronNotifications() {
 }
 
 type ReceiverImpl struct {
-	chatId string
+	ChatId string
 }
 
 func (r ReceiverImpl) Recipient() string {
-	return r.chatId
+	return r.ChatId
 }
 
 func (bc *BotController) commandAdminCronInfo(c tb.Context) error {
@@ -504,7 +504,7 @@ func (bc *BotController) commandAdminNofify(c tb.Context) error {
 	}
 
 	for _, recipient := range receivers {
-		bc.Bot.SendSilent(bc, ReceiverImpl{chatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
+		bc.Bot.SendSilent(bc, ReceiverImpl{ChatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
 		bc.Logf(TRACE, c.Message(), "Sent notification to %s", recipient)
 		// TODO: Add message like 'If you don't want to receive further service notifications, you can turn them off in the /settings with '/settings notif off'.'
 		//  GitHub-issue: #28

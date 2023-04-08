@@ -24,6 +24,7 @@ type MigrationProvider interface {
 	V11(*sql.Tx)
 	V12(*sql.Tx)
 	V13(*sql.Tx)
+	V14(*sql.Tx)
 }
 
 func migrate(db *sql.DB, m MigrationProvider) {
@@ -48,6 +49,7 @@ func migrate(db *sql.DB, m MigrationProvider) {
 	migrationsWrapper.Migrate(m.V11, 11)(db)
 	migrationsWrapper.Migrate(m.V12, 12)(db)
 	migrationsWrapper.Migrate(m.V13, 13)(db)
+	migrationsWrapper.Migrate(m.V14, 14)(db)
 
 	log.Printf("Migrations ran through. Schema version: %d", m.Schema(db))
 }
