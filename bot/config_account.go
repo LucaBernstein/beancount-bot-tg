@@ -25,7 +25,7 @@ func (bc *BotController) DeleteUserData(m *tb.Message) {
 
 	errors.handle1(bc.Repo.UserSetNotificationSetting(m, -1, -1))
 
-	errors.handle1(bc.Repo.DeleteTransactions(m))
+	errors.handle2(bc.Repo.DeleteTransactions(m))
 	errors.handle1(bc.Repo.DeleteTemplates(m))
 
 	errors.handle1(bc.Repo.DeleteAllUserSettings(m.Chat.ID))

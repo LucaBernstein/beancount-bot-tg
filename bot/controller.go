@@ -288,7 +288,7 @@ func (bc *BotController) commandList(c tb.Context) error {
 		var err error
 		if elementNumber <= len(tx) {
 			elementDbId := tx[elementNumber-1].Id
-			err = bc.Repo.DeleteTransaction(c.Message(), isArchived, elementDbId)
+			_, err = bc.Repo.DeleteTransaction(c.Message(), isArchived, elementDbId)
 		} else {
 			err = fmt.Errorf("the number you specified was too high. Please use a correct number as seen from '/list [archived] numbered'")
 		}
@@ -379,7 +379,7 @@ func (bc *BotController) commandDeleteTransactions(c tb.Context) error {
 		return nil
 	}
 	bc.Logf(TRACE, c.Message(), "Deleting transactions")
-	err := bc.Repo.DeleteTransactions(c.Message())
+	_, err := bc.Repo.DeleteTransactions(c.Message())
 	if err != nil {
 		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong deleting your transactions: "+err.Error())
 		return nil

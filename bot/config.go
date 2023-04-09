@@ -330,3 +330,9 @@ func (e *errors) handle1(err error) {
 		e.bc.Logf(ERROR, e.m, "Handling error for operation '%s' (failing silently, proceeding): %s", e.operation, err.Error())
 	}
 }
+
+func (e *errors) handle2(_ interface{}, err error) {
+	if err != nil {
+		e.bc.Logf(ERROR, e.m, "Handling error for operation '%s' (failing silently, proceeding): %s", e.operation, err.Error())
+	}
+}

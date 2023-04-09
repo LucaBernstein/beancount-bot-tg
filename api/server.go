@@ -22,7 +22,7 @@ func StartWebServer(bc *bot.BotController) {
 	transactionGroup := apiGroup.Group("/transactions")
 	transactions.NewRouter(bc).Hook(transactionGroup)
 
-	port := ":80"
+	port := ":8080"
 	log.Printf("Web server started on %s", port)
 	r.Run(port)
 }

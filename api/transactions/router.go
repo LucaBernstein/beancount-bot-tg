@@ -20,4 +20,6 @@ func (r *Router) Hook(g *gin.RouterGroup) {
 	g.Use(helpers.AttachChatId(r.bc))
 
 	g.GET("/list", r.List)
+	g.DELETE("/list", r.ListDeleteAll)
+	g.DELETE("/list/:id", r.ListDeleteSingle)
 }
