@@ -63,12 +63,15 @@ func (r *Repo) ArchiveTransactions(m *tb.Message) error {
 	return err
 }
 
-func (r *Repo) DeleteTransactions(m *tb.Message) error {
+func (r *Repo) DeleteTransactions(m *tb.Message) (int64, error) {
 	LogDbf(r, helpers.TRACE, m, "Permanently deleting transactions")
-	_, err := r.db.Exec(`
+	res, err := r.db.Exec(`
 		DELETE FROM "bot::transaction"
 		WHERE "tgChatId" = $1`, m.Chat.ID)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }
 
 func (r *Repo) DeleteTemplates(m *tb.Message) error {
@@ -79,10 +82,13 @@ func (r *Repo) DeleteTemplates(m *tb.Message) error {
 	return err
 }
 
-func (r *Repo) DeleteTransaction(m *tb.Message, isArchived bool, elementId int) error {
+func (r *Repo) DeleteTransaction(m *tb.Message, isArchived bool, elementId int) (int64, error) {
 	LogDbf(r, helpers.TRACE, m, "Deleting single transaction")
-	_, err := r.db.Exec(`
+	rows, err := r.db.Exec(`
 		DELETE FROM "bot::transaction"
 		WHERE "tgChatId" = $1 AND "archived" = $2 AND "id" = $3`, m.Chat.ID, isArchived, elementId)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return rows.RowsAffected()
 }
