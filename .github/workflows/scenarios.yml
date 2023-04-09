@@ -63,9 +63,18 @@ jobs:
             dep ensure
         fi
         go run . > bot.log &
-        echo "Waiting for 6 seconds for bot to start..."
-        sleep 6
-        echo "Printing logs so far..."
+        for i in 10 10 10 10 10 10 10 10 5 5 5 5; do
+          echo "=== Waiting for $i seconds for bot to start... ==="
+          sleep $i
+          if [[ "$(cat bot.log | wc -l)" -gt 3 ]]; then
+            echo "=== Bot started. Printing logs so far... ==="
+            cat bot.log
+            exit 0
+          fi
+          echo "=== Bot did not yet start. Log excerpt: ==="
+          tail -n 5 bot.log
+        done
+        echo "=== Bot did not start in time. Trying to run scenarios anyway... ==="
         cat bot.log
     - name: Run scenario tests
       run: |
