@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	dbpkg "github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -23,7 +24,7 @@ func TestTemplateHelpForNonexistingTemplate(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -31,13 +32,13 @@ func TestTemplateHelpForNonexistingTemplate(t *testing.T) {
 		WithArgs(12345, "notexist%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t notexist"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t notexist"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /template", "send help for invalid command")
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t add nonesense"}})
-	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Blah"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t add nonesense"}})
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "Blah"}})
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "Usage help for /template", "send help for invalid command")
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -54,7 +55,7 @@ func TestTemplateList(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -62,7 +63,7 @@ func TestTemplateList(t *testing.T) {
 		WithArgs(12345).
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t list"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t list"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "not created any template yet", "no template yet message")
 
 	mock.
@@ -70,7 +71,7 @@ func TestTemplateList(t *testing.T) {
 		WithArgs(12345).
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}).AddRow("test1", "tpl1").AddRow("test2", "tpl2"))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t list"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t list"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), `test1:
 tpl1
 
@@ -82,7 +83,7 @@ tpl2`, "templates")
 		WithArgs(12345, "test3%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t list test3"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t list test3"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "No template name matched your query 'test3'", "single template response")
 
 	mock.
@@ -90,7 +91,7 @@ tpl2`, "templates")
 		WithArgs(12345, "test2%").
 		WillReturnRows(sqlmock.NewRows([]string{"name", "template"}).AddRow("test2", "tpl2"))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t list test2"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t list test2"}})
 	helpers.TestExpect(t, strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "tpl1"), false, "should not contain tpl1")
 	helpers.TestExpect(t, strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "tpl2"), true, "but should contain tpl2")
 
@@ -108,14 +109,14 @@ func TestTemplateAdd(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t add my template"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t add my template"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "parameter count mismatch", "parameter count mismatch response")
 
 	// Step 1: Start template creation
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t add myTemplate"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t add myTemplate"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "Please provide a full transaction template", "template creation process response")
 	helpers.TestExpect(t, bc.State.states[chatId(chat.ID)], ST_TPL, "state should show template process")
 	helpers.TestExpect(t, bc.State.tplStates[chatId(chat.ID)], TemplateName("myTemplate"), "state should save template name")
@@ -125,7 +126,7 @@ func TestTemplateAdd(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	// Step 2: Send template
-	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "template data"}})
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "template data"}})
 
 	helpers.TestExpect(t, bc.State.states[chatId(chat.ID)], ST_NONE, "state should be clean again")
 
@@ -143,14 +144,14 @@ func TestTemplateRm(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "bot::template" WHERE "tgChatId" = $1 AND "name" = $2`)).
 		WithArgs(12345, "myTemplate").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/template rm myTemplate"}}) // also test for /template instead of short alias /t
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/template rm myTemplate"}}) // also test for /template instead of short alias /t
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "Successfully removed your template 'myTemplate'", "removed template")
 
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -167,7 +168,7 @@ func TestTemplateUse(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -181,7 +182,7 @@ func TestTemplateUse(t *testing.T) {
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
-	bc.commandTemplates(&MockContext{M: &tb.Message{Chat: chat, Text: "/t test 2022-04-11"}})
+	bc.commandTemplates(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/t test 2022-04-11"}})
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.AllLastSentWhat[len(bot.AllLastSentWhat)-2]), "Creating a new transaction from your template 'test'", "template tx starting msg")
 	helpers.TestStringContains(t, fmt.Sprintf("%v", bot.LastSentWhat), "amount", "asking for amount")
 
@@ -207,8 +208,8 @@ func TestTemplateUse(t *testing.T) {
 `).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 	tx := bc.State.txStates[chatId(chat.ID)]
-	tx.Input(&tb.Message{Text: "10.51 EUR_TEST"})                                       // amount
-	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Buy something"}}) // description (via handleTextState)
+	tx.Input(&tb.Message{Text: "10.51 EUR_TEST"})                                               // amount
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "Buy something"}}) // description (via handleTextState)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)

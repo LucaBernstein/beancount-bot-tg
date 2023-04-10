@@ -10,6 +10,7 @@ import (
 	tb "gopkg.in/telebot.v3"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 )
@@ -73,16 +74,16 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	// Create simple tx and fill it completely
-	bc.commandCreateSimpleTx(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandCreateSimpleTx(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                                     // amount
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                        // description
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                             // from
-	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                             // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                                // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                                     // from
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
@@ -90,7 +91,7 @@ func TestTextHandlingWithoutPriorState(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("false"))
 
 	// After the first tx is done, send some command
-	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}} // same ID: not group chat
+	m := &botTest.MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}} // same ID: not group chat
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail
@@ -113,7 +114,7 @@ func TestStartTransactionWithPlainAmountThousandsSeparated(t *testing.T) {
 	defer db.Close()
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -121,7 +122,7 @@ func TestStartTransactionWithPlainAmountThousandsSeparated(t *testing.T) {
 		WithArgs(chat.ID, helpers.USERSET_CUR).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("TEST_CURRENCY"))
 
-	bc.handleTextState(&MockContext{M: &tb.Message{Chat: chat, Text: "1,000,000"}})
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "1,000,000"}})
 
 	debugString := bc.State.txStates[12345].Debug()
 	expected := "data=map[amount::${SPACE_FORMAT}1000000.00"
@@ -145,15 +146,15 @@ func TestTransactionDeletion(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
-	bc.commandDeleteTransactions(&MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll"}})
+	bc.commandDeleteTransactions(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "to confirm the deletion of your transactions") {
 		t.Errorf("Deletion should require 'yes' confirmation. Got: %s", bot.LastSentWhat)
 	}
 
-	bc.commandDeleteTransactions(&MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll YeS"}})
+	bc.commandDeleteTransactions(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/deleteAll YeS"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Permanently deleted all your transactions") {
 		t.Errorf("Deletion should work with confirmation. Got: %s", bot.LastSentWhat)
 	}
@@ -187,19 +188,19 @@ func TestTransactionListMaxLength(t *testing.T) {
 		)
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	// < 4096 chars tx
-	bc.commandList(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandList(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	if len(bot.AllLastSentWhat) != 1 {
 		t.Errorf("Expected exactly one message to be sent out: %v", bot.AllLastSentWhat)
 	}
 
-	bot.reset()
+	bot.Reset()
 
 	// > 4096 chars tx
-	bc.commandList(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandList(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	if len(bot.AllLastSentWhat) != 2 {
 		t.Errorf("Expected exactly two messages to be sent out: %v", strings.Join(stringArr(bot.AllLastSentWhat), ", "))
 	}
@@ -221,7 +222,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 		log.Fatal(err)
 	}
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	// successful date enrichment
@@ -233,7 +234,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 
-	bc.commandList(&MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
+	bc.commandList(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
 
 	if bot.LastSentWhat != "; recorded on 2022-03-30 14:24\ntx1\n; recorded on 2022-03-30 15:24\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
@@ -248,7 +249,7 @@ func TestTransactionsListArchivedDated(t *testing.T) {
 		)
 	mock.ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).WithArgs(12345, helpers.USERSET_TZOFF).WillReturnRows(mock.NewRows([]string{"value"}))
 
-	bc.commandList(&MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
+	bc.commandList(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/testListCommand(ignored) archived dated"}})
 
 	if bot.LastSentWhat != "tx1\ntx2" {
 		t.Errorf("Expected last message to contain transactions:\n%v", bot.LastSentWhat)
@@ -273,10 +274,10 @@ func TestWritingComment(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
-	bc.commandAddComment(&MockContext{M: &tb.Message{Chat: chat, Text: "/comment \"; This is a comment\""}})
+	bc.commandAddComment(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/comment \"; This is a comment\""}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
@@ -287,7 +288,7 @@ func TestWritingComment(t *testing.T) {
 		WithArgs(chat.ID, "This is another comment without \" (quotes)"+"\n").
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	bc.commandAddComment(&MockContext{M: &tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"}})
+	bc.commandAddComment(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "/c This is another comment without \\\" (quotes)"}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "added the comment") {
 		t.Errorf("Adding comment should have worked. Got message: %s", bot.LastSentWhat)
 	}
@@ -314,14 +315,14 @@ func TestCommandStartHelp(t *testing.T) {
 	}
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(false))
-	bc.commandStart(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandStart(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 
 	if !strings.Contains(fmt.Sprintf("%v", bot.AllLastSentWhat[0]), "Welcome") {
 		t.Errorf("Bot should welcome user first")
@@ -338,7 +339,7 @@ func TestCommandStartHelp(t *testing.T) {
 		ExpectQuery(`SELECT "value" FROM "bot::userSetting"`).
 		WithArgs(chat.ID, helpers.USERSET_ADM).
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(true))
-	bc.commandHelp(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandHelp(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "admin_") {
 		t.Errorf("Bot should send admin commands in help message for admin user")
 	}
@@ -351,9 +352,9 @@ func TestCommandStartHelp(t *testing.T) {
 func TestCommandCancel(t *testing.T) {
 	chat := &tb.Chat{ID: 12345}
 	bc := NewBotController(nil)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
-	bc.commandCancel(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandCancel(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "did not currently have any state or transaction open that could be cancelled") {
 		t.Errorf("Unexpectedly there were open tx before")
 	}
@@ -394,19 +395,19 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	// Create simple tx and fill it completely
-	bc.commandCreateSimpleTx(&MockContext{M: &tb.Message{Chat: chat}})
+	bc.commandCreateSimpleTx(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                                  // amount
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                     // description
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                          // from
-	bc.handleTextState(&MockContext{&tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                          // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                             // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                                  // from
+	bc.handleTextState(&botTest.MockContext{&tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
-	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}}
+	m := &botTest.MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}}
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail
@@ -429,7 +430,7 @@ func TestCommandWithoutLeadingSlash(t *testing.T) {
 	defer db.Close()
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -438,7 +439,7 @@ func TestCommandWithoutLeadingSlash(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow("true"))
 
 	// After the first tx is done, send some command
-	m := &MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}, Text: "config about"}} // same ID: not group chat
+	m := &botTest.MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}, Text: "config about"}} // same ID: not group chat
 	bc.handleTextState(m)
 
 	// should catch and send help instead of fail

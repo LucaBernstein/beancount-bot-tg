@@ -33,7 +33,7 @@ func (bc *BotController) templatesHelp(m *tb.Message, err error) {
 	if err != nil {
 		errorMsg += fmt.Sprintf("Error executing your command: %s\n\n", err.Error())
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), errorMsg+`Usage help for /template:
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), errorMsg+`Usage help for /template:
 	/template list [name]
 	/template add <name>
 	/template rm <name>
@@ -54,13 +54,13 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 	templates, err := bc.Repo.GetTemplates(m, searchTemplate)
 	if err != nil {
 		bc.Logf(ERROR, m, "Error loading templates: %s", err.Error())
-		bc.Bot.SendSilent(bc, Recipient(m), "There has been an error loading your templates.")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "There has been an error loading your templates.")
 	}
 	if len(templates) == 0 {
 		if searchTemplate == "" {
-			bc.Bot.SendSilent(bc, Recipient(m), "You have not created any template yet. Please see /template")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "You have not created any template yet. Please see /template")
 		} else {
-			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("No template name matched your query '%s'", searchTemplate))
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("No template name matched your query '%s'", searchTemplate))
 		}
 	} else {
 		templateList := []string{"These templates are currently available to you:"}
@@ -69,7 +69,7 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 		}
 		messageSplits := bc.MergeMessagesHonorSendLimit(templateList, "\n\n")
 		for _, message := range messageSplits {
-			bc.Bot.SendSilent(bc, Recipient(m), message, clearKeyboard())
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), message, clearKeyboard())
 		}
 	}
 }
@@ -77,7 +77,7 @@ func (bc *BotController) templatesHandleList(m *tb.Message, params ...string) {
 func (bc *BotController) templatesHandleAdd(m *tb.Message, params ...string) {
 	state := bc.State.GetType(m)
 	if state != ST_NONE {
-		bc.Bot.SendSilent(bc, Recipient(m), "There is another operation currently running for you. Please complete it or /cancel it before proceeding.")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "There is another operation currently running for you. Please complete it or /cancel it before proceeding.")
 		return
 	}
 	if len(params) != 1 {
@@ -90,7 +90,7 @@ func (bc *BotController) templatesHandleAdd(m *tb.Message, params ...string) {
 		return
 	}
 	bc.State.StartTpl(m, name)
-	bc.Bot.SendSilent(bc, Recipient(m), `Please provide a full transaction template. Variables are to be inserted as '${<variable>}'. The following variables can be used:
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), `Please provide a full transaction template. Variables are to be inserted as '${<variable>}'. The following variables can be used:
 - ${amount}, ${-amount}, ${amount/i} (e.g. ${amount/2})
 - ${date}
 - ${description}
@@ -117,24 +117,24 @@ func (bc *BotController) templatesHandleRemove(m *tb.Message, params ...string) 
 	name := params[0]
 	wasRemoved, err := bc.Repo.RmTemplate(m.Chat.ID, string(name))
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "Something went wrong while deleting your template.")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "Something went wrong while deleting your template.")
 		return
 	}
 	if !wasRemoved {
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("There was no template called '%s' to remove. Please check '/t list'.", name))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("There was no template called '%s' to remove. Please check '/t list'.", name))
 		return
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Successfully removed your template '%s'.", name))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Successfully removed your template '%s'.", name))
 }
 
 func (bc *BotController) processNewTemplateResponse(m *tb.Message, name TemplateName) (clearState bool) {
 	template := m.Text
 	err := bc.Repo.AddTemplate(m.Chat.ID, string(name), template)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "Something went wrong while saving your template. Please check whether the name already exists.")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "Something went wrong while saving your template. Please check whether the name already exists.")
 		return false
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Successfully created your template. You can use it from now on by typing '/t %s' (/t is short for /template).", name))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Successfully created your template. You can use it from now on by typing '/t %s' (/t is short for /template).", name))
 	return true
 }
 
@@ -169,7 +169,7 @@ func (bc *BotController) templatesUse(m *tb.Message, params ...string) error {
 		bc.Logf(ERROR, m, "Creating tx from template failed: %s", err.Error())
 		return fmt.Errorf("something went wrong creating a transaction from your template: %s", err.Error())
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Creating a new transaction from your template '%s'.", tpl.Name))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Creating a new transaction from your template '%s'.", tpl.Name))
 	if tx.IsDone() {
 		bc.finishTransaction(m, tx)
 		return nil

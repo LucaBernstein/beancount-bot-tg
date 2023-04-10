@@ -39,7 +39,7 @@ func (r *Router) Verification(c *gin.Context) {
 	}
 
 	// Send nonce to bot user chat
-	r.bc.Bot.SendSilent(r.bc, bot.ReceiverImpl{ChatId: pUserId}, fmt.Sprintf(
+	r.bc.Bot.SendSilent(r.bc.Logf, bot.ReceiverImpl{ChatId: pUserId}, fmt.Sprintf(
 		"To verify your API token creation attempt, please use this number: %s", nonce))
 
 	c.String(http.StatusCreated, "Successfully created token. Please check for the verification message by the Telegram bot.")

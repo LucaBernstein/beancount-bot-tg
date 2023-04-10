@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -12,7 +13,7 @@ type IBot interface {
 	Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error
 	// custom by me:
 	Me() *tb.User
-	SendSilent(bc *BotController, to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error)
+	SendSilent(logFn func(level helpers.Level, m *tb.Message, format string, v ...interface{}), to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error)
 }
 
 type Bot struct {
@@ -39,10 +40,10 @@ func (b *Bot) Me() *tb.User {
 	return b.bot.Me
 }
 
-func (b *Bot) SendSilent(bc *BotController, to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
+func (b *Bot) SendSilent(logFn func(level helpers.Level, m *tb.Message, format string, v ...interface{}), to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
 	m, err := b.Send(to, what, options...)
 	if err != nil {
-		bc.Logf(ERROR, m, "Sending bot message failed: %s", err.Error())
+		logFn(ERROR, m, "Sending bot message failed: %s", err.Error())
 	}
 	return m, err
 }

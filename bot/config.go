@@ -82,14 +82,14 @@ Reset your data stored by the bot. WARNING: This action is permanent!
 		bc.Logf(ERROR, m, "Parsing configHelp template failed: %s", err.Error())
 	}
 
-	bc.Bot.SendSilent(bc, Recipient(m), errorMsg+filledTemplate)
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), errorMsg+filledTemplate)
 }
 
 func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
 	currency := bc.Repo.UserGetCurrency(m)
 	if len(params) == 0 { // 0 params: GET currency
 		// Return currently set currency
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your current currency is set to '%s'. To change it add the new currency to use to the command like this: '/%s currency EUR'.", currency, CMD_CONFIG))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Your current currency is set to '%s'. To change it add the new currency to use to the command like this: '/%s currency EUR'.", currency, CMD_CONFIG))
 		return
 	} else if len(params) > 1 { // 2 or more params: too many
 		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
@@ -99,10 +99,10 @@ func (bc *BotController) configHandleCurrency(m *tb.Message, params ...string) {
 	newCurrency := params[0]
 	err := bc.Repo.UserSetCurrency(m, newCurrency)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "An error ocurred saving your currency preference: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "An error ocurred saving your currency preference: "+err.Error())
 		return
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Changed default currency for all future transactions from '%s' to '%s'.", currency, newCurrency))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Changed default currency for all future transactions from '%s' to '%s'.", currency, newCurrency))
 }
 
 func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
@@ -110,9 +110,9 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 		// GET tag
 		tag := bc.Repo.UserGetTag(m)
 		if tag != "" {
-			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("All new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("All new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
 		} else {
-			bc.Bot.SendSilent(bc, Recipient(m), "No tags are currently added to new transactions (vacation mode disabled).")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "No tags are currently added to new transactions (vacation mode disabled).")
 		}
 		return
 	} else if len(params) > 1 { // Only 0 or 1 allowed
@@ -122,17 +122,17 @@ func (bc *BotController) configHandleTag(m *tb.Message, params ...string) {
 	if params[0] == "off" {
 		// DELETE tag
 		bc.Repo.UserSetTag(m, "")
-		bc.Bot.SendSilent(bc, Recipient(m), "Disabled automatically set tags on new transactions")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "Disabled automatically set tags on new transactions")
 		return
 	}
 	// SET tag
 	tag := strings.TrimPrefix(params[0], "#")
 	err := bc.Repo.UserSetTag(m, tag)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "An error ocurred saving the tag: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "An error ocurred saving the tag: "+err.Error())
 		return
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("From now on all new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("From now on all new transactions automatically get the tag #%s added (vacation mode enabled)", tag))
 }
 
 func (bc *BotController) configHandleNotification(m *tb.Message, params ...string) {
@@ -151,14 +151,14 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 			return
 		}
 		if daysDelay < 0 {
-			bc.Bot.SendSilent(bc, Recipient(m), "Notifications are disabled for open transactions.")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "Notifications are disabled for open transactions.")
 			return
 		}
 		plural_s := "s"
 		if daysDelay == 1 {
 			plural_s = ""
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("The bot will notify you daily at hour %d (%s) if transactions are open for more than %d day%s", hour, tz, daysDelay, plural_s))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("The bot will notify you daily at hour %d (%s) if transactions are open for more than %d day%s", hour, tz, daysDelay, plural_s))
 		return
 	} else if len(params) == 1 {
 		// DELETE schedule
@@ -168,7 +168,7 @@ func (bc *BotController) configHandleNotification(m *tb.Message, params ...strin
 				bc.configHelp(m, fmt.Errorf("error setting notification schedule: %s", err.Error()))
 				return
 			}
-			bc.Bot.SendSilent(bc, Recipient(m), "Successfully disabled notifications for open transactions.")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "Successfully disabled notifications for open transactions.")
 			return
 		}
 		bc.configHelp(m, fmt.Errorf("invalid parameters"))
@@ -212,7 +212,7 @@ func (bc *BotController) configHandleAbout(m *tb.Message, params ...string) {
 	if version == "" {
 		version = "not specified"
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), escapeCharacters(fmt.Sprintf(`Version information about [LucaBernstein/beancount-bot-tg](https://github.com/LucaBernstein/beancount-bot-tg)
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), escapeCharacters(fmt.Sprintf(`Version information about [LucaBernstein/beancount-bot-tg](https://github.com/LucaBernstein/beancount-bot-tg)
 
 Version: [%s](%s)`,
 		version,
@@ -230,7 +230,7 @@ func escapeCharacters(s string, c ...string) string {
 func (bc *BotController) configHandleTimezoneOffset(m *tb.Message, params ...string) {
 	tz_offset := bc.Repo.UserGetTzOffset(m)
 	if len(params) == 0 { // 0 params: GET
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your current timezone offset is set to 'UTC%s'.", prettyTzOffset(tz_offset)))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Your current timezone offset is set to 'UTC%s'.", prettyTzOffset(tz_offset)))
 		return
 	} else if len(params) > 1 { // 2 or more params: too many
 		bc.configHelp(m, fmt.Errorf("invalid amount of parameters specified"))
@@ -240,15 +240,15 @@ func (bc *BotController) configHandleTimezoneOffset(m *tb.Message, params ...str
 	newTzOffset := params[0]
 	newTzParsed, err := strconv.Atoi(newTzOffset)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "An error ocurred saving your timezone offset preference: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "An error ocurred saving your timezone offset preference: "+err.Error())
 		return
 	}
 	err = bc.Repo.UserSetTzOffset(m, newTzParsed)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(m), "An error ocurred saving your timezone offset preference: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "An error ocurred saving your timezone offset preference: "+err.Error())
 		return
 	}
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Changed timezone offset for default dates for all future transactions from 'UTC%s' to 'UTC%s'.", prettyTzOffset(tz_offset), prettyTzOffset(newTzParsed)))
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Changed timezone offset for default dates for all future transactions from 'UTC%s' to 'UTC%s'.", prettyTzOffset(tz_offset), prettyTzOffset(newTzParsed)))
 }
 
 func (bc *BotController) configHandleOmitLeadingSlash(m *tb.Message, params ...string) {
@@ -264,7 +264,7 @@ func (bc *BotController) configHandleEnableApi(m *tb.Message, params ...string) 
 		} else {
 			chatInformation = "direct chat"
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Your chat ID to use for token verification: %d (%s with bot, make one request at a time, multiple tokens can be generated sequentially)", m.Chat.ID, chatInformation))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Your chat ID to use for token verification: %d (%s with bot, make one request at a time, multiple tokens can be generated sequentially)", m.Chat.ID, chatInformation))
 	}
 }
 
@@ -273,14 +273,14 @@ func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, n
 	if len(params) == 0 { // 0 params: GET
 		exists, value, err := bc.Repo.GetUserSetting(key, m.Chat.ID)
 		if err != nil {
-			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while retrieving the value currently set for the queried user setting. Please try again later.")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "There has been an error internally while retrieving the value currently set for the queried user setting. Please try again later.")
 			return
 		}
 		if !exists || strings.ToUpper(value) != "TRUE" {
-			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s is currently turned off. Please check the help on how to turn it on.", name))
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("%s is currently turned off. Please check the help on how to turn it on.", name))
 			return
 		} else {
-			bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s is currently turned on.", name))
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("%s is currently turned on.", name))
 			return true
 		}
 	} else if len(params) > 1 { // 2 or more params: too many
@@ -293,18 +293,18 @@ func (bc *BotController) configHandleBooleanFeature(m *tb.Message, key string, n
 	case "ON":
 		err = bc.Repo.SetUserSetting(key, "true", m.Chat.ID)
 		if err != nil {
-			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
 			return
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s has successfully been turned on.", name))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("%s has successfully been turned on.", name))
 		return true
 	case "OFF":
 		err = bc.Repo.SetUserSetting(key, "false", m.Chat.ID)
 		if err != nil {
-			bc.Bot.SendSilent(bc, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
+			bc.Bot.SendSilent(bc.Logf, Recipient(m), "There has been an error internally while setting your value. Please try again later.")
 			return
 		}
-		bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("%s has successfully been turned off.", name))
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("%s has successfully been turned off.", name))
 		return
 	default:
 		bc.configHelp(m, fmt.Errorf("invalid setting value: '%s'. Not in ['ON', 'OFF']", newUserSettingValue))
