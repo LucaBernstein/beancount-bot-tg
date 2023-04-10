@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -50,4 +52,46 @@ func (r *Router) ReadConfig(c *gin.Context) {
 	settings[helpers.USERSET_TZOFF] = offset
 
 	c.JSON(http.StatusOK, settings)
+}
+
+type SettingsPost struct {
+	Setting string      `json:"setting"`
+	Value   interface{} `json:"value"`
+}
+
+func (r *Router) SetConfig(c *gin.Context) {
+	tgChatId := c.GetInt64("tgChatId")
+	var setting SettingsPost
+	err := c.ShouldBindJSON(&setting)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if setting.Setting == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "could not read setting to update from body",
+		})
+		return
+	}
+	if setting.Setting == helpers.USERSET_ADM {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "granting admin priviledges via API is not allowed",
+		})
+		return
+	}
+	if setting.Value == nil {
+		setting.Value = ""
+	}
+	log.Printf("Setting for user %d %s=%v", tgChatId, setting.Setting, setting.Value)
+	// TODO: Value assertions (int, string, bool)
+	err = r.bc.Repo.SetUserSetting(setting.Setting, fmt.Sprintf("%v", setting.Value), tgChatId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.Status(http.StatusOK)
 }

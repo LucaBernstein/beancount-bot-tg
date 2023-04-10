@@ -1,9 +1,10 @@
-package botTest
+package apiTest
 
 import (
 	"testing"
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -18,13 +19,13 @@ func MockBcApiUser(t *testing.T, id int64) (token string, mockBc *bot.BotControl
 
 	msg := &telebot.Message{Chat: &telebot.Chat{ID: id}, Sender: &telebot.User{ID: id}}
 	err := mockBc.Repo.EnrichUserData(msg)
-	HandleErr(t, err)
+	botTest.HandleErr(t, err)
 	err = mockBc.Repo.SetUserSetting(helpers.USERSET_ENABLEAPI, "true", msg.Chat.ID)
-	HandleErr(t, err)
+	botTest.HandleErr(t, err)
 	nonce, err := mockBc.Repo.CreateApiVerification(msg.Chat.ID)
-	HandleErr(t, err)
+	botTest.HandleErr(t, err)
 	token, err = mockBc.Repo.VerifyApiToken(msg.Chat.ID, nonce)
-	HandleErr(t, err)
+	botTest.HandleErr(t, err)
 
 	return token, mockBc, msg
 }

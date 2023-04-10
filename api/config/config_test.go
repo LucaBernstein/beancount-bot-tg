@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/LucaBernstein/beancount-bot-tg/api/config"
+	"github.com/LucaBernstein/beancount-bot-tg/api/helpers/apiTest"
 	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	"github.com/LucaBernstein/beancount-bot-tg/db"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
@@ -41,7 +42,7 @@ func AllSettingsTypes() ([]string, error) {
 }
 
 func TestFullConfigMap(t *testing.T) {
-	token, mockBc, msg := botTest.MockBcApiUser(t, 786)
+	token, mockBc, msg := apiTest.MockBcApiUser(t, 786)
 	err := PromoteAdmin(msg.Chat.ID)
 	botTest.HandleErr(t, err)
 
@@ -69,3 +70,48 @@ func TestFullConfigMap(t *testing.T) {
 }
 
 // TODO: For setting, check, that user cannot elevate to admin!
+func TestSetConfig(t *testing.T) {
+	token, mockBc, _ := apiTest.MockBcApiUser(t, 427)
+
+	r := gin.Default()
+	g := r.Group("")
+	config.NewRouter(mockBc).Hook(g)
+
+	// Set tzOffset
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/", strings.NewReader(`{"setting":"user.tzOffset", "value":12}`))
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Result().StatusCode)
+
+	// Granting admin priviledges should not work
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/", strings.NewReader(`{"setting":"user.isAdmin", "value":true}`))
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 401, w.Result().StatusCode)
+
+	// No settings field should fail
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/", strings.NewReader(`{"value":true}`))
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 400, w.Result().StatusCode)
+
+	// Unsetting with null should work
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/", strings.NewReader(`{"setting":"user.currency", "value": null}`))
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Result().StatusCode)
+
+	// TODO: Enhance functionality coverage by looking at actual db states
+}

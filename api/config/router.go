@@ -20,4 +20,5 @@ func (r *Router) Hook(g *gin.RouterGroup) {
 	g.Use(helpers.AttachChatId(r.bc))
 
 	g.GET("/", r.ReadConfig)
+	g.POST("/", r.SetConfig)
 }

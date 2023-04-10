@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/LucaBernstein/beancount-bot-tg/api/helpers"
-	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
+	"github.com/LucaBernstein/beancount-bot-tg/api/helpers/apiTest"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestChatIdEnrichment(t *testing.T) {
-	token, mockBc, m := botTest.MockBcApiUser(t, 442)
+	token, mockBc, m := apiTest.MockBcApiUser(t, 442)
 	handlerFn := helpers.AttachChatId(mockBc)
 
 	r := gin.Default()
