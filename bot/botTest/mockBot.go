@@ -75,3 +75,4 @@ func (c *MockContext) Answer(resp *tb.QueryResponse) error                     {
 func (c *MockContext) Respond(resp ...*tb.CallbackResponse) error              { return nil }
 func (c *MockContext) Get(key string) interface{}                              { return nil }
 func (c *MockContext) Set(key string, val interface{})                         {}
+func (c *MockContext) Entities() tb.Entities                                   { return nil }
