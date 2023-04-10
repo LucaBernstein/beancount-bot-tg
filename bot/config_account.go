@@ -11,12 +11,12 @@ func (bc *BotController) configHandleAccountDelete(m *tb.Message, params ...stri
 
 		bc.DeleteUserData(m)
 
-		bc.Bot.SendSilent(bc, Recipient(m), "I'm sad to see you go. Hopefully one day, you will come back.\n\nI have deleted all of your data stored in the bot. You can simply start over by sending me a message again. Goodbye.")
-		bc.Bot.SendSilent(bc, Recipient(m), "============")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "I'm sad to see you go. Hopefully one day, you will come back.\n\nI have deleted all of your data stored in the bot. You can simply start over by sending me a message again. Goodbye.")
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "============")
 		return
 	}
 	bc.Logf(INFO, m, "Reset command failed 'yes' verification. Aborting.")
-	bc.Bot.SendSilent(bc, Recipient(m), "Reset has been aborted.\n\nYou tried to permanently delete your account. Please make sure to confirm this action by adding 'yes' to the end of your command. Please check /config for usage.")
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), "Reset has been aborted.\n\nYou tried to permanently delete your account. Please make sure to confirm this action by adding 'yes' to the end of your command. Please check /config for usage.")
 }
 
 func (bc *BotController) DeleteUserData(m *tb.Message) {

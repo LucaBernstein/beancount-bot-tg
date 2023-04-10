@@ -106,7 +106,7 @@ func (bc *BotController) commandMappings() []*CMD {
 
 func (bc *BotController) commandStart(c tb.Context) error {
 	bc.Logf(TRACE, c.Message(), "Start command")
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), "Welcome to this beancount bot!\n"+
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Welcome to this beancount bot!\n"+
 		"You can find more information in the repository under "+
 		"https://github.com/LucaBernstein/beancount-bot-tg\n\n"+
 		"Please check the commands I will send to you next that are available to you. "+
@@ -144,7 +144,7 @@ func (bc *BotController) commandHelp(c tb.Context) error {
 			helpMsg += fmt.Sprintf("\n/%s - %s", cmd.CommandAlias[0], cmd.Help)
 		}
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), helpMsg, clearKeyboard())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), helpMsg, clearKeyboard())
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (bc *BotController) commandCancel(c tb.Context) error {
 			msg = "Your currently running transaction has been cancelled."
 		}
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("%s\nType /%s to get available commands.", msg, CMD_HELP), clearKeyboard())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("%s\nType /%s to get available commands.", msg, CMD_HELP), clearKeyboard())
 	return nil
 }
 
@@ -184,17 +184,17 @@ func Recipient(m *tb.Message) tb.Recipient {
 func (bc *BotController) commandCreateSimpleTx(c tb.Context) error {
 	state := bc.State.GetType(c.Message())
 	if state != ST_NONE {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), MSG_UNFINISHED_STATE)
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), MSG_UNFINISHED_STATE)
 		return nil
 	}
 	bc.Logf(TRACE, c.Message(), "Creating simple transaction")
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), "In the following steps we will create a simple transaction. "+
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "In the following steps we will create a simple transaction. "+
 		"I will guide you through.\n\n",
 		clearKeyboard(),
 	)
 	tx, err := bc.State.SimpleTx(c.Message(), bc.Repo.UserGetCurrency(c.Message())) // create new tx
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong creating your transactions ("+err.Error()+"). Please check /help for usage."+
 			"\n\nYou can create a simple transaction using this command: /simple [date]\ne.g. /simple 2021-01-24\n"+
 			"The date parameter is non-mandatory, if not specified, today's date will be taken."+
 			"Alternatively it is also possible to send an amount directly to start a new simple transaction.", clearKeyboard())
@@ -212,7 +212,7 @@ func (bc *BotController) commandCreateSimpleTx(c tb.Context) error {
 func (bc *BotController) commandAddComment(c tb.Context) error {
 	if bc.State.GetType(c.Message()) != ST_NONE {
 		bc.Logf(INFO, c.Message(), "commandAddComment while in another transaction")
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), MSG_UNFINISHED_STATE)
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), MSG_UNFINISHED_STATE)
 		return nil
 	}
 	base := CMD_COMMENT[0]
@@ -231,10 +231,10 @@ func (bc *BotController) commandAddComment(c tb.Context) error {
 	err := bc.Repo.RecordTransaction(c.Message().Chat.ID, comment+"\n")
 	if err != nil {
 		bc.Logf(ERROR, c.Message(), "Something went wrong while recording the comment: "+err.Error())
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong while recording your comment: "+err.Error(), clearKeyboard())
 		return nil
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), "Successfully added the comment to your transaction /list", clearKeyboard())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Successfully added the comment to your transaction /list", clearKeyboard())
 	return nil
 }
 
@@ -264,7 +264,7 @@ func (bc *BotController) commandList(c tb.Context) error {
 				var err error
 				elementNumber, err = strconv.Atoi(option)
 				if err != nil {
-					bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
+					bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("The option '%s' could not be recognized. Please try again with '/list', with options added to the end separated by space.", option), clearKeyboard())
 					return nil
 				}
 				continue
@@ -272,12 +272,12 @@ func (bc *BotController) commandList(c tb.Context) error {
 		}
 	}
 	if isDeleteCommand && (isNumbered || isDated || elementNumber <= 0) {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "For removing a single element from the list, determine it's number by sending the command '/list numbered' and then removing an entry by sending '/list rm <number>'.", clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "For removing a single element from the list, determine it's number by sending the command '/list numbered' and then removing an entry by sending '/list rm <number>'.", clearKeyboard())
 		return nil
 	}
 	tx, err := bc.Repo.GetTransactions(c.Message(), isArchived)
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong retrieving your transactions: "+err.Error(), clearKeyboard())
 		return nil
 	}
 	if tx == nil {
@@ -293,10 +293,10 @@ func (bc *BotController) commandList(c tb.Context) error {
 			err = fmt.Errorf("the number you specified was too high. Please use a correct number as seen from '/list [archived] numbered'")
 		}
 		if err != nil {
-			bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong while trying to delete a single transaction: "+err.Error(), clearKeyboard())
+			bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong while trying to delete a single transaction: "+err.Error(), clearKeyboard())
 			return nil
 		}
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Successfully deleted the list entry specified.", clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Successfully deleted the list entry specified.", clearKeyboard())
 		return nil
 	}
 	SEP := "\n"
@@ -332,12 +332,12 @@ func (bc *BotController) commandList(c tb.Context) error {
 		if !isArchived {
 			archivedSuggestion = " archived"
 		}
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("Your transaction list is empty. Create some first. Check /%s for commands to create a transaction."+
 			"\nYou might also be looking for%s transactions using '/list%s'.", CMD_HELP, archivedSuggestion, archivedSuggestion), clearKeyboard())
 		return nil
 	}
 	for _, message := range messageSplits {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), message, clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), message, clearKeyboard())
 	}
 	return nil
 }
@@ -366,25 +366,25 @@ func (bc *BotController) commandArchiveTransactions(c tb.Context) error {
 	bc.Logf(TRACE, c.Message(), "Archiving transactions")
 	err := bc.Repo.ArchiveTransactions(c.Message())
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong archiving your transactions: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong archiving your transactions: "+err.Error())
 		return nil
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("Archived all transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 	return nil
 }
 
 func (bc *BotController) commandDeleteTransactions(c tb.Context) error {
 	if !(strings.TrimSpace(strings.ToLower(c.Message().Text)) == strings.ToLower("/"+CMD_DELETE_ALL+" YES")) {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("Please type '/%s yes' to confirm the deletion of your transactions", CMD_DELETE_ALL))
 		return nil
 	}
 	bc.Logf(TRACE, c.Message(), "Deleting transactions")
 	_, err := bc.Repo.DeleteTransactions(c.Message())
 	if err != nil {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong deleting your transactions: "+err.Error())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong deleting your transactions: "+err.Error())
 		return nil
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("Permanently deleted all your transactions. Your /%s is empty again.", CMD_LIST), clearKeyboard())
 	return nil
 }
 
@@ -440,7 +440,7 @@ func (bc *BotController) cronNotifications() {
 		if openCount == 1 {
 			s = ""
 		}
-		bc.Bot.SendSilent(bc, ReceiverImpl{ChatId: tgChatId}, fmt.Sprintf(
+		bc.Bot.SendSilent(bc.Logf, ReceiverImpl{ChatId: tgChatId}, fmt.Sprintf(
 			// TODO: Replace hard-coded command directives:
 			" This is your reminder to inform you that you currently have %d open transaction%s (%d triggering this notification). Check '/list' to see your open transactions. If you don't need them anymore you can /archiveAll or /delete them."+
 				"\n\nYou are getting this message because you enabled reminder notifications for open transactions in /config.", openCount, s, overdue))
@@ -464,7 +464,7 @@ func (bc *BotController) commandAdminCronInfo(c tb.Context) error {
 		bc.handleTextState(c)
 		return nil
 	}
-	bc.Bot.SendSilent(bc, Recipient(c.Message()), bc.cronInfo())
+	bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), bc.cronInfo())
 	return nil
 }
 
@@ -480,7 +480,7 @@ func (bc *BotController) commandAdminNofify(c tb.Context) error {
 		notificationMessage = text[1]
 	}
 	if len(text) == 0 || len(notificationMessage) == 0 {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong splitting your command parameters. Did you specify a text in double quotes (\")?")
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong splitting your command parameters. Did you specify a text in double quotes (\")?")
 		return nil
 	}
 	// text[0] = /command [chatId]
@@ -488,7 +488,7 @@ func (bc *BotController) commandAdminNofify(c tb.Context) error {
 
 	if len(command) == 0 || len(command) >= 3 {
 		// invalid argument count
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "Please check the command syntax")
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Please check the command syntax")
 		return nil
 	}
 
@@ -499,12 +499,12 @@ func (bc *BotController) commandAdminNofify(c tb.Context) error {
 
 	receivers := bc.Repo.IndividualsWithNotifications(target)
 	if len(receivers) == 0 {
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), "No receivers found to send notification to (you being excluded).")
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "No receivers found to send notification to (you being excluded).")
 		return nil
 	}
 
 	for _, recipient := range receivers {
-		bc.Bot.SendSilent(bc, ReceiverImpl{ChatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
+		bc.Bot.SendSilent(bc.Logf, ReceiverImpl{ChatId: recipient}, "*** Service notification ***\n\n"+notificationMessage)
 		bc.Logf(TRACE, c.Message(), "Sent notification to %s", recipient)
 		// TODO: Add message like 'If you don't want to receive further service notifications, you can turn them off in the /settings with '/settings notif off'.'
 		//  GitHub-issue: #28
@@ -545,10 +545,10 @@ func (bc *BotController) handleTextState(c tb.Context) error {
 			bc.Logf(DEBUG, c.Message(), "Creating new simple transaction as amount has been entered though not in tx")
 			_, err = bc.State.SimpleTx(c.Message(), bc.Repo.UserGetCurrency(c.Message())) // create new tx
 			if err != nil {
-				bc.Bot.SendSilent(bc, Recipient(c.Message()), "Something went wrong creating a new transaction: "+err.Error(), clearKeyboard())
+				bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Something went wrong creating a new transaction: "+err.Error(), clearKeyboard())
 				return nil
 			}
-			bc.Bot.SendSilent(bc, Recipient(c.Message()), "Automatically created a new transaction for you. If you think this was a mistake you can /cancel it.", clearKeyboard())
+			bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Automatically created a new transaction for you. If you think this was a mistake you can /cancel it.", clearKeyboard())
 			bc.handleTextState(c)
 			return nil
 		} else if handlerFunc := bc.matchesCommandWithoutLeadingSlash(c); handlerFunc != nil {
@@ -564,14 +564,14 @@ func (bc *BotController) handleTextState(c tb.Context) error {
 		}
 
 		bc.Logf(WARN, c.Message(), "Received text without having any prior state and not in group chat or message starts with '/'")
-		bc.Bot.SendSilent(bc, Recipient(c.Message()), fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), fmt.Sprintf("Please check /%s on how to use this bot. E.g. you might need to start a transaction first before sending data.", CMD_HELP), clearKeyboard())
 		return nil
 	} else if state == ST_TX {
 		tx := bc.State.GetTx(c.Message())
 		_, err := tx.Input(c.Message())
 		if err != nil {
 			bc.Logf(WARN, c.Message(), "Invalid text state input: '%s'. Err: %s", c.Message().Text, err.Error())
-			bc.Bot.SendSilent(bc, Recipient(c.Message()), "Your last input seems to have not worked.\n"+
+			bc.Bot.SendSilent(bc.Logf, Recipient(c.Message()), "Your last input seems to have not worked.\n"+
 				fmt.Sprintf("(Error: %s)\n", err.Error())+
 				"Please try again.",
 			)
@@ -598,7 +598,7 @@ func (bc *BotController) handleTextState(c tb.Context) error {
 func (bc *BotController) sendNextTxHint(hint *Hint, m *tb.Message) {
 	replyKeyboard := ReplyKeyboard(hint.KeyboardOptions)
 	bc.Logf(TRACE, m, "Sending hints for next step: %v", hint.KeyboardOptions)
-	bc.Bot.SendSilent(bc, Recipient(m), escapeCharacters(hint.Prompt, "(", ")", ".", "!"), replyKeyboard, tb.ModeMarkdownV2)
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), escapeCharacters(hint.Prompt, "(", ")", ".", "!"), replyKeyboard, tb.ModeMarkdownV2)
 }
 
 func clearKeyboard() *tb.ReplyMarkup {
@@ -612,14 +612,14 @@ func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
 	transaction, err := tx.FillTemplate(currency, tag, tzOffset)
 	if err != nil {
 		bc.Logf(ERROR, m, "Something went wrong while templating the transaction: "+err.Error())
-		bc.Bot.SendSilent(bc, Recipient(m), "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "Something went wrong while templating the transaction: "+err.Error(), clearKeyboard())
 		return
 	}
 
 	err = bc.Repo.RecordTransaction(m.Chat.ID, transaction)
 	if err != nil {
 		bc.Logf(ERROR, m, "Something went wrong while recording the transaction: "+err.Error())
-		bc.Bot.SendSilent(bc, Recipient(m), "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
+		bc.Bot.SendSilent(bc.Logf, Recipient(m), "Something went wrong while recording your transaction: "+err.Error(), clearKeyboard())
 		return
 	}
 
@@ -630,7 +630,7 @@ func (bc *BotController) finishTransaction(m *tb.Message, tx Tx) {
 		// Don't return, instead continue flow (if recording was successful)
 	}
 
-	bc.Bot.SendSilent(bc, Recipient(m), fmt.Sprintf("Successfully recorded your transaction.\n"+
+	bc.Bot.SendSilent(bc.Logf, Recipient(m), fmt.Sprintf("Successfully recorded your transaction.\n"+
 		"You can get a list of all your transactions using /%s. "+
 		"With /%s you can delete all of them (e.g. once you copied them into your bookkeeping)."+
 		"\n\nYou can start a new transaction with /%s or type /%s to see all commands available.",

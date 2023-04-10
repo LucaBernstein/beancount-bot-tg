@@ -1,8 +1,9 @@
-package bot
+package botTest
 
 import (
 	"time"
 
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -24,10 +25,10 @@ func (b *MockBot) Respond(c *tb.Callback, resp ...*tb.CallbackResponse) error {
 func (b *MockBot) Me() *tb.User {
 	return &tb.User{Username: "Test bot"}
 }
-func (b *MockBot) SendSilent(bc *BotController, to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
+func (b *MockBot) SendSilent(logFn func(level helpers.Level, m *tb.Message, format string, v ...interface{}), to tb.Recipient, what interface{}, options ...interface{}) (*tb.Message, error) {
 	return b.Send(to, what, options...)
 }
-func (b *MockBot) reset() {
+func (b *MockBot) Reset() {
 	b.AllLastSentWhat = nil
 }
 

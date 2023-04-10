@@ -63,6 +63,10 @@ MIT License (https://github.com/gin-gonic/gin/blob/master/LICENSE).
 https://github.com/gin-contrib/cors.
 Copyright (c) 2016 Gin-Gonic.
 MIT License (https://github.com/gin-contrib/cors/blob/master/LICENSE).
+
+https://github.com/stretchr/testify.
+Copyright (c) 2012-2020 Mat Ryer, Tyler Bunnell and contributors.
+MIT License (https://github.com/stretchr/testify/blob/master/LICENSE).
 ```
 
 ---

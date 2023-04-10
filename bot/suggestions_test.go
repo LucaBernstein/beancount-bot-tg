@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
 	tb "gopkg.in/telebot.v3"
 )
@@ -29,38 +30,38 @@ func TestSuggestionsHandlingWithSpaces(t *testing.T) {
 
 	bc := NewBotController(db)
 
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	// missing subcommand
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("MissingType: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 
 	// missing type
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions rm", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("MissingType: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description Too Many arguments with spaces", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions rm description Too Many arguments with spaces", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("TooManyArgs: Bot unexpectedly did not send usage help: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description \"Some description with spaces\"", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions rm description \"Some description with spaces\"", Chat: chat}})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("Spaced: Bot unexpectedly sent usage help instead of performing command: %s", bot.LastSentWhat)
 	}
 
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions rm description \"SomeDescriptionWithoutSpaces\"", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions rm description \"SomeDescriptionWithoutSpaces\"", Chat: chat}})
 	if strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("NotSpaced: Bot unexpectedly sent usage help instead of performing command: %s", bot.LastSentWhat)
 	}
 
 	// Add is missing required value
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add description ", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions add description ", Chat: chat}})
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Usage help") {
 		t.Errorf("AddMissingValue: Bot did not send error: %s", bot.LastSentWhat)
 	}
@@ -80,7 +81,7 @@ func TestAddMultipleSuggestionsAtOnce(t *testing.T) {
 	}
 
 	bc := NewBotController(db)
-	bot := &MockBot{}
+	bot := &botTest.MockBot{}
 	bc.AddBotAndStart(bot)
 
 	mock.
@@ -108,7 +109,7 @@ func TestAddMultipleSuggestionsAtOnce(t *testing.T) {
 		WithArgs(12345).
 		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add account:from\nFirst Suggestion\nSecond Suggestion", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions add account:from\nFirst Suggestion\nSecond Suggestion", Chat: chat}})
 
 	// Add single suggestion
 	mock.
@@ -124,7 +125,7 @@ func TestAddMultipleSuggestionsAtOnce(t *testing.T) {
 		WithArgs(12345).
 		WillReturnRows(sqlmock.NewRows([]string{"type", "value"}))
 
-	bc.commandSuggestions(&MockContext{M: &tb.Message{Text: "/suggestions add account:to \"One lonely suggestion\"", Chat: chat}})
+	bc.commandSuggestions(&botTest.MockContext{M: &tb.Message{Text: "/suggestions add account:to \"One lonely suggestion\"", Chat: chat}})
 
 	if !strings.Contains(fmt.Sprintf("%v", bot.LastSentWhat), "Successfully added") {
 		t.Errorf("Unexpected bot response: %v", bot.AllLastSentWhat...)
