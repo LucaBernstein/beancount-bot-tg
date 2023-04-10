@@ -6,37 +6,13 @@ import (
 	"testing"
 
 	"github.com/LucaBernstein/beancount-bot-tg/api/helpers"
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
-	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/telebot.v3"
 )
 
-func mockBcApiUser(t *testing.T) (r *gin.Engine, token string, mockBc *bot.BotController, m *telebot.Message) {
-	repo := crud.NewRepo(db.Connection())
-	mockBc = &bot.BotController{
-		Repo: repo,
-	}
-
-	msg := &telebot.Message{Chat: &telebot.Chat{ID: 101}, Sender: &telebot.User{ID: 101}}
-	err := mockBc.Repo.EnrichUserData(msg)
-	botTest.HandleErr(t, err)
-	err = mockBc.Repo.SetUserSetting(h.USERSET_ENABLEAPI, "true", msg.Chat.ID)
-	botTest.HandleErr(t, err)
-	nonce, err := mockBc.Repo.CreateApiVerification(msg.Chat.ID)
-	botTest.HandleErr(t, err)
-	token, err = mockBc.Repo.VerifyApiToken(msg.Chat.ID, nonce)
-	botTest.HandleErr(t, err)
-
-	return r, token, mockBc, msg
-}
-
 func TestChatIdEnrichment(t *testing.T) {
-	_, token, mockBc, m := mockBcApiUser(t)
+	token, mockBc, m := botTest.MockBcApiUser(t, 442)
 	handlerFn := helpers.AttachChatId(mockBc)
 
 	r := gin.Default()

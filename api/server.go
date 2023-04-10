@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/LucaBernstein/beancount-bot-tg/api/token"
+	"github.com/LucaBernstein/beancount-bot-tg/api/config"
 	"github.com/LucaBernstein/beancount-bot-tg/api/transactions"
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,9 @@ func StartWebServer(bc *bot.BotController) {
 
 	transactionGroup := apiGroup.Group("/transactions")
 	transactions.NewRouter(bc).Hook(transactionGroup)
+
+	configGroup := apiGroup.Group("/config")
+	config.NewRouter(bc).Hook(configGroup)
 
 	port := ":8080"
 	log.Printf("Web server started on %s", port)
