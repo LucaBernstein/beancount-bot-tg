@@ -8,6 +8,7 @@ import (
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/gin-gonic/gin"
+	"gopkg.in/telebot.v3"
 )
 
 const K_CHAT_ID = "tgChatId"
@@ -39,6 +40,22 @@ func AttachChatId(bc *bot.BotController) gin.HandlerFunc {
 			return
 		}
 		c.Set(K_CHAT_ID, chatId)
+		c.Next()
+	}
+}
+
+func EnsureAdmin(bc *bot.BotController) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tgChatId := c.GetInt64("tgChatId")
+		m := &telebot.Message{Chat: &telebot.Chat{ID: tgChatId}}
+		isAdmin := bc.Repo.UserIsAdmin(m)
+		if !isAdmin {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "missing priviledges",
+			})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }
