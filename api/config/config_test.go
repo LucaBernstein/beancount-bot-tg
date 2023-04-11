@@ -10,19 +10,9 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/api/helpers/apiTest"
 	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
 	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )
-
-func PromoteAdmin(chatId int64) error {
-	_, err := db.Connection().Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, chatId, helpers.USERSET_ADM)
-	if err != nil {
-		return err
-	}
-	_, err = db.Connection().Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, chatId, helpers.USERSET_ADM, "true")
-	return err
-}
 
 func AllSettingsTypes() ([]string, error) {
 	rows, err := db.Connection().Query(`SELECT "setting" FROM "bot::userSettingTypes"`)
@@ -43,7 +33,7 @@ func AllSettingsTypes() ([]string, error) {
 
 func TestFullConfigMap(t *testing.T) {
 	token, mockBc, msg := apiTest.MockBcApiUser(t, 786)
-	err := PromoteAdmin(msg.Chat.ID)
+	err := apiTest.PromoteAdmin(msg.Chat.ID, true)
 	botTest.HandleErr(t, err)
 
 	settings, err := AllSettingsTypes()

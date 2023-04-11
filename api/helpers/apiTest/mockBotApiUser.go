@@ -29,3 +29,14 @@ func MockBcApiUser(t *testing.T, id int64) (token string, mockBc *bot.BotControl
 
 	return token, mockBc, msg
 }
+
+func PromoteAdmin(chatId int64, becomes bool) error {
+	_, err := db.Connection().Exec(`DELETE FROM "bot::userSetting" WHERE "tgChatId" = $1 AND "setting" = $2`, chatId, helpers.USERSET_ADM)
+	if err != nil {
+		return err
+	}
+	if becomes {
+		_, err = db.Connection().Exec(`INSERT INTO "bot::userSetting" ("tgChatId", "setting", "value") VALUES ($1, $2, $3)`, chatId, helpers.USERSET_ADM, "true")
+	}
+	return err
+}
