@@ -401,10 +401,10 @@ func TestTimezoneOffsetForAutomaticDate(t *testing.T) {
 	// Create simple tx and fill it completely
 	bc.commandCreateSimpleTx(&botTest.MockContext{M: &tb.Message{Chat: chat}})
 	tx := bc.State.txStates[12345]
-	tx.Input(&tb.Message{Text: "17.34"})                                                          // amount
-	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                             // description
-	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                                  // from
-	bc.handleTextState(&botTest.MockContext{&tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
+	tx.Input(&tb.Message{Text: "17.34"})                                                             // amount
+	tx.Input(&tb.Message{Text: "Buy something in the grocery store"})                                // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})                                                     // from
+	bc.handleTextState(&botTest.MockContext{M: &tb.Message{Chat: chat, Text: "Expenses:Groceries"}}) // to (via handleTextState)
 
 	// After the first tx is done, send some command
 	m := &botTest.MockContext{M: &tb.Message{Chat: chat, Sender: &tb.User{ID: chat.ID}}}
