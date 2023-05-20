@@ -26,6 +26,8 @@ const (
 	DEFAULT_CURRENCY = "EUR"
 
 	TG_MAX_MSG_CHAR_LEN = 4096
+
+	MAX_REPLY_KEYBOARD_ENTRIES = 40
 )
 
 func AllowedSuggestionTypes() []string {
