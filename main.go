@@ -4,7 +4,6 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/api"
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/web"
 )
 
 func main() {
@@ -15,8 +14,6 @@ func main() {
 	bc.ConfigureCronScheduler()
 
 	go api.StartWebServer(bc)
-
-	go web.StartWebServer(bc)
 
 	bot := bot.CreateBot(bc)
 	bc.AddBotAndStart(bot)

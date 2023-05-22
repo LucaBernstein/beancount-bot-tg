@@ -6,9 +6,11 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/api/admin"
 	"github.com/LucaBernstein/beancount-bot-tg/api/config"
 	"github.com/LucaBernstein/beancount-bot-tg/api/suggestions"
+	"github.com/LucaBernstein/beancount-bot-tg/api/health"
 	"github.com/LucaBernstein/beancount-bot-tg/api/token"
 	"github.com/LucaBernstein/beancount-bot-tg/api/transactions"
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/helpers"
 	"github.com/gin-gonic/gin"
 	"github.com/mandrigin/gin-spa/spa"
 )
@@ -17,6 +19,10 @@ func StartWebServer(bc *bot.BotController) {
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	configureCors(r)
+
+	r.GET("/health", gin.BasicAuth(gin.Accounts{
+		helpers.EnvOrFb("MONITORING_USER", "beancount-bot-tg-health"): helpers.EnvOrFb("MONITORING_PASS", "this_service_should_be_healthy"),
+	}), health.MonitoringEndpoint(bc))
 
 	apiGroup := r.Group("/api")
 

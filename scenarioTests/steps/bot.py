@@ -105,7 +105,7 @@ async def step_impl(context, position, keyboardEntry):
 @when('I get the server endpoint "{endpoint}"')
 @async_run_until_complete
 async def step_impl(context, endpoint):
-    res = requests.get(url="http://localhost:8081"+endpoint, timeout=3)
+    res = requests.get(url="http://localhost:8080"+endpoint, timeout=3)
     context.body = res.text
 
 @then('the response body {shouldShouldNot} include "{include}"')

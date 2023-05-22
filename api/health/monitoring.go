@@ -2,11 +2,11 @@ package health
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/gin-gonic/gin"
 )
 
 type MonitoringResult struct {
@@ -35,10 +35,10 @@ type MonitoringResult struct {
 
 // TODO: Use package?
 // https://pkg.go.dev/github.com/prometheus/client_golang/prometheus?utm_source=godoc#pkg-overview
-func MonitoringEndpoint(bc *bot.BotController) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
+func MonitoringEndpoint(bc *bot.BotController) func(c *gin.Context) {
+	return func(c *gin.Context) {
 		m := gatherMetrics(bc)
-		fmt.Fprintf(w, `
+		fmt.Fprintf(c.Writer, `
 # HELP bc_bot_logs_daily Count of logs of specified type in the previous 24h
 # TYPE bc_bot_logs_daily gauge
 bc_bot_logs_daily{level="error"} %d
