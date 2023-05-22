@@ -36,6 +36,5 @@ COPY --from=flutter_builder_web /api/ui/build/web /dist/api/ui/build/web
 COPY --from=golang_builder /src/app /dist/app
 
 EXPOSE 8080
-EXPOSE 8081
 
 ENTRYPOINT [ "/dist/app" ]
