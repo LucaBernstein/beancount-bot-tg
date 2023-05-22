@@ -9,6 +9,7 @@ import (
 	"github.com/LucaBernstein/beancount-bot-tg/api/transactions"
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
 	"github.com/gin-gonic/gin"
+	"github.com/mandrigin/gin-spa/spa"
 )
 
 func StartWebServer(bc *bot.BotController) {
@@ -29,6 +30,8 @@ func StartWebServer(bc *bot.BotController) {
 
 	adminGroup := apiGroup.Group("/admin")
 	admin.NewRouter(bc).Hook(adminGroup)
+
+	r.Use(spa.Middleware("/", "./api/ui/build/web")) // Needs to come last
 
 	port := ":8080"
 	log.Printf("Web server started on %s", port)
