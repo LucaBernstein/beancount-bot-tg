@@ -1,9 +1,8 @@
 ARG VERSION="Dev"
 ARG GIT_SHA
 
-FROM golang:alpine as builder
-
-LABEL maintainer="luca@lucabernstein.com"
+#
+FROM golang:alpine as golang_builder
 
 WORKDIR /src
 COPY . .
@@ -11,7 +10,18 @@ COPY . .
 RUN go mod download
 RUN go build -buildvcs=false -o app
 
+#
+FROM plugfox/flutter:stable-web AS flutter_builder_web
+
+ADD ./api/ui /api/ui
+WORKDIR /api/ui
+
+RUN flutter build web
+
+#
 FROM alpine
+
+LABEL maintainer="luca@lucabernstein.com"
 
 ENV GIN_MODE release
 
@@ -20,11 +30,12 @@ ENV VERSION=$VERSION
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 
-WORKDIR /
+WORKDIR /dist
 
-COPY --from=builder /src/app /bin/app
+COPY --from=flutter_builder_web /api/ui/build/web /dist/api/ui/build/web
+COPY --from=golang_builder /src/app /dist/app
 
 EXPOSE 8080
 EXPOSE 8081
 
-ENTRYPOINT [ "/bin/app" ]
+ENTRYPOINT [ "/dist/app" ]
