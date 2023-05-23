@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ui/crud_client/base_client.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Beancount-Bot-Tg'),
@@ -55,16 +56,19 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  String? userId;
+  String? verificationCode;
+  ClientAuthentication authentication = ClientAuthentication();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  void _incrementCounter() {
+  void _updateToken() {
     setState(() {
       // This call to setState tells the Flutter framework that something has
       // changed in this State, which causes it to rerun the build method below
       // so that the display can reflect the updated values. If we changed
       // _counter without calling setState(), then the build method would not be
       // called again, and so nothing would appear to happen.
-      _counter++;
+      authentication.token;
     });
   }
 
@@ -106,20 +110,59 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             const Text(
-              'You have pushed the button this many times:',
+              'Authenticate to your Beancount-Bot-Tg instance:',
             ),
+            Form(
+                key: _formKey,
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      TextFormField(
+                        onSaved: (String? value){userId=value;},
+                        decoration: const InputDecoration(
+                          hintText: 'Enter your userId',
+                        ),
+                      ),
+                      TextFormField(
+                        onSaved: (String? value){verificationCode=value;},
+                        decoration: const InputDecoration(
+                          hintText: 'Enter your verification code',
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Validate will return true if the form is valid, or false if
+                            // the form is invalid.
+                            if (_formKey.currentState!.validate()) {
+                              _formKey.currentState!.save();
+                              String? token;
+                              String? error;
+                              if (verificationCode != null && verificationCode!.isNotEmpty) {
+                                (token, error) = await authentication.validateVerificationCode(verificationCode!);
+                              } else {
+                                (error,) = await authentication.generateVerificationCode(userId!);
+                              }
+                              if (error != null && error.isNotEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(error)),
+                                );
+                              }
+                              _updateToken();
+                            }
+                          },
+                          child: const Text('Submit'),
+                        ),
+                      )
+                    ])),
             Text(
-              '$_counter',
+              '${authentication.token}',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
