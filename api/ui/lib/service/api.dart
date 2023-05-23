@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:convert';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+import '../models/constants.dart';
 
 class BaseCrud {
   static String baseUrl() {
@@ -16,6 +18,11 @@ class BaseCrud {
 class ClientAuthentication extends BaseCrud {
   String? userId;
   String? token;
+
+  Future<bool> loadExisting() async {
+    token = await loadToken();
+    return token != null && token!.isNotEmpty;
+  }
 
   Future<(String? error,)> generateVerificationCode(String userId) async {
     this.userId = userId;
@@ -41,6 +48,7 @@ class ClientAuthentication extends BaseCrud {
     Map<String, dynamic> responseMap = jsonDecode(response.body);
     if (response.statusCode == 200) {
       token = responseMap['token'];
+      await storeToken(token!);
       return (token, null);
     }
     return (null, '${responseMap['error']} (${response.statusCode})');
@@ -53,6 +61,21 @@ class ClientAuthentication extends BaseCrud {
     });
     Map<String, dynamic> responseMap = jsonDecode(response.body);
     int affected = responseMap['affected'];
+
+    // Cleanup local stores
+    await storeToken("");
+    token = null;
+    userId = null;
+
     return affected;
+  }
+
+  static storeToken(String token) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString(KeyToken, token);
+  }
+  static Future<String?> loadToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(KeyToken);
   }
 }
