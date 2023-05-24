@@ -37,6 +37,13 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
     _transactions = _loadTransactions();
   }
 
+  Future<void> deleteTx(int id) async {
+    await widget.authentication.deleteTransaction(id);
+    setState(() {
+      _transactions = _loadTransactions();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -46,9 +53,16 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
           if (snapshot.hasData) {
             List<Transaction>? tx = snapshot.data;
             if (tx != null) {
+              if (tx.length == 0) {
+                return const Text(
+                    'Currently, there are no transactions to display with the current filter selection.');
+              }
               List<Widget> txList = [];
               for (var t in tx) {
-                txList.add(Text(t.booking));
+                txList.add(TransactionWidget(
+                  tx: t,
+                  fnRm: deleteTx,
+                ));
               }
               return SelectionArea(
                   child: Column(
@@ -60,6 +74,27 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
               body: Center(child: CircularProgressIndicator()));
         },
       ),
+    );
+  }
+}
+
+class TransactionWidget extends StatelessWidget {
+  final Transaction tx;
+  final Future<void> Function(int id) fnRm;
+
+  const TransactionWidget({super.key, required this.tx, required this.fnRm});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(tx.booking),
+        TextButton(
+            onPressed: () => fnRm(tx.id),
+            child:
+                const Icon(Icons.delete_forever_outlined, color: Colors.red)),
+      ],
     );
   }
 }
