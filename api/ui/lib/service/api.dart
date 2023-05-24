@@ -172,7 +172,7 @@ class ClientAuthentication extends BaseCrud {
       HttpHeaders.authorizationHeader: 'Bearer $token',
     });
     List<Transaction> transactions = [];
-    List<Map<String, dynamic>> responseMap = jsonDecode(response.body);
+    List<dynamic> responseMap = jsonDecode(response.body);
     if (response.statusCode == 200) {
       for (var e in responseMap) {
         transactions.add(Transaction(
