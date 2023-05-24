@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:ui/models/transaction.dart';
 
 import '../models/config.dart';
 import '../models/constants.dart';
@@ -20,12 +21,12 @@ class ClientAuthentication extends BaseCrud {
   String? userId;
   String? token;
 
-  Future<bool> loadExistingToken() async {
+  Future<(bool, String?)> loadExistingToken() async {
     if (token != null && token!.isNotEmpty) {
-      return true;
+      return (true, token);
     }
     token = await loadToken();
-    return token != null && token!.isNotEmpty;
+    return (token != null && token!.isNotEmpty, token);
   }
 
   Future<(String? error,)> generateVerificationCode(String userId) async {
@@ -34,7 +35,9 @@ class ClientAuthentication extends BaseCrud {
     final response = await http.post(Uri.parse(url), headers: <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
     });
-    if (response.statusCode == 204) { return (null,);} // OPTIONS
+    if (response.statusCode == 204) {
+      return (null,);
+    } // OPTIONS
     if (response.statusCode == 201) {
       return (null,);
     }
@@ -48,7 +51,9 @@ class ClientAuthentication extends BaseCrud {
     final response = await http.post(Uri.parse(url), headers: <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
     });
-    if (response.statusCode == 204) { return (null, null);} // OPTIONS
+    if (response.statusCode == 204) {
+      return (null, null);
+    } // OPTIONS
     Map<String, dynamic> responseMap = jsonDecode(response.body);
     if (response.statusCode == 200) {
       token = responseMap['token'];
@@ -78,6 +83,7 @@ class ClientAuthentication extends BaseCrud {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString(KeyToken, token);
   }
+
   static Future<String?> loadToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString(KeyToken);
@@ -91,14 +97,17 @@ class ClientAuthentication extends BaseCrud {
     });
     Map<String, dynamic> responseMap = jsonDecode(response.body);
     if (response.statusCode == 200) {
-      return (Config(
+      return (
+        Config(
           responseMap['user.enableApi'],
           responseMap['user.isAdmin'] ?? false,
           responseMap['user.currency'],
           responseMap['user.vacationTag'],
           responseMap['user.tzOffset'],
           responseMap['user.omitCommandSlash'],
-          ), null);
+        ),
+        null
+      );
     }
     return (null, '${responseMap['error']} (${response.statusCode})');
   }
@@ -116,16 +125,67 @@ class ClientAuthentication extends BaseCrud {
       if (e.key == '') {
         continue;
       }
-      final response = await http.post(Uri.parse(url), headers: <String, String>{
-        HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
-        HttpHeaders.authorizationHeader: 'Bearer $token',
-      }, body: jsonEncode({'setting': e.key, 'value': e.value}));
+      final response = await http.post(Uri.parse(url),
+          headers: <String, String>{
+            HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+            HttpHeaders.authorizationHeader: 'Bearer $token',
+          },
+          body: jsonEncode({'setting': e.key, 'value': e.value}));
       if (response.statusCode == 200) {
         successful.add(e.key);
       } else {
-        return ("Failed at saving setting ''. Updated successfully so far: [${successful.join(', ')}]",);
+        return (
+          "Failed at saving setting ''. Updated successfully so far: [${successful.join(', ')}]",
+        );
       }
     }
     return (null,);
+  }
+
+  Future<(Config? config, String? errorMsg)> getSuggestions() async {
+    String url = '${BaseCrud.baseUrl()}/api/suggestions';
+    final response = await http.get(Uri.parse(url), headers: <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+      HttpHeaders.authorizationHeader: 'Bearer $token',
+    });
+    Map<String, dynamic> responseMap = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return (
+        Config(
+          responseMap['user.enableApi'],
+          responseMap['user.isAdmin'] ?? false,
+          responseMap['user.currency'],
+          responseMap['user.vacationTag'],
+          responseMap['user.tzOffset'],
+          responseMap['user.omitCommandSlash'],
+        ),
+        null
+      );
+    }
+    return (null, '${responseMap['error']} (${response.statusCode})');
+  }
+
+  Future<(List<Transaction> tx, String? errorMsg)> getTransactions() async {
+    String url = '${BaseCrud.baseUrl()}/api/transactions/list';
+    final response = await http.get(Uri.parse(url), headers: <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+      HttpHeaders.authorizationHeader: 'Bearer $token',
+    });
+    List<Transaction> transactions = [];
+    List<Map<String, dynamic>> responseMap = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      for (var e in responseMap) {
+        transactions.add(Transaction(
+            id: e['id'],
+            createdAt: e['createdAt'],
+            booking: e['booking'],
+            isArchived: e['isArchived']));
+      }
+      return (transactions, null);
+    }
+    return (
+      transactions,
+      'Error retrieving transactions (${response.statusCode})'
+    );
   }
 }
