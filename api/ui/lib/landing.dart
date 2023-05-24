@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:ui/service/api.dart';
 
+import 'models/constants.dart';
+
 class Landing extends StatefulWidget {
+  const Landing({super.key});
+
   @override
-  _LandingState createState() => _LandingState();
+  State<Landing> createState() => _LandingState();
 }
 
 class _LandingState extends State<Landing> {
@@ -17,12 +21,16 @@ class _LandingState extends State<Landing> {
 
   _loadUserInfo() async {
     _token = (await ClientAuthentication.loadToken() ?? "");
+    _redirectLoginOrHome();
+  }
+
+  _redirectLoginOrHome() {
     if (_token == "") {
       Navigator.pushNamedAndRemoveUntil(
-          context, '/login', ModalRoute.withName('/login'));
+          context, Routes.login.route, (Route<dynamic> route) => false);
     } else {
       Navigator.pushNamedAndRemoveUntil(
-          context, '/home', ModalRoute.withName('/home'));
+          context, Routes.config.route, (Route<dynamic> route) => false);
     }
   }
 

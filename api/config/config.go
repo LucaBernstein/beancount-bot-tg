@@ -77,7 +77,7 @@ func (r *Router) SetConfig(c *gin.Context) {
 	}
 	if setting.Setting == helpers.USERSET_ADM {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "granting admin priviledges via API is not allowed",
+			"error": "granting admin privileges via API is not allowed",
 		})
 		return
 	}
