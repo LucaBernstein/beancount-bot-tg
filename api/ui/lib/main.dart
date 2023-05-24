@@ -15,10 +15,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Beancount-Bot-Tg Web-UI',
+      title: 'Beancount-Bot-Tg',
       routes: {
         Routes.root.route: (context) => const Landing(),
-        Routes.login.route: (context) => const MyLoginPage(),
+        Routes.login.route: (context) => const LoginPage(),
         Routes.config.route: (context) => const ConfigPage(),
       },
       theme: ThemeData(
