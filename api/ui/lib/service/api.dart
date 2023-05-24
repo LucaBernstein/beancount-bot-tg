@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/config.dart';
 import '../models/constants.dart';
 
 class BaseCrud {
@@ -19,7 +20,10 @@ class ClientAuthentication extends BaseCrud {
   String? userId;
   String? token;
 
-  Future<bool> loadExisting() async {
+  Future<bool> loadExistingToken() async {
+    if (token != null && token!.isNotEmpty) {
+      return true;
+    }
     token = await loadToken();
     return token != null && token!.isNotEmpty;
   }
@@ -77,5 +81,25 @@ class ClientAuthentication extends BaseCrud {
   static Future<String?> loadToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString(KeyToken);
+  }
+
+  Future<(Config? config, String? errorMsg)> getConfig() async {
+    String url = '${BaseCrud.baseUrl()}/api/config/';
+    final response = await http.get(Uri.parse(url), headers: <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+      HttpHeaders.authorizationHeader: 'Bearer $token',
+    });
+    Map<String, dynamic> responseMap = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return (Config(
+          responseMap['user.enableApi'],
+          responseMap['user.isAdmin'] ?? false,
+          responseMap['user.currency'],
+          responseMap['user.vacationTag'],
+          responseMap['user.tzOffset'],
+          responseMap['user.omitCommandSlash'],
+          ), null);
+    }
+    return (null, '${responseMap['error']} (${response.statusCode})');
   }
 }
