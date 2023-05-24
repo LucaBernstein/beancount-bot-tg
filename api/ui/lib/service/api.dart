@@ -188,4 +188,18 @@ class ClientAuthentication extends BaseCrud {
       'Error retrieving transactions (${response.statusCode})'
     );
   }
+
+  Future<(String? errorMsg,)> deleteTransaction(int id) async {
+    String url = '${BaseCrud.baseUrl()}/api/transactions/list/$id';
+    final response =
+        await http.delete(Uri.parse(url), headers: <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+      HttpHeaders.authorizationHeader: 'Bearer $token',
+    });
+    Map<String, dynamic> responseMap = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return (null,);
+    }
+    return ('${responseMap['error']} (${response.statusCode})',);
+  }
 }
