@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/constants.dart';
 import '../service/api.dart';
 
@@ -53,8 +54,7 @@ class _LoginState extends State<LoginPage> {
   }
 
   void _redirectHome() {
-    Navigator.pushNamedAndRemoveUntil(
-        context, Routes.config.route, (Route<dynamic> route) => false);
+    context.go(Routes.root.route);
   }
 
   void _checkExistingAuth() async {
@@ -162,8 +162,8 @@ class _LoginState extends State<LoginPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text(error)),
                                   );
-                                } else if (error == null ||
-                                    error.contains('(409)')) {
+                                }
+                                if (error == null || error.contains('(409)')) {
                                   // Challenge already in progress: Let user input verification code
                                   setState(() => _switchLoginToValidation());
                                 }
@@ -174,7 +174,8 @@ class _LoginState extends State<LoginPage> {
                           ),
                         )
                       ])),
-              const Text('Hint: In order to receive the credentials from your beancount-bot-tg instance, you need to activate the API first: For that, issue the following command:\n\n/config enable_api on'),
+              const Text(
+                  'Hint: In order to receive the credentials from your beancount-bot-tg instance, you need to activate the API first: For that, issue the following command:\n\n/config enable_api on'),
             ],
           ),
         ),
