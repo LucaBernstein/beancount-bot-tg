@@ -16,6 +16,7 @@ func configureCors(router *gin.Engine) {
 		corsConfig.AllowOriginFunc = func(origin string) bool {
 			return strings.HasPrefix(origin, "http://localhost")
 		}
+		corsConfig.AllowHeaders = []string{"authorization", "content-type"}
 		corsConfig.AllowCredentials = true
 		router.Use(cors.New(corsConfig))
 	}
