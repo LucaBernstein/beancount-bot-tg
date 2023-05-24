@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/constants.dart';
 import '../service/api.dart';
 
-class MyLoginPage extends StatefulWidget {
-  const MyLoginPage({super.key /*, required this.title*/});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key /*, required this.title*/});
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -17,7 +17,7 @@ class MyLoginPage extends StatefulWidget {
   /*final String title;*/
 
   @override
-  State<MyLoginPage> createState() => _MyLoginState();
+  State<LoginPage> createState() => _LoginState();
 }
 
 enum LoginButtonText {
@@ -31,7 +31,7 @@ enum LoginButtonText {
   final String text;
 }
 
-class _MyLoginState extends State<MyLoginPage> {
+class _LoginState extends State<LoginPage> {
   String? userId;
   String? verificationCode;
   ClientAuthentication authentication = ClientAuthentication();
@@ -86,7 +86,7 @@ class _MyLoginState extends State<MyLoginPage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text('Beancount-Bot-Tg Web-UI Login' /*widget.title*/),
+        title: Text('Beancount-Bot-Tg Login' /*widget.title*/),
       ),
       body: Center(
         // Center is a layout widget. It takes a single child and positions it

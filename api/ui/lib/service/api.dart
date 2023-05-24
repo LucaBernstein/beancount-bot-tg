@@ -102,4 +102,30 @@ class ClientAuthentication extends BaseCrud {
     }
     return (null, '${responseMap['error']} (${response.statusCode})');
   }
+
+  Future<(String? errorMsg,)> saveConfig(Config cnf) async {
+    Config? priorConfig;
+    String? retrievalError;
+    (priorConfig, retrievalError) = await getConfig();
+    if (retrievalError != null && retrievalError.isNotEmpty) {
+      return (retrievalError,);
+    }
+    String url = '${BaseCrud.baseUrl()}/api/config/';
+    List<String> successful = [];
+    for (var e in priorConfig!.diffChanged(cnf).entries) {
+      if (e.key == '') {
+        continue;
+      }
+      final response = await http.post(Uri.parse(url), headers: <String, String>{
+        HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+      }, body: jsonEncode({'setting': e.key, 'value': e.value}));
+      if (response.statusCode == 200) {
+        successful.add(e.key);
+      } else {
+        return ("Failed at saving setting ''. Updated successfully so far: [${successful.join(', ')}]",);
+      }
+    }
+    return (null,);
+  }
 }
