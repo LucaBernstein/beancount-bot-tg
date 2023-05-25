@@ -1,4 +1,4 @@
-final KeyToken = 'TOKEN';
+const keyToken = 'TOKEN';
 
 enum Routes {
   root(route: '/'),

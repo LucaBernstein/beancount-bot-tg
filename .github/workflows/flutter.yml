@@ -1,0 +1,36 @@
+name: Flutter
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+defaults:
+  run:
+    working-directory: ./api/ui
+
+jobs:
+  tests:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Check out the code
+        uses: actions/checkout@v2
+      - run: flutter --version
+      - name: Restore packages
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze 
+      - name: Run tests
+        run: flutter test --coverage
+      - name: Coverage report
+        run: |
+          sudo apt update -qq
+          sudo apt install -qq -y lcov
+          genhtml coverage/lcov.info -o coverage/html
+          # open coverage/html/index.html
