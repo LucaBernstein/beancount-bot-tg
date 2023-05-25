@@ -142,7 +142,8 @@ class ClientAuthentication extends BaseCrud {
     return (null,);
   }
 
-  Future<(Map<String, List<String>>? suggestions, String? errorMsg)> getSuggestions() async {
+  Future<(Map<String, List<String>>? suggestions, String? errorMsg)>
+      getSuggestions() async {
     String url = '${BaseCrud.baseUrl()}/api/suggestions/list';
     final response = await http.get(Uri.parse(url), headers: <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
@@ -162,10 +163,12 @@ class ClientAuthentication extends BaseCrud {
     return (null, '${responseMap['error']} (${response.statusCode})');
   }
 
-  Future<(String? errorMsg,)> deleteSuggestion(String type, String? value) async {
-    String url = '${BaseCrud.baseUrl()}/api/suggestions/list/$type/${value??''}';
+  Future<(String? errorMsg,)> deleteSuggestion(
+      String type, String? value) async {
+    String url =
+        '${BaseCrud.baseUrl()}/api/suggestions/list/$type/${value ?? ''}';
     final response =
-    await http.delete(Uri.parse(url), headers: <String, String>{
+        await http.delete(Uri.parse(url), headers: <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
       HttpHeaders.authorizationHeader: 'Bearer $token',
     });
