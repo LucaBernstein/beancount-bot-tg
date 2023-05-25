@@ -21,11 +21,7 @@ services:
       - beancount
     depends_on:
       - db
-    environment:
-      - POSTGRES_HOST=$POSTGRES_HOST
-      - POSTGRES_USER=$POSTGRES_USER
-      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-      - BOT_API_KEY=$BOT_API_KEY
+    env_file: .env
 
 networks:
   beancount:
