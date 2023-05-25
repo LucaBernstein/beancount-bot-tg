@@ -69,7 +69,8 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
               return SelectionArea(
                   child: SizedBox(
                       width: 500,
-                      child: Column(
+                      child: SingleChildScrollView(
+                          child: Column(
                         // Column is also a layout widget. It takes a list of children and
                         // arranges them vertically. By default, it sizes itself to fit its
                         // children horizontally, and tries to be as tall as its parent.
@@ -86,7 +87,7 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
                         mainAxisAlignment: MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: suggestionsList,
-                      )));
+                      ))));
             }
           }
           return const Scaffold(
