@@ -56,6 +56,17 @@ func (r *Repo) GetCacheHints(m *tb.Message, key string) ([]string, error) {
 	return cacheData, nil
 }
 
+func (r *Repo) GetAllSuggestions(m *tb.Message) (map[string][]string, error) {
+	if _, exists := CACHE_LOCAL[m.Chat.ID]; !exists {
+		LogDbf(r, helpers.TRACE, m, "No cached data found for chat. Will fill cache first.")
+		err := r.FillCache(m)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return CACHE_LOCAL[m.Chat.ID], nil
+}
+
 func (r *Repo) FillCache(m *tb.Message) error {
 	r.DeleteCache(m)
 	rows, err := r.db.Query(`

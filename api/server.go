@@ -5,6 +5,7 @@ import (
 
 	"github.com/LucaBernstein/beancount-bot-tg/api/admin"
 	"github.com/LucaBernstein/beancount-bot-tg/api/config"
+	"github.com/LucaBernstein/beancount-bot-tg/api/suggestions"
 	"github.com/LucaBernstein/beancount-bot-tg/api/token"
 	"github.com/LucaBernstein/beancount-bot-tg/api/transactions"
 	"github.com/LucaBernstein/beancount-bot-tg/bot"
@@ -24,6 +25,9 @@ func StartWebServer(bc *bot.BotController) {
 
 	transactionGroup := apiGroup.Group("/transactions")
 	transactions.NewRouter(bc).Hook(transactionGroup)
+
+	suggestionsGroup := apiGroup.Group("/suggestions")
+	suggestions.NewRouter(bc).Hook(suggestionsGroup)
 
 	configGroup := apiGroup.Group("/config")
 	config.NewRouter(bc).Hook(configGroup)

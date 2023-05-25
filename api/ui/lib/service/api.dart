@@ -142,27 +142,38 @@ class ClientAuthentication extends BaseCrud {
     return (null,);
   }
 
-  Future<(Config? config, String? errorMsg)> getSuggestions() async {
-    String url = '${BaseCrud.baseUrl()}/api/suggestions';
+  Future<(Map<String, List<String>>? suggestions, String? errorMsg)> getSuggestions() async {
+    String url = '${BaseCrud.baseUrl()}/api/suggestions/list';
     final response = await http.get(Uri.parse(url), headers: <String, String>{
+      HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
+      HttpHeaders.authorizationHeader: 'Bearer $token',
+    });
+    Map<String, List<String>> suggestions = {};
+    Map<String, dynamic> responseMap = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      for (var e in responseMap.entries) {
+        suggestions[e.key] = [];
+        for (var s in e.value) {
+          suggestions[e.key]!.add(s);
+        }
+      }
+      return (suggestions, null);
+    }
+    return (null, '${responseMap['error']} (${response.statusCode})');
+  }
+
+  Future<(String? errorMsg,)> deleteSuggestion(String type, String? value) async {
+    String url = '${BaseCrud.baseUrl()}/api/suggestions/list/$type/${value??''}';
+    final response =
+    await http.delete(Uri.parse(url), headers: <String, String>{
       HttpHeaders.contentTypeHeader: 'application/json; charset=UTF-8',
       HttpHeaders.authorizationHeader: 'Bearer $token',
     });
     Map<String, dynamic> responseMap = jsonDecode(response.body);
     if (response.statusCode == 200) {
-      return (
-        Config(
-          responseMap['user.enableApi'],
-          responseMap['user.isAdmin'] ?? false,
-          responseMap['user.currency'],
-          responseMap['user.vacationTag'],
-          responseMap['user.tzOffset'],
-          responseMap['user.omitCommandSlash'],
-        ),
-        null
-      );
+      return (null,);
     }
-    return (null, '${responseMap['error']} (${response.statusCode})');
+    return ('${responseMap['error']} (${response.statusCode})',);
   }
 
   Future<(List<Transaction> tx, String? errorMsg)> getTransactions() async {
