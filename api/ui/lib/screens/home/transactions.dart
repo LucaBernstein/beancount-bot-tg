@@ -53,7 +53,7 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
           if (snapshot.hasData) {
             List<Transaction>? tx = snapshot.data;
             if (tx != null) {
-              if (tx.length == 0) {
+              if (tx.isEmpty) {
                 return const Text(
                     'Currently, there are no transactions to display with the current filter selection.');
               }
@@ -89,11 +89,11 @@ class TransactionWidget extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(tx.booking),
         TextButton(
             onPressed: () => fnRm(tx.id),
             child:
                 const Icon(Icons.delete_forever_outlined, color: Colors.red)),
+        Text(tx.booking),
       ],
     );
   }

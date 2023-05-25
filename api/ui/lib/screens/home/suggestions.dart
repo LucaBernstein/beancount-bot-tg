@@ -50,16 +50,20 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
         future: _suggestions,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            Map<String, List<String>>? sugg = snapshot.data;
-            if (sugg != null) {
-              if (sugg.isEmpty) {
+            Map<String, List<String>>? suggestions = snapshot.data;
+            if (suggestions != null) {
+              if (suggestions.isEmpty) {
                 return const Text(
                     'Currently, there are no suggestions to display.');
               }
               List<Widget> suggList = [];
-              for (var s in sugg.entries) {
+              for (var s in suggestions.entries) {
                 for (var v in s.value) {
-                  suggList.add(SuggestionWidget(type: s.key, suggestion: v, fnRm: _deleteSuggestion,));
+                  suggList.add(SuggestionWidget(
+                    type: s.key,
+                    suggestion: v,
+                    fnRm: _deleteSuggestion,
+                  ));
                 }
               }
               return SelectionArea(
@@ -79,10 +83,10 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
                         // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
                         // action in the IDE, or press "p" in the console), to see the
                         // wireframe for each widget.
-                          mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: suggList,
-                  )));
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: suggList,
+                      )));
             }
           }
           return const Scaffold(
@@ -98,18 +102,21 @@ class SuggestionWidget extends StatelessWidget {
   final String suggestion;
   final Future<void> Function(String type, String name) fnRm;
 
-  const SuggestionWidget({super.key, required this.type, required this.suggestion, required this.fnRm});
+  const SuggestionWidget(
+      {super.key,
+      required this.type,
+      required this.suggestion,
+      required this.fnRm});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('$type >> $suggestion'),
         TextButton(
             onPressed: () => fnRm(type, suggestion),
             child:
-            const Icon(Icons.delete_forever_outlined, color: Colors.red)),
+                const Icon(Icons.delete_forever_outlined, color: Colors.red)),
+        Text('$type >> $suggestion'),
       ],
     );
   }
