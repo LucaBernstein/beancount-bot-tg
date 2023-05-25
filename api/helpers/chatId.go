@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 	"strings"
 
@@ -15,7 +14,6 @@ const K_CHAT_ID = "tgChatId"
 
 func AttachChatId(bc *bot.BotController) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Printf("Authentication header: %v", c.GetHeader("Authorization"))
 		authHeader := strings.TrimSpace(strings.ReplaceAll(c.GetHeader("Authorization"), "Bearer ", ""))
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
