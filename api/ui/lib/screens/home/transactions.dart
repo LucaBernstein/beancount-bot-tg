@@ -37,7 +37,7 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
     _transactions = _loadTransactions();
   }
 
-  Future<void> deleteTx(int id) async {
+  Future<void> _deleteTx(int id) async {
     await widget.authentication.deleteTransaction(id);
     setState(() {
       _transactions = _loadTransactions();
@@ -61,7 +61,7 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
               for (var t in tx) {
                 txList.add(TransactionWidget(
                   tx: t,
-                  fnRm: deleteTx,
+                  fnRm: _deleteTx,
                 ));
               }
               return SelectionArea(
