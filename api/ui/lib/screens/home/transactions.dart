@@ -65,9 +65,14 @@ class _TransactionsWidgetState extends State<TransactionsWidget> {
                 ));
               }
               return SelectionArea(
-                  child: Column(
-                children: txList,
-              ));
+                  child: SizedBox(
+                      width: 500,
+                      child: SingleChildScrollView(
+                          child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: txList,
+                      ))));
             }
           }
           return const Scaffold(
@@ -87,7 +92,6 @@ class TransactionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         TextButton(
             onPressed: () => fnRm(tx.id),
