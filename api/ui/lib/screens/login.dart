@@ -174,8 +174,14 @@ class _LoginState extends State<LoginPage> {
                           ),
                         )
                       ])),
-              const Text(
-                  'Hint: In order to receive the credentials from your beancount-bot-tg instance, you need to activate the API first: For that, issue the following command:\n\n/config enable_api on'),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      'Hint: In order to receive the credentials from your beancount-bot-tg instance, you need to activate the API first: For that, issue the following command:\n'),
+                  SelectableText('/config enable_api on'),
+                ],
+              )
             ],
           ),
         ),
