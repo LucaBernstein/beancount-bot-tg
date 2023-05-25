@@ -81,12 +81,12 @@ class ClientAuthentication extends BaseCrud {
 
   static storeToken(String token) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString(KeyToken, token);
+    prefs.setString(keyToken, token);
   }
 
   static Future<String?> loadToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString(KeyToken);
+    return prefs.getString(keyToken);
   }
 
   Future<(Config? config, String? errorMsg)> getConfig() async {

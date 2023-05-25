@@ -1,10 +1,10 @@
 enum ConfigProperty {
-  EnableApi(name: 'user.enableApi'),
-  IsAdmin(name: 'user.isAdmin'),
-  Currency(name: 'user.currency'),
-  VacationTag(name: 'user.vacationTag'),
-  TimezoneOffset(name: 'user.tzOffset'),
-  OmitLeadingSlash(name: 'user.omitCommandSlash');
+  enableApi(name: 'user.enableApi'),
+  isAdmin(name: 'user.isAdmin'),
+  currency(name: 'user.currency'),
+  vacationTag(name: 'user.vacationTag'),
+  timezoneOffset(name: 'user.tzOffset'),
+  omitLeadingSlash(name: 'user.omitCommandSlash');
 
   const ConfigProperty({required this.name});
 
@@ -25,16 +25,16 @@ class Config {
   Map<String, dynamic> diffChanged(Config cnf) {
     Map<String, dynamic> diff = {};
     if (currency != cnf.currency) {
-      diff[ConfigProperty.Currency.name] = cnf.currency;
+      diff[ConfigProperty.currency.name] = cnf.currency;
     }
     if (vacationTag != cnf.vacationTag) {
-      diff[ConfigProperty.VacationTag.name] = cnf.vacationTag;
+      diff[ConfigProperty.vacationTag.name] = cnf.vacationTag;
     }
     if (timezoneOffset != cnf.timezoneOffset) {
-      diff[ConfigProperty.TimezoneOffset.name] = cnf.timezoneOffset;
+      diff[ConfigProperty.timezoneOffset.name] = cnf.timezoneOffset;
     }
     if (omitLeadingCommandSlash != cnf.omitLeadingCommandSlash) {
-      diff[ConfigProperty.OmitLeadingSlash.name] = cnf.omitLeadingCommandSlash;
+      diff[ConfigProperty.omitLeadingSlash.name] = cnf.omitLeadingCommandSlash;
     }
     return diff;
   }

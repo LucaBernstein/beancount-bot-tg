@@ -56,10 +56,10 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
                 return const Text(
                     'Currently, there are no suggestions to display.');
               }
-              List<Widget> suggList = [];
+              List<Widget> suggestionsList = [];
               for (var s in suggestions.entries) {
                 for (var v in s.value) {
-                  suggList.add(SuggestionWidget(
+                  suggestionsList.add(SuggestionWidget(
                     type: s.key,
                     suggestion: v,
                     fnRm: _deleteSuggestion,
@@ -85,7 +85,7 @@ class _SuggestionsWidgetState extends State<SuggestionsWidget> {
                         // wireframe for each widget.
                         mainAxisAlignment: MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: suggList,
+                        children: suggestionsList,
                       )));
             }
           }
