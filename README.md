@@ -5,6 +5,7 @@ Supports you in keeping track of your beancount transactions also if you need to
 ## Features and advantages
 
 * [x] REST API for additional interaction with the bot. E.g. read created transactions from bot automatically.
+* [x] Flutter UI to interact with the bot from the browser.
 * [x] Quickly record beancount transactions while on-the-go. Start as simple as entering the amount - no boilerplate
 * [x] Suggestions for accounts and descriptions used in the past or configured manually
 * [x] Templates with variables and advanced amount splitting for recurring or more complex transactions
@@ -26,6 +27,7 @@ You can use the bot [`@LB_Bean_Bot`](https://t.me/LB_Bean_Bot) ([https://t.me/LB
 
 * `/help`: Get a list of all the available commands
 * `/config`: Get an overview of all the available commands for configuring the bot, e.g. default currency, reminder notification schedule, timezone offset, ...
+  * `/config enable_api on`: Enable API and UI access
 * `/simple`: Create a new questionnaire-based transaction. The transaction date defaults to the current date. To override the date, provide it as parameter, i.e. `/simple 2022-01-24`. To shorten the date parameter, the year and the month can be left out, defaulting to the current year/month, i.e. if the current year is 2022, the following command has the same result: `/simple 01-24`.
   * `123.45`: Entering an amount also starts a new transaction directly, leaving out the step shown above. It also guides you through the rest of the questionnaire of accounts to use for the transactions and so on.
 * `/template` or `/t`: Get an overview of the commands to use for managing templates.
