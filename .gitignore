@@ -1,11 +1,17 @@
+.idea
+
 .env
 
 app
 beancount-bot-tg
 
+# coverage reports
 coverage.out
+lcov.info
 
 *.log
 
 # SQLite database files
 **/*.sqlite
+
+*.txt
