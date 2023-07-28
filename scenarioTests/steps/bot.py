@@ -32,6 +32,7 @@ async def bot_send_message(bot: TestBot, chat, message):
     message = await bot.client.send_message(chat, message)
     return message
 
+@given('I send the message "{message}"')
 @when('I send the message "{message}"')
 @async_run_until_complete
 async def step_impl(context, message):
@@ -56,8 +57,12 @@ async def collect_responses(bot: TestBot, chat: str, offsetId, count = 1):
 @then('{count:d} messages should be sent back')
 @async_run_until_complete
 async def step_impl(context, count):
-    await wait_seconds(0.5)
-    context.responses = await collect_responses(context.chat, context.testChatId, context.offsetId)
+    retries = 4
+    context.responses = []
+    while retries > 0 and len(context.responses) != count:
+        await wait_seconds(0.3)
+        context.responses = await collect_responses(context.chat, context.testChatId, context.offsetId)
+        retries -= 1
     try:
         assert len(context.responses) == count
     except AssertionError:
@@ -154,6 +159,12 @@ async def step_impl(context, shouldShouldNot):
     except AssertionError:
         print("expected response", expectedResponse, "did not match actual response", response)
         assert False
+
+@given('I have no open transaction')
+@async_run_until_complete
+async def step_impl(context):
+    await bot_send_message(context.chat, context.testChatId, "/cancel")
+    await wait_seconds(0.1)
 
 @when('I create a simple tx with amount {amount} and desc {desc} and account:from {account_from} and account:to {account_to}')
 @async_run_until_complete

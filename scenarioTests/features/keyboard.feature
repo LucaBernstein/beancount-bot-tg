@@ -2,6 +2,7 @@ Feature: Bot suggestions keyboard
 
   Scenario: Suggest last used values
     Given I have a bot
+      And I have no open transaction
     When I send the message "/suggestions rm account:from"
       And I wait 0.2 seconds
       And I send the message "/suggestions add account:from fromAccount"
@@ -17,6 +18,7 @@ Feature: Bot suggestions keyboard
 
   Scenario: Last used suggestion appears on top
     Given I have a bot
+      And I send the message "/config currency EUR"
     When I send the message "/deleteAll yes"
       And I wait 0.2 seconds
       And I send the message "/suggestions rm account:from"
