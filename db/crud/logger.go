@@ -3,8 +3,8 @@ package crud
 import (
 	"log"
 
-	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 

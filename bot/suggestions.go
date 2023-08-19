@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	h "github.com/LucaBernstein/beancount-bot-tg/helpers"
+	h "github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 

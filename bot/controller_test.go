@@ -10,9 +10,9 @@ import (
 	tb "gopkg.in/telebot.v3"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
-	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot/botTest"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 )
 
 // GitHub-Issue #16: Panic if plain message without state arrives

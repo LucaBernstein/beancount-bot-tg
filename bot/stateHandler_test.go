@@ -3,7 +3,7 @@ package bot_test
 import (
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
 	tb "gopkg.in/telebot.v3"
 )
 

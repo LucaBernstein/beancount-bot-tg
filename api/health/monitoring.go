@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	"github.com/gin-gonic/gin"
 )
 

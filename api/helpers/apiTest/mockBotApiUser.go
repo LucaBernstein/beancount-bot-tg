@@ -3,11 +3,11 @@ package apiTest
 import (
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
-	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot/botTest"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	"gopkg.in/telebot.v3"
 )
 

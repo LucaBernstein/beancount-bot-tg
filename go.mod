@@ -1,4 +1,4 @@
-module github.com/LucaBernstein/beancount-bot-tg
+module github.com/LucaBernstein/beancount-bot-tg/v2
 
 go 1.17
 

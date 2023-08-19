@@ -3,7 +3,7 @@ package db
 import (
 	"strings"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 )
 
 func DbType() string {

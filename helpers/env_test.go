@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 )
 
 const TEST_ENV_KEY = "BEANCOUNT_BOT_TG_TEST_ENV_KEY"

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/telebot.v3"
 )
