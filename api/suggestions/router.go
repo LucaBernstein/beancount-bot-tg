@@ -1,8 +1,8 @@
 package suggestions
 
 import (
-	"github.com/LucaBernstein/beancount-bot-tg/api/helpers"
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
 	"github.com/gin-gonic/gin"
 )
 

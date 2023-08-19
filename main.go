@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/LucaBernstein/beancount-bot-tg/api"
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	"github.com/LucaBernstein/beancount-bot-tg/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
 )
 
 func main() {

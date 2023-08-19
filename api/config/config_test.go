@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/api/config"
-	"github.com/LucaBernstein/beancount-bot-tg/api/helpers/apiTest"
-	"github.com/LucaBernstein/beancount-bot-tg/bot/botTest"
-	"github.com/LucaBernstein/beancount-bot-tg/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/config"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/helpers/apiTest"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot/botTest"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )

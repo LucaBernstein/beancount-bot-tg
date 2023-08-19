@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/LucaBernstein/beancount-bot-tg/api/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/helpers"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/telebot.v3"
 )

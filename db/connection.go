@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/LucaBernstein/beancount-bot-tg/db/migrations"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/migrations"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
 )

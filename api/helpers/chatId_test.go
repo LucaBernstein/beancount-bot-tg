@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/api/helpers"
-	"github.com/LucaBernstein/beancount-bot-tg/api/helpers/apiTest"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/helpers/apiTest"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )

@@ -3,9 +3,9 @@ package bot_test
 import (
 	"testing"
 
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	"github.com/LucaBernstein/beancount-bot-tg/db"
-	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/crud"
 	"gopkg.in/telebot.v3"
 )
 

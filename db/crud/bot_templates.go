@@ -3,7 +3,7 @@ package crud
 import (
 	"fmt"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	tb "gopkg.in/telebot.v3"
 )
 

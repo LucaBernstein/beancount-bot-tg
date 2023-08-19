@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )

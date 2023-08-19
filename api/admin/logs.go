@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/LucaBernstein/beancount-bot-tg/db"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db"
 	"github.com/gin-gonic/gin"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 )
 
 func (r *Repo) HealthGetLogs(lastHours int) (errors int, warnings int, err error) {

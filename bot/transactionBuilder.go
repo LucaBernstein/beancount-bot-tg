@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/LucaBernstein/beancount-bot-tg/db/crud"
-	c "github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/crud"
+	c "github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	"github.com/fatih/structs"
 	tb "gopkg.in/telebot.v3"
 )

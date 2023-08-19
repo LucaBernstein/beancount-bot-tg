@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 
-	"github.com/LucaBernstein/beancount-bot-tg/db/migrations/generic"
-	"github.com/LucaBernstein/beancount-bot-tg/db/migrations/postgres"
-	"github.com/LucaBernstein/beancount-bot-tg/db/migrations/sqlite"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/migrations/generic"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/migrations/postgres"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/db/migrations/sqlite"
 )
 
 type MigrationProvider interface {

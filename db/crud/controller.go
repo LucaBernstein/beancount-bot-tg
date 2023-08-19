@@ -1,7 +1,7 @@
 package crud
 
 import (
-	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/db"
+	dbWrapper "github.com/LucaBernstein/beancount-bot-tg/v2/db"
 )
 
 type Repo struct {

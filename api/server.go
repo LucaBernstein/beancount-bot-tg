@@ -3,14 +3,14 @@ package api
 import (
 	"log"
 
-	"github.com/LucaBernstein/beancount-bot-tg/api/admin"
-	"github.com/LucaBernstein/beancount-bot-tg/api/config"
-	"github.com/LucaBernstein/beancount-bot-tg/api/suggestions"
-	"github.com/LucaBernstein/beancount-bot-tg/api/health"
-	"github.com/LucaBernstein/beancount-bot-tg/api/token"
-	"github.com/LucaBernstein/beancount-bot-tg/api/transactions"
-	"github.com/LucaBernstein/beancount-bot-tg/bot"
-	"github.com/LucaBernstein/beancount-bot-tg/helpers"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/admin"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/config"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/health"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/suggestions"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/token"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/api/transactions"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/bot"
+	"github.com/LucaBernstein/beancount-bot-tg/v2/helpers"
 	"github.com/gin-gonic/gin"
 	"github.com/mandrigin/gin-spa/spa"
 )
