@@ -55,7 +55,7 @@ func TestHandleFloat(t *testing.T) {
 
 	handledFloat, err = bot.HandleFloat(&tb.Message{Text: "-5.678"})
 	helpers.TestExpect(t, err, nil, "Should not throw an error for -5.678")
-	helpers.TestExpect(t, handledFloat, bot.FORMATTER_PLACEHOLDER+"5.678", "Should use absolute value")
+	helpers.TestExpect(t, handledFloat, bot.FORMATTER_PLACEHOLDER+"-5.678", "Should keep negative value")
 }
 
 func TestHandleFloatSimpleCalculations(t *testing.T) {
@@ -190,6 +190,35 @@ func TestTransactionBuilding(t *testing.T) {
 	helpers.TestExpect(t, templated, today+` * "Buy something in the grocery store"
   Assets:Wallet                               -17.00 USD
   Expenses:Groceries
+`, "Templated string should be filled with variables as expected.")
+}
+
+func TestTransactionBuildingWithNegativeAmount(t *testing.T) {
+	const twoWayTemplate = `${date} * "${description}"${tag}
+	${account:from:the money came *from*} ${-amount}
+	${account:to:the money went *to*} ${amount}`
+
+	tx, err := bot.CreateSimpleTx("", twoWayTemplate)
+	if err != nil {
+		t.Errorf("Error creating simple tx: %s", err.Error())
+	}
+	tx.Input(&tb.Message{Text: "-34"})                        // amount
+	tx.Input(&tb.Message{Text: "Birthday gift from grandma"}) // description
+	tx.Input(&tb.Message{Text: "Assets:Wallet"})              // from
+	tx.Input(&tb.Message{Text: "Income:Gifts"})               // to
+
+	if !tx.IsDone() {
+		t.Errorf("With given input transaction data should be complete for SimpleTx")
+	}
+
+	templated, err := tx.FillTemplate("USD", "", 0)
+	if err != nil {
+		t.Errorf("There should be no error raised during templating: %s", err.Error())
+	}
+	today := time.Now().Format(helpers.BEANCOUNT_DATE_FORMAT)
+	helpers.TestExpect(t, templated, today+` * "Birthday gift from grandma"
+  Assets:Wallet                                34.00 USD
+  Income:Gifts                                -34.00 USD
 `, "Templated string should be filled with variables as expected.")
 }
 
