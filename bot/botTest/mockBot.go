@@ -76,3 +76,7 @@ func (c *MockContext) Respond(resp ...*tb.CallbackResponse) error              {
 func (c *MockContext) Get(key string) interface{}                              { return nil }
 func (c *MockContext) Set(key string, val interface{})                         {}
 func (c *MockContext) Entities() tb.Entities                                   { return nil }
+func (c *MockContext) Topic() *tb.Topic                                        { return nil }
+
+// Test type matching
+var _ tb.Context = &MockContext{}

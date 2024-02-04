@@ -67,10 +67,6 @@ func HandleFloat(m *tb.Message) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("parsing failed at value '%s': %s", value, err.Error())
 		}
-		if v < 0 {
-			c.LogLocalf(INFO, nil, "Got negative value. Inverting.")
-			v *= -1
-		}
 		c.LogLocalf(TRACE, nil, "Handled float: '%s' -> %f", amount, v)
 		values = append(values, v)
 	}
