@@ -9,9 +9,13 @@ A few prerequisites are required for the scenario tests to run effectively.
 - You need to store the values in [GitHub Actions secrets](https://github.com/LucaBernstein/beancount-bot-tg/settings/secrets/actions)
 
 ```bash
+# Create (if not already exists) a Python venv
+python3 -m venv venv
+# Activate venv
+source venv/bin/activate
 # Installing dependencies
 pip install -r requirements.txt
-# Creating authentication session: Fill in all details queried from you.
+# Creating authentication session: Fill in all details queried from you, using your user telephone number when asked for.
 env $(cat .env | xargs) python3 authenticate.py
 # Store the output of the following command as Actions secret 'SCENARIO_TG_ANON_SESSION'
 cat anon.session | base64
