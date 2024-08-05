@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-co-op/gocron v1.37.0
-	gopkg.in/telebot.v3 v3.2.1
+	gopkg.in/telebot.v3 v3.3.7
 )
 
 require (
