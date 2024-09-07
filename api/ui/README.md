@@ -18,5 +18,7 @@ samples, guidance on mobile development, and a full API reference.
 ## Update dependencies
 
 ```bash
-flutter pub upgrade
+flutter upgrade
+
+flutter pub upgrade --major-versions --tighten
 ```

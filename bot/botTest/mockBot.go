@@ -36,11 +36,11 @@ type MockContext struct {
 	M *tb.Message
 }
 
+func (c *MockContext) Bot() *tb.Bot      { return nil }
+func (c *MockContext) Update() tb.Update { return tb.Update{} }
 func (c *MockContext) Message() *tb.Message {
 	return c.M
 }
-func (c *MockContext) Bot() *tb.Bot                                            { return nil }
-func (c *MockContext) Update() tb.Update                                       { return tb.Update{} }
 func (c *MockContext) Callback() *tb.Callback                                  { return nil }
 func (c *MockContext) Query() *tb.Query                                        { return nil }
 func (c *MockContext) InlineResult() *tb.InlineResult                          { return nil }
@@ -51,10 +51,14 @@ func (c *MockContext) PollAnswer() *tb.PollAnswer                              {
 func (c *MockContext) ChatMember() *tb.ChatMemberUpdate                        { return nil }
 func (c *MockContext) ChatJoinRequest() *tb.ChatJoinRequest                    { return nil }
 func (c *MockContext) Migration() (int64, int64)                               { return 0, 0 }
+func (c *MockContext) Topic() *tb.Topic                                        { return nil }
+func (c *MockContext) Boost() *tb.BoostUpdated                                 { return nil }
+func (c *MockContext) BoostRemoved() *tb.BoostRemoved                          { return nil }
 func (c *MockContext) Sender() *tb.User                                        { return nil }
 func (c *MockContext) Chat() *tb.Chat                                          { return nil }
 func (c *MockContext) Recipient() tb.Recipient                                 { return nil }
 func (c *MockContext) Text() string                                            { return "" }
+func (c *MockContext) Entities() tb.Entities                                   { return nil }
 func (c *MockContext) Data() string                                            { return "" }
 func (c *MockContext) Args() []string                                          { return nil }
 func (c *MockContext) Send(what interface{}, opts ...interface{}) error        { return nil }
@@ -73,10 +77,10 @@ func (c *MockContext) Ship(what ...interface{}) error                          {
 func (c *MockContext) Accept(errorMessage ...string) error                     { return nil }
 func (c *MockContext) Answer(resp *tb.QueryResponse) error                     { return nil }
 func (c *MockContext) Respond(resp ...*tb.CallbackResponse) error              { return nil }
+func (c *MockContext) RespondText(text string) error                           { return nil }
+func (c *MockContext) RespondAlert(text string) error                          { return nil }
 func (c *MockContext) Get(key string) interface{}                              { return nil }
 func (c *MockContext) Set(key string, val interface{})                         {}
-func (c *MockContext) Entities() tb.Entities                                   { return nil }
-func (c *MockContext) Topic() *tb.Topic                                        { return nil }
 
 // Test type matching
 var _ tb.Context = &MockContext{}
