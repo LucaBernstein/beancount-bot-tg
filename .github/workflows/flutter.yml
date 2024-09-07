@@ -20,7 +20,7 @@ jobs:
         with:
           channel: 'stable'
       - name: Check out the code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - run: flutter --version
       - name: Restore packages
         run: flutter pub get
