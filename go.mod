@@ -13,7 +13,7 @@ require (
 	github.com/mandrigin/gin-spa v0.0.0-20200212133200-790d0c0c7335
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/telebot.v3 v3.3.8
-	modernc.org/sqlite v1.33.0
+	modernc.org/sqlite v1.34.1
 )
 
 require (
@@ -55,6 +55,7 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/gc/v3 v3.0.0-20240801135723-a856999a2e4a // indirect
+	modernc.org/libc v1.55.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
 	modernc.org/strutil v1.2.0 // indirect
