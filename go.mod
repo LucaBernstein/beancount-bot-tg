@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
 	github.com/mandrigin/gin-spa v0.0.0-20200212133200-790d0c0c7335
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	gopkg.in/telebot.v3 v3.3.8
 	modernc.org/sqlite v1.33.0
 )
