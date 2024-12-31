@@ -58,6 +58,18 @@ func TestList(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"booking":"my tx"`)
 }
 
+func TestListTextFormat(t *testing.T) {
+	r, w, token, _, _ := mockBcApiUser(t)
+
+
+	req, _ := http.NewRequest("GET", "/list?format=text", nil)
+	req.Header.Add("Authorization", "Bearer "+token)
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "my tx\n", w.Body.String())
+}
+
 func TestListDeleteSingle(t *testing.T) {
 	r, w, token, repo, msg := mockBcApiUser(t)
 
