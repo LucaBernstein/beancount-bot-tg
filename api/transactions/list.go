@@ -37,6 +37,8 @@ func (r *Router) List(c *gin.Context) {
 		})
 		return
 	}
+	format := c.Query("format")
+
 	transactions := []Transaction{}
 	for _, t := range tx {
 		transactions = append(transactions, Transaction{
@@ -46,6 +48,16 @@ func (r *Router) List(c *gin.Context) {
 			IsArchived: isArchived,
 		})
 	}
+
+	if format == "text" {
+		var textResponse string
+		for _, t := range transactions {
+			textResponse += t.Booking + "\n"
+		}
+		c.String(http.StatusOK, textResponse)
+		return
+	}
+
 	c.JSON(http.StatusOK, transactions)
 }
 
